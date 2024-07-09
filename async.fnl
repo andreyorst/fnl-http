@@ -1665,6 +1665,7 @@ default, unless `buf-or-n` is given."
   {:private true}
   (let [recv (chan 1024 xform err-handler)
         resp (chan 1024 xform err-handler)
+        ready (chan)
         read-fn (or ?read-fn default-read)
         close (fn [_] (recv:close!) (resp:close!))
         c {:puts recv.puts
@@ -1672,6 +1673,7 @@ default, unless `buf-or-n` is given."
            :put! (fn [_  val handler enqueue?]
                    (recv:put! val handler enqueue?))
            :take! (fn [_ handler enqueue?]
+                    (ready:put! :ready fhnop true)
                     (resp:take! handler enqueue?))
            :close! close
            :close close}]
@@ -1687,6 +1689,7 @@ default, unless `buf-or-n` is given."
             _ (recur (<! recv) 0))
           _ (<! (timeout 10)))))
     (go-loop []
+      (<! ready)
       (case (read-fn client)
         data
         (do (>! resp data) (recur))

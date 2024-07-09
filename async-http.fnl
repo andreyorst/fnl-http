@@ -76,18 +76,21 @@
          (let [(header value) (parse-header line)]
            (doto headers (tset header value)))))))
 
-(fn default-read-fn [src]
-  (src:receive :*l))
+(fn make-read-fn [pattern]
+  (fn [src]
+    (print pattern)
+    (src:receive pattern)))
 
-(fn parse-http-response [src ?read-fn]
-  (let [read-fn (or ?read-fn default-read-fn)
-        status (read-status-line src read-fn)
-        headers (read-headers src read-fn)]
+(fn parse-http-response [src receive read]
+  (let [status (read-status-line src receive)
+        headers (read-headers src receive)]
     (doto status
       (tset :headers headers)
       (tset :body
             (->> {:__index {:close #(src:close)
-                            :read #(read-fn src)}
+                            :read (fn [_ pattern]
+                                    (set read.fn (make-read-fn pattern))
+                                    (receive src))}
                   :__close #(src:close)}
                  (setmetatable {}))))))
 
@@ -124,22 +127,12 @@
         path (format-path parsed)
         req (make-http-request method path headers ?body)
         read {}
-        read-chunk (fn [s]
-                     (s:receive 1024))
-        read-line (fn [s]
-                    (let [(data-or-error message partial-result) (s:receive :*l)]
-                      (case data-or-error
-                        (where (or "" "\r"))
-                        (do (set read.fn read-chunk)
-                            data-or-error)
-                        _
-                        (values data-or-error message partial-result))))
-        _ (set read.fn read-line)
+        _ (set read.fn (make-read-fn :*l))
         chan (a.tcp.chan parsed nil nil (fn [socket] (read.fn socket)))
         res (a.promise-chan)]
     (var split? true)
     (go (a.>! chan req)
-        (a.>! res (parse-http-response chan a.<!)))
+        (a.>! res (parse-http-response chan a.<! read)))
     res))
 
 {: request}
