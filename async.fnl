@@ -1688,23 +1688,27 @@ default, unless `buf-or-n` is given."
             (do (close! recv) (client:close))
             _ (recur (<! recv) 0))
           _ (<! (timeout 10)))))
-    (go-loop []
-      (<! ready)
+    (go-loop [wait? true]
+      (when wait?
+        (<! ready))
       (case (read-fn client)
         data
-        (do (>! resp data) (recur))
+        (do (>! resp data) (recur true))
         (nil :closed "")
         (do (client:close) (close! resp))
         (nil :timeout "")
-        (do (<! (timeout 10)) (recur))
+        (do (<! (timeout 10)) (recur nil))
         (nil :timeout data)
-        (do (>! resp data) (<! (timeout 10)) (recur))
+        (do (>! resp data) (<! (timeout 10)) (recur true))
         (nil err data)
-        (do (when (and data (not= data ""))
+        (do (var wait? nil)
+            (when (and data (not= data ""))
+              (set wait? true)
               (>! resp data))
             (case (err-handler err)
-              data (>! resp data))
-            (recur))))
+              data (do (set wait? true)
+                       (>! resp data)))
+            (recur wait?))))
     (->> {:__index Channel
           :__name "SocketChannel"
           :__fennelview
