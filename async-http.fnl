@@ -41,6 +41,22 @@ If coersion fails, returns the value as is."
 number of bytes to read."
   (fn [src]
     (src:receive pattern)))
+;;; Stream
+
+(fn make-stream [src receive-fn]
+  (-> {:close #(src:close)
+       :read (fn [_ pattern]
+               (src:set-chunk-size pattern)
+               (receive-fn src))
+       :lines (fn [_]
+                (fn []
+                  (src:set-chunk-size :*l)
+                  (receive-fn src)))}
+      (setmetatable
+       {:__index
+        :__close #(src:close)
+        :__name "Stream"
+        :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Stream:") ">")})))
 
 ;;; LTN12
 
@@ -171,7 +187,7 @@ existing headers."
          (let [(header value) (parse-header line)]
            (doto headers (tset (capitalize-header header) value)))))))
 
-(fn parse-http-response [src {: receive-fn : read : as}]
+(fn parse-http-response [src receive-fn as]
   "Parse the beginning of the HTTP response.
 Accepts `src` that is a source, that can be read with the `receive`
 callback.  The `read` is a special storage to alter how `receive`
@@ -181,14 +197,7 @@ Returns a map with the information about the HTTP response, including
 its headers, and a body stream."
   (let [status (read-status-line src receive-fn)
         headers (read-headers src receive-fn)
-        stream (->> {:__index {:close #(src:close)
-                               :read (fn [_ pattern]
-                                       (set read.fn (make-read-fn pattern))
-                                       (receive-fn src))}
-                     :__close #(src:close)
-                     :__name "Stream"
-                     :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Stream:") ">")}
-                    (setmetatable {}))]
+        stream (make-stream src receive-fn)]
     (doto status
       (tset :headers headers)
       (tset :body (case as
@@ -215,10 +224,11 @@ the `url` is missing, the default `http` scheme is used.  If the
 `port` part of the `url` is missing, the default port is used based on
 the `scheme` part: `80` for the `http` and `443` for `https`."
   (let [scheme (url:match "^([^:]+)://")
-        {: host : port : userinfo} (parse-authority
-                                    (if scheme
-                                        (url:match "//([^/]+)/")
-                                        (url:match "^([^/]+)/")))
+        {: host : port : userinfo}
+        (parse-authority
+         (if scheme
+             (url:match "//([^/]+)/")
+             (url:match "^([^/]+)/")))
         scheme (or scheme "http")
         port (or port (case scheme :https 443 :http 80))
         path (url:match "//[^/]+/([^?#]+)")
@@ -275,16 +285,15 @@ are made."
                   k v)
         path (format-path parsed)
         req (make-http-request method path headers opts.body)
-        read {}
-        _ (set read.fn (make-read-fn :*l))
-        chan (tcp.chan parsed nil nil (fn [socket] (read.fn socket)))
-        res (promise-chan)]
+        chan (tcp.chan parsed)]
+    (chan:set-chunk-size :*l)
     (if opts.async?
-        (do (go (>! chan req)
-                (>! res (parse-http-response chan {:receive-fn <! : read :as opts.as})))
+        (let [res (promise-chan)]
+          (go (>! chan req)
+              (>! res (parse-http-response chan <! opts.as)))
             res)
         (do (>!! chan req)
-            (parse-http-response chan {:receive-fn <!! : read :as opts.as})))))
+            (parse-http-response chan <!! opts.as)))))
 
 (macro define-http-method [method]
   "Defines an HTTP method for the given `method`."

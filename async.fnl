@@ -1655,10 +1655,13 @@ default, unless `buf-or-n` is given."
 
 (local s/select (and socket socket.select))
 (local s/connect (and socket socket.connect))
-(fn default-read [s]
-  (s:receive 1024))
 
-(fn socket-channel [client xform err-handler ?read-fn]
+(fn set-chunk-size [self pattern-or-size]
+  ;; Sets the chunk-size property of a socket channel in order to
+  ;; dynamically adjust during reads.
+  (set self.chunk-size pattern-or-size))
+
+(fn socket-channel [client xform err-handler]
   ;; returns a combo channel, where puts and takes are handled by
   ;; different channels which are used as buffers for two async
   ;; processes that interact with the socket
@@ -1666,7 +1669,6 @@ default, unless `buf-or-n` is given."
   (let [recv (chan 1024 xform err-handler)
         resp (chan 1024 xform err-handler)
         ready (chan)
-        read-fn (or ?read-fn default-read)
         close (fn [_] (recv:close!) (resp:close!))
         c {:puts recv.puts
            :takes resp.takes
@@ -1676,7 +1678,9 @@ default, unless `buf-or-n` is given."
                     (ready:put! :ready fhnop true)
                     (resp:take! handler enqueue?))
            :close! close
-           :close close}]
+           :close close
+           :chunk-size 1024
+           :set-chunk-size set-chunk-size}]
     (go-loop [data (<! recv) i 0]
       (when (not= nil data)
         (case (s/select nil [client] 0)
@@ -1691,7 +1695,7 @@ default, unless `buf-or-n` is given."
     (go-loop [wait? true]
       (when wait?
         (<! ready))
-      (case (read-fn client)
+      (case (client:receive c.chunk-size)
         data
         (do (>! resp data) (recur true))
         (nil :closed "")
@@ -1715,17 +1719,19 @@ default, unless `buf-or-n` is given."
           #(.. "#<" (: (tostring $) :gsub "table:" "SocketChannel:") ">")}
          (setmetatable c))))
 
-(fn tcp.chan [{: host : port} xform err-handler ?read-fn]
+(fn tcp.chan [{: host : port} xform err-handler]
   "Creates a channel that connects to a socket via `host` and `port`.
 Optionally accepts a transducer `xform`, and an error handler.
 `err-handler` must be a fn of one argument - if an exception occurs
 during transformation it will be called with the thrown value as an
-argument, and any non-nil return value will be placed in the channel."
+argument, and any non-nil return value will be placed in the channel.
+The read pattern f a socket can be controlled with the
+`set-chunk-size` method."
   (assert socket "tcp module requires luasocket")
   (let [host (or host :localhost)]
     (match-try (s/connect host port)
       client (client:settimeout 0)
-      _ (socket-channel client xform err-handler ?read-fn)
+      _ (socket-channel client xform err-handler)
       (catch (nil err) (error err)))))
 
 {: buffer
