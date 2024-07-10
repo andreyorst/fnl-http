@@ -822,7 +822,7 @@ semantics of `xform` and `err-handler`."
   (chan (promise-buffer) xform err-handler))
 
 (fn chan? [obj]
-  {:private true}
+  "Test if `obj` is a channel."
   (match obj {:type Channel} true _ false))
 
 (var warned false)
@@ -1734,6 +1734,7 @@ argument, and any non-nil return value will be placed in the channel."
  : promise-buffer
  : unblocking-buffer?
  : chan
+ : chan?
  : promise-chan
  : take!
  : <!!
