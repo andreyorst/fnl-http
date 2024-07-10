@@ -825,6 +825,10 @@ semantics of `xform` and `err-handler`."
   "Test if `obj` is a channel."
   (match obj {:type Channel} true _ false))
 
+(fn closed? [port]
+  (assert (chan? port) "expected a channel")
+  port.closed)
+
 (var warned false)
 
 (fn timeout [msecs]
@@ -1669,29 +1673,35 @@ default, unless `buf-or-n` is given."
   (let [recv (chan 1024 xform err-handler)
         resp (chan 1024 xform err-handler)
         ready (chan)
-        close (fn [_] (recv:close!) (resp:close!))
-        c {:puts recv.puts
-           :takes resp.takes
-           :put! (fn [_  val handler enqueue?]
-                   (recv:put! val handler enqueue?))
-           :take! (fn [_ handler enqueue?]
-                    (ready:put! :ready fhnop true)
-                    (resp:take! handler enqueue?))
-           :close! close
-           :close close
-           :chunk-size 1024
-           :set-chunk-size set-chunk-size}]
+        close (fn [self] (recv:close!) (resp:close!) (set self.closed true))
+        c (-> {:puts recv.puts
+               :takes resp.takes
+               :put! (fn [_  val handler enqueue?]
+                       (recv:put! val handler enqueue?))
+               :take! (fn [_ handler enqueue?]
+                        (offer! ready :ready)
+                        (resp:take! handler enqueue?))
+               :close! close
+               :close close
+               :chunk-size 1024
+               :set-chunk-size set-chunk-size}
+              (setmetatable
+               {:__index Channel
+                :__name "SocketChannel"
+                :__fennelview
+                #(.. "#<" (: (tostring $) :gsub "table:" "SocketChannel:") ">")}))]
     (go-loop [data (<! recv) i 0]
       (when (not= nil data)
         (case (s/select nil [client] 0)
-          (_ [c])
-          (case (c:send data i)
+          (_ [s])
+          (case (s:send data i)
             (nil :timeout j)
             (do (<! (timeout 10)) (recur data j))
             (nil :closed)
-            (do (close! recv) (client:close))
+            (do (s:close) (close! c))
             _ (recur (<! recv) 0))
-          _ (<! (timeout 10)))))
+          _ (do (<! (timeout 10))
+                (recur data i)))))
     (go-loop [wait? true]
       (when wait?
         (<! ready))
@@ -1699,25 +1709,14 @@ default, unless `buf-or-n` is given."
         data
         (do (>! resp data) (recur true))
         (nil :closed "")
-        (do (client:close) (close! resp))
+        (do (client:close) (close! c))
+        (nil :closed data)
+        (do (client:close) (>! resp data) (close! c))
         (nil :timeout "")
-        (do (<! (timeout 10)) (recur nil))
+        (do (<! (timeout 10)) (recur false))
         (nil :timeout data)
-        (do (>! resp data) (<! (timeout 10)) (recur true))
-        (nil err data)
-        (do (var wait? nil)
-            (when (and data (not= data ""))
-              (set wait? true)
-              (>! resp data))
-            (case (err-handler err)
-              data (do (set wait? true)
-                       (>! resp data)))
-            (recur wait?))))
-    (->> {:__index Channel
-          :__name "SocketChannel"
-          :__fennelview
-          #(.. "#<" (: (tostring $) :gsub "table:" "SocketChannel:") ">")}
-         (setmetatable c))))
+        (do (>! resp data) (<! (timeout 10)) (recur true))))
+    c))
 
 (fn tcp.chan [{: host : port} xform err-handler]
   "Creates a channel that connects to a socket via `host` and `port`.
