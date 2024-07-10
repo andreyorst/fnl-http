@@ -6,8 +6,8 @@
         : tcp}
   (require :async))
 
-(local {: input-stream}
-  (require :streams))
+(local {: make-reader}
+  (require :reader))
 
 (import-macros
  {: go}
@@ -129,7 +129,7 @@ Returns a map with the information about the HTTP response, including
 its headers, and a body stream."
   (let [status (read-status-line src receive-fn)
         headers (read-headers src receive-fn)
-        stream (input-stream
+        stream (make-reader
                 {:read-bytes (fn [_ pattern]
                                (src:set-chunk-size pattern)
                                (receive-fn src))
