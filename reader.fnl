@@ -1,9 +1,9 @@
 (fn ok? [ok? ...] (when ok? ...))
 
-(fn make-reader [{: read-bytes : read-line : close}]
+(fn make-reader [source {: read-bytes : read-line : close}]
   "Generic reader generator.
-Accepts methods, that enclose some source, and produce appropriate
-results.
+Accepts methods, that the `source` is going to be passed, and produce
+appropriate results.
 
 The `close` method should return `true` when the resource is first
 closed, and `nil` for repeated attempts at closing the reader.
@@ -17,10 +17,19 @@ reader source supports line iteration.
 
 All methods are optional, and if not provided, the return value of
 each is `nil`."
-  (let [close (if close #(ok? (pcall close $...)) #nil)]
-    (-> {:close close
-         :read (if read-bytes #(ok? (pcall read-bytes $...)) #nil)
-         :lines (if read-line (fn [] #(ok? (pcall read-line))) (fn [] #nil))}
+  (let [close (if close
+                  (fn [_ ...]
+                    (ok? (pcall close source ...)))
+                  #nil)]
+    (-> {: close
+         :read (if read-bytes
+                   (fn [_ pattern ...]
+                     (ok? (pcall read-bytes source pattern ...))) #nil)
+         :lines (if read-line
+                    (fn []
+                      (fn [_ ...]
+                        (ok? (pcall read-line source ...))))
+                    (fn [] #nil))}
         (setmetatable
          {:__close close
           :__name "Reader"
@@ -32,35 +41,43 @@ Accepts a `file` or a string path which is opened automatically handle."
   (let [file (case (type file)
                :string (io.open file :r)
                _ file)]
-      (make-reader
-       {:close #(file:close)
-        :read-bytes (fn [_ pattern] (file:read pattern))
-        :read-line (file:lines)})))
+      (make-reader file
+                   {:close #(: $ :close)
+                    :read-bytes (fn [f pattern] (f:read pattern))
+                    :read-line (file:lines)})))
 
-(fn string-reader [s]
+(fn string-reader [string]
   "Input stream generator for strings.
 Accepts a string `s`."
   (var (i closed) (values 1 false))
-  (let [len (length s)]
-    (make-reader
-     {:close #(when (not closed)
-                (set i (+ len 1))
-                (set closed true)
-                closed)
-      :read-bytes (fn [_ bytes]
+  (let [len (length string)
+        try-read-line (fn [s pattern]
+                        (case (s:find pattern i)
+                          (start end s)
+                          (do (set i (+ end 1)) s)))
+        read-line (fn [s]
                     (when (< i len)
-                      (let [res (s:sub i (+ i bytes -1))]
-                        (set i (+ i bytes))
-                        res)))
-      :read-line (fn []
-                   (case (s:find "(.-)\r?\n" i)
-                     (start end s) (do (set i (+ end 1))
-                                       s)
-                     nil (when (< i len)
-                           (case (s:find "(.-)\r?$" i)
-                             (start end s) (do (print start end s)
-                                               (set i (+ end 1))
-                                               s)))))})))
+                      (or (try-read-line s "(.-)\r?\n")
+                          (try-read-line s "(.-)\r?$"))))]
+    (make-reader
+     string
+     {:close (fn [_]
+               (when (not closed)
+                 (set i (+ len 1))
+                 (set closed true)
+                 closed))
+      :read-bytes (fn [s pattern]
+                    (when (< i len)
+                      (case pattern
+                        (where (or :*l :l))
+                        (read-line s)
+                        (where (or :*a :a))
+                        (s:sub i)
+                        (where bytes (= :number (type bytes)))
+                        (let [res (s:sub i (+ i bytes -1))]
+                          (set i (+ i bytes))
+                          res))))
+      :read-line read-line})))
 
 {: make-reader
  : file-reader

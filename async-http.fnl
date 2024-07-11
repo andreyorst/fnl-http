@@ -1,13 +1,38 @@
+(comment
+ "MIT License
+
+Copyright (c) 2024 Andrey Listopadov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+")
+
 (local socket
   (require :socket))
+
+(local {: make-reader
+        &as reader}
+  (require :reader))
 
 (local {: <! : >! : <!! : >!! : close!
         : chan : promise-chan : chan?
         : tcp}
   (require :async))
-
-(local {: make-reader}
-  (require :reader))
 
 (import-macros
  {: go}
@@ -40,18 +65,19 @@ string."
 If coersion fails, returns the value as is."
   (case (tonumber value) n n _ value))
 
-(fn make-read-fn [pattern]
+(fn make-read-fn [receive]
   "Returns a function that receives data from a socket by a given
 `pattern`.  The `pattern` can be either `\"*l\"`, `\"*a\"`, or a
 number of bytes to read."
-  (fn [src]
-    (src:receive pattern)))
+  (fn [src pattern]
+    (src:set-chunk-size pattern)
+    (receive src)))
 
 ;;; HTTP building
 
 (local HTTP-VERSION "HTTP/1.1")
 
-(fn make-http-request [method request-target ?headers ?content]
+(fn build-http-request [method request-target ?headers ?content]
   "Formaths the HTTP request string as per the HTTP/1.1 spec."
   (string.format
    "%s %s %s\r\n%s\r\n%s"
@@ -61,7 +87,7 @@ number of bytes to read."
    (or (headers->string ?headers) "")
    (or ?content "")))
 
-(fn make-http-response [status reason ?headers ?content]
+(fn build-http-response [status reason ?headers ?content]
   "Formats the HTTP response string as per the HTTP/1.1 spec."
   (string.format
    "%s %s %s\r\n%s\r\n%s"
@@ -71,9 +97,33 @@ number of bytes to read."
    (or (headers->string ?headers) "")
    (or ?content "")))
 
-;;; HTTP parsing
+;;; Parsing
 
-(fn parse-status-line [status]
+(fn parse-header [line]
+  "Parse a single header from a `line`."
+  (let [(header value) (line:match " *([^:]+) *: *(.*)")]
+    (values header (try-tonumber value))))
+
+(fn read-headers [src read-fn ?headers]
+  "Read and parse HTTP headers.
+Uses `read-fn` on the `src` to obtain the data.  The optional
+parameter `?headers` is used for tail recursion, and should not be
+provided by the caller, unless the intention is to append or override
+existing headers."
+  (let [headers (or ?headers {})
+        line (read-fn src :*l)]
+    (case line
+      (where (or "\r" ""))
+      headers
+      _ (read-headers
+         src
+         read-fn
+         (let [(header value) (parse-header line)]
+           (doto headers (tset (capitalize-header header) value)))))))
+
+;;;; HTTP Response
+
+(fn parse-response-status-line [status]
   "Parse HTTP response status line."
   ((fn loop [reader fields res]
      (case fields
@@ -92,34 +142,20 @@ number of bytes to read."
    [:http-version :status]
    {}))
 
-(fn read-status-line [src read-fn]
+(fn read-response-status-line [src read-fn]
   "Read the first line from the HTTP response and parse it.
 Uses `read-fn` on the `src` to obtain the data."
-  (parse-status-line (read-fn src)))
+  (parse-response-status-line (read-fn src :*l)))
 
-(fn parse-header [line]
-  "Parse a single header from a `line`."
-  (let [(header value) (line:match " *([^:]+) *: *(.*)")]
-    (values header (try-tonumber value))))
+(fn body-reader [src read-fn]
+  (make-reader
+   src
+   {:read-bytes read-fn
+    :read-line (fn [src]
+                 (read-fn src :*l))
+    :close (fn [src] (src:close))}))
 
-(fn read-headers [src read-fn ?headers]
-  "Read and parse HTTP headers.
-Uses `read-fn` on the `src` to obtain the data.  The optional
-parameter `?headers` is used for tail recursion, and should not be
-provided by the caller, unless the intention is to append or override
-existing headers."
-  (let [headers (or ?headers {})
-        line (read-fn src)]
-    (case line
-      (where (or "\r" ""))
-      headers
-      _ (read-headers
-         src
-         read-fn
-         (let [(header value) (parse-header line)]
-           (doto headers (tset (capitalize-header header) value)))))))
-
-(fn parse-http-response [src receive-fn as]
+(fn parse-http-response [src read-fn as]
   "Parse the beginning of the HTTP response.
 Accepts `src` that is a source, that can be read with the `receive`
 callback.  The `read` is a special storage to alter how `receive`
@@ -127,16 +163,9 @@ internaly reads the data inside the `read` method of the body.
 
 Returns a map with the information about the HTTP response, including
 its headers, and a body stream."
-  (let [status (read-status-line src receive-fn)
-        headers (read-headers src receive-fn)
-        stream (make-reader
-                {:read-bytes (fn [_ pattern]
-                               (src:set-chunk-size pattern)
-                               (receive-fn src))
-                 :read-line (fn []
-                              (src:set-chunk-size :*l)
-                              (receive-fn src))
-                 :close #(src:close)})]
+  (let [status (read-response-status-line src read-fn)
+        headers (read-headers src read-fn)
+        stream (body-reader src read-fn)]
     (doto status
       (tset :headers headers)
       (tset :body (case as
@@ -144,7 +173,51 @@ its headers, and a body stream."
                     :stream stream
                     _ (error (string.format "unsupported coersion method '%s'" as)))))))
 
-;;; URL parsing
+(comment
+ (let [req (build-http-response 200 "OK" {:connection :close} "vaiv\ndaun\n")
+       rdr (reader.string-reader req)
+       {: body : headers : reason : status}
+       (parse-http-response rdr (fn [src pattern] (src:read pattern)) :raw)]
+   (= req (build-http-response status reason headers body)))
+ )
+
+;;;; HTTP Request
+
+(fn parse-request-status-line [status]
+  "Parse HTTP request status line."
+  ((fn loop [reader fields res]
+     (case fields
+       [field & fields]
+       (let [part (reader)]
+         (loop reader fields
+               (doto res
+                 (tset field (try-tonumber part)))))
+       _ res))
+   (status:gmatch "([^ ]+)")
+   [:method :path :http-version]
+   {}))
+
+(fn read-request-status-line [src read-fn]
+  "Read the first line from the HTTP response and parse it.
+Uses `read-fn` on the `src` to obtain the data."
+  (parse-request-status-line (read-fn src :*l)))
+
+(fn parse-http-request [src read-fn]
+  (let [status (read-request-status-line src read-fn)
+        headers (read-headers src read-fn)]
+    (doto status
+      (tset :headers headers)
+      (tset :content (read-fn src :*a)))))
+
+(comment
+ (let [req (build-http-request :get "/" {:connection :close} "vaiv\ndaun\n")
+       rdr (reader.string-reader req)
+       {: headers : method : path : content}
+       (parse-http-request rdr (fn [src pattern] (src:read pattern)) rdr)]
+   (= req (build-http-request method path headers content)))
+ )
+
+;;;; URL
 
 (fn parse-authority [authority]
   "Parse the `authority` part of a URL."
@@ -222,16 +295,21 @@ are made."
                                    (length body))}]
                   k v)
         path (format-path parsed)
-        req (make-http-request method path headers opts.body)
+        req (build-http-request method path headers opts.body)
         chan (tcp.chan parsed)]
-    (chan:set-chunk-size :*l)
     (if opts.async?
         (let [res (promise-chan)]
           (go (>! chan req)
-              (>! res (parse-http-response chan <! opts.as)))
-            res)
+              (>! res (parse-http-response
+                       chan
+                       (make-read-fn <!)
+                       opts.as)))
+          res)
         (do (>!! chan req)
-            (parse-http-response chan <!! opts.as)))))
+            (parse-http-response
+             chan
+             (make-read-fn <!!)
+             opts.as)))))
 
 (macro define-http-method [method]
   "Defines an HTTP method for the given `method`."
