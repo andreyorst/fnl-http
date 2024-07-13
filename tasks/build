@@ -1,0 +1,3 @@
+;; -*- mode: fennel; -*- vi:ft=fennel
+
+(io.popen "cd src && fennel -c http.fnl > ../http.lua")
