@@ -125,25 +125,23 @@ are made."
                   k v)
         path (utils.format-path parsed)
         req (build-http-request method path headers opts.body)
-        chan (tcp.chan parsed)
-        start (socket.gettime)]
+        chan (tcp.chan parsed)]
+    (doto opts
+      (tset :start (socket.gettime))
+      (tset :time socket.gettime))
     (if opts.async?
         (let [res (promise-chan)]
           (go (>! chan req)
-              (let [resp (http-parser.parse-http-response
-                          chan
-                          (make-read-fn <!)
-                          opts)]
-                (>! res (doto resp
-                          (tset :request-time (math.ceil (* 1000 (- (socket.gettime) start))))))))
+              (>! res (http-parser.parse-http-response
+                       chan
+                       (make-read-fn <!)
+                       opts)))
           res)
         (do (>!! chan req)
-            (let [resp (http-parser.parse-http-response
-                        chan
-                        (make-read-fn <!!)
-                        opts)]
-              (doto resp
-                (tset :request-time (math.ceil (* 1000 (- (socket.gettime) start))))))))))
+            (http-parser.parse-http-response
+             chan
+             (make-read-fn <!!)
+             opts)))))
 
 (macro define-http-method [method]
   "Defines an HTTP method for the given `method`."

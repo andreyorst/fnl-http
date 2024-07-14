@@ -13,13 +13,12 @@
   (case (line:match " *([^:]+) *: *(.*)")
     (header value) (values header value)))
 
-(fn read-headers [src read-fn parse? ?headers]
+(fn read-headers [src read-fn ?headers]
   "Read and parse HTTP headers.
-Uses `read-fn` on the `src` to obtain the data.  If `parse?` is
-`true`, tries to convert some header values to data and capitalizes
-headers. The optional parameter `?headers` is used for tail recursion,
-and should not be provided by the caller, unless the intention is to
-append or override existing headers."
+Uses `read-fn` on the `src` to obtain the data.  The optional
+parameter `?headers` is used for tail recursion, and should not be
+provided by the caller, unless the intention is to append or override
+existing headers."
   (let [headers (or ?headers {})
         line (read-fn src :*l)]
     (case line
@@ -28,12 +27,9 @@ append or override existing headers."
       _ (read-headers
          src
          read-fn
-         parse?
          (case (parse-header (or line ""))
            (header value)
-           (if parse?
-               (doto headers (tset (utils.capitalize-header header) (utils.as-data value)))
-               (doto headers (tset header value))))))))
+           (doto headers (tset header value)))))))
 
 ;;; HTTP Response
 
@@ -111,7 +107,7 @@ Uses `read-fn` on the `src` to obtain the data."
                     (set buffer (.. buffer (or data "")))
                     buffer))))}))
 
-(fn parse-http-response [src read-fn {: as : parse-headers?}]
+(fn parse-http-response [src read-fn {: as : parse-headers? : start : time}]
   "Parse the beginning of the HTTP response.
 Accepts `src` that is a source, that can be read with the `receive`
 callback.  The `read` is a special storage to alter how `receive`
@@ -120,10 +116,18 @@ internaly reads the data inside the `read` method of the body.
 Returns a map with the information about the HTTP response, including
 its headers, and a body stream."
   (let [status (read-response-status-line src read-fn)
-        headers (read-headers src read-fn (if (not= nil parse-headers?) parse-headers? true))
+        headers (read-headers src read-fn)
+        parsed-headers (collect [k v (pairs headers)]
+                         (utils.capitalize-header k) (utils.as-data v))
         stream (body-reader src read-fn)]
     (doto status
-      (tset :headers headers)
+      (tset :headers (if parse-headers?
+                       parsed-headers
+                       headers))
+      (tset :length (tonumber parsed-headers.Content-Length))
+      (tset :request-time
+            (when (and start time)
+              (math.ceil (* 1000 (- (time) start)))))
       (tset :body
             (case as
               :raw (stream:read (or headers.Content-Length :*a))
