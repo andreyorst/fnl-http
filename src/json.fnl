@@ -111,8 +111,8 @@
                    (case (rdr:peek 1)
                      "," (do (rdr:read 1) (loop obj))
                      "}" (do (rdr:read 1) obj)
-                     _ (error (.. "expected ',' or '}' after the value " (json value)))))
-             _ (error (.. "expected colon after the key " (json key)))))))
+                     _ (error (.. "JSON parse error: expected ',' or '}' after the value: " (json value)))))
+             _ (error (.. "JSON parse error: expected colon after the key: " (json key)))))))
    {}))
 
 (fn parse-arr [rdr parse]
@@ -127,7 +127,7 @@
            (case (rdr:peek 1)
              "," (do (rdr:read 1) (loop arr))
              "]" (do (rdr:read 1) arr)
-             _ (error (.. "expected ',' or ']' after the value " (json val)))))))
+             _ (error (.. "JSON parse error: expected ',' or ']' after the value: " (json val)))))))
    []))
 
 (fn parse [rdr]
@@ -143,7 +143,8 @@ methods.  Parses the contents to a Lua table."
        (where "n" (= "null" (rdr:peek 4))) (do (rdr:read 4) nil)
        (where c (c:match "[ \t\n]")) (loop (skip-space rdr))
        (where n (n:match "[-0-9]")) (parse-num rdr)
-       _ (error (.. "unexpected token '" (tostring _) "'"))))))
+       nil (error "JSON parse error: end of stream")
+       _ (error (string.format "JSON parse error: unexpected token ('%s' (code %d))" _ (_:byte)))))))
 
 {: json
  : parse}

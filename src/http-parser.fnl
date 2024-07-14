@@ -109,7 +109,7 @@ Uses `read-fn` on the `src` to obtain the data."
 
 (fn parse-http-response [src read-fn {: as : parse-headers? : start : time}]
   "Parse the beginning of the HTTP response.
-Accepts `src` that is a source, that can be read with the `receive`
+Accepts `src` that is a source, that can be read with the `read-fn`
 callback.  The `read` is a special storage to alter how `receive`
 internaly reads the data inside the `read` method of the body.
 
@@ -130,7 +130,7 @@ its headers, and a body stream."
               (math.ceil (* 1000 (- (time) start)))))
       (tset :body
             (case as
-              :raw (stream:read (or headers.Content-Length :*a))
+              :raw (stream:read (or parsed-headers.Content-Length :*a))
               :json (json.parse stream)
               :stream stream
               _ (error (string.format "unsupported coersion method '%s'" as)))))))
