@@ -26,7 +26,7 @@ SOFTWARE.
   (require :socket))
 
 (local {: <! : >! : <!! : >!! : close!
-        : chan : promise-chan : chan?
+        : chan : promise-chan
         : tcp}
   (include :async))
 
@@ -39,6 +39,9 @@ SOFTWARE.
 
 (local utils
   (include :utils))
+
+(local tcp
+  (include :tcp))
 
 ;;; Helper functions
 

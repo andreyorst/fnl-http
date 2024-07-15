@@ -8,8 +8,21 @@
                 [(.. res "-") nil]
                 (and upper? case-change?)
                 [(.. res "-" (c:lower)) nil]
-                [(.. res c) true])))]
+                [(.. res (c:lower)) (and (not upper?) true)])))]
     res))
+
+(comment
+ (do
+   (assert (= "foo-bar" (->kebab-case "foo-bar")) "foo-bar fail")
+   (assert (= "foo-bar" (->kebab-case "Foo-Bar")) "Foo-Bar fail")
+   (assert (= "foo-bar" (->kebab-case "foo_bar")) "foo_bar fail")
+   (assert (= "foo-bar" (->kebab-case "foo bar")) "foo bar fail")
+   (assert (= "foo-bar" (->kebab-case "fooBar")) "fooBar fail")
+   (assert (= "foo-bar" (->kebab-case "FooBar")) "FooBar fail")
+   (assert (= "foo-bar" (->kebab-case "FOO BAR")) "FOO BAR fail")
+   (assert (= "foo-bar" (->kebab-case "FOO_BAR")) "FOO_BAR fail")
+   (assert (= "foo-bar" (->kebab-case "FOO-BAR")) "FOO-BAR fail"))
+ )
 
 (fn capitalize-header [header]
   "Capitalizes the header string."

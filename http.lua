@@ -2703,173 +2703,29 @@ package.preload["async"] = package.preload["async"] or function(...)
     end
     return out
   end
-  local tcp = {}
-  local s_2fselect = (socket and socket.select)
-  local s_2fconnect = (socket and socket.connect)
-  local function set_chunk_size(self, pattern_or_size)
-    self["chunk-size"] = pattern_or_size
-    return nil
-  end
-  local function socket_channel(client, xform, err_handler)
-    local recv = chan(1024, xform, err_handler)
-    local resp = chan(1024, xform, err_handler)
-    local ready = chan()
-    local close
-    local function _485_(self)
-      recv["close!"](recv)
-      resp["close!"](resp)
-      self.closed = true
-      return nil
-    end
-    close = _485_
-    local c
-    local function _486_(_, val, handler, enqueue_3f)
-      return recv["put!"](recv, val, handler, enqueue_3f)
-    end
-    local function _487_(_, handler, enqueue_3f)
-      offer_21(ready, "ready")
-      return resp["take!"](resp, handler, enqueue_3f)
-    end
-    local function _488_(_241)
-      return ("#<" .. tostring(_241):gsub("table:", "SocketChannel:") .. ">")
-    end
-    c = setmetatable({puts = recv.puts, takes = resp.takes, ["put!"] = _486_, ["take!"] = _487_, ["close!"] = close, close = close, ["chunk-size"] = 1024, ["set-chunk-size"] = set_chunk_size}, {__index = Channel, __name = "SocketChannel", __fennelview = _488_})
-    do
-      local _let_491_ = require("async")
-      local go_1_auto = _let_491_["go"]
-      local function _492_()
-        local _2_489_ = _3c_21(recv)
-        local data = _2_489_
-        local _4_490_ = 0
-        local i = _4_490_
-        local function recur(data0, i0)
-          if (nil ~= data0) then
-            local _493_, _494_ = s_2fselect(nil, {client}, 0)
-            if (true and ((_G.type(_494_) == "table") and (nil ~= _494_[1]))) then
-              local _ = _493_
-              local s = _494_[1]
-              local _495_, _496_, _497_ = s:send(data0, i0)
-              if ((_495_ == nil) and (_496_ == "timeout") and (nil ~= _497_)) then
-                local j = _497_
-                _3c_21(timeout(10))
-                return recur(data0, j)
-              elseif ((_495_ == nil) and (_496_ == "closed")) then
-                s:close()
-                return close_21(c)
-              else
-                local _0 = _495_
-                return recur(_3c_21(recv), 0)
-              end
-            else
-              local _ = _493_
-              _3c_21(timeout(10))
-              return recur(data0, i0)
-            end
-          else
-            return nil
-          end
-        end
-        return recur(_2_489_, _4_490_)
-      end
-      go_1_auto(_492_)
-    end
-    do
-      local _let_502_ = require("async")
-      local go_1_auto = _let_502_["go"]
-      local function _503_()
-        local _2_501_ = true
-        local wait_3f = _2_501_
-        local function recur(wait_3f0)
-          if wait_3f0 then
-            _3c_21(ready)
-          else
-          end
-          local _505_, _506_, _507_ = client:receive(c["chunk-size"])
-          if (nil ~= _505_) then
-            local data = _505_
-            _3e_21(resp, data)
-            return recur(true)
-          elseif ((_505_ == nil) and (_506_ == "closed") and (_507_ == "")) then
-            client:close()
-            return close_21(c)
-          elseif ((_505_ == nil) and (_506_ == "closed") and (nil ~= _507_)) then
-            local data = _507_
-            client:close()
-            _3e_21(resp, data)
-            return close_21(c)
-          elseif ((_505_ == nil) and (_506_ == "timeout") and (_507_ == "")) then
-            _3c_21(timeout(10))
-            return recur(false)
-          elseif ((_505_ == nil) and (_506_ == "timeout") and (nil ~= _507_)) then
-            local data = _507_
-            _3e_21(resp, data)
-            _3c_21(timeout(10))
-            return recur(true)
-          else
-            return nil
-          end
-        end
-        return recur(_2_501_)
-      end
-      go_1_auto(_503_)
-    end
-    return c
-  end
-  tcp.chan = function(_509_, xform, err_handler)
-    local host = _509_["host"]
-    local port = _509_["port"]
-    assert(socket, "tcp module requires luasocket")
-    local host0 = (host or "localhost")
-    local function _510_(...)
-      local _511_, _512_ = ...
-      if (nil ~= _511_) then
-        local client = _511_
-        local function _513_(...)
-          local _514_, _515_ = ...
-          if true then
-            local _ = _514_
-            return socket_channel(client, xform, err_handler)
-          elseif ((_514_ == nil) and (nil ~= _515_)) then
-            local err = _515_
-            return error(err)
-          else
-            return nil
-          end
-        end
-        return _513_(client:settimeout(0))
-      elseif ((_511_ == nil) and (nil ~= _512_)) then
-        local err = _512_
-        return error(err)
-      else
-        return nil
-      end
-    end
-    return _510_(s_2fconnect(host0, port))
-  end
-  return {buffer = buffer, ["dropping-buffer"] = dropping_buffer, ["sliding-buffer"] = sliding_buffer, ["promise-buffer"] = promise_buffer, ["unblocking-buffer?"] = unblocking_buffer_3f, chan = chan, ["chan?"] = chan_3f, ["promise-chan"] = promise_chan, ["take!"] = take_21, ["<!!"] = _3c_21_21, ["<!"] = _3c_21, timeout = timeout, ["put!"] = put_21, [">!!"] = _3e_21_21, [">!"] = _3e_21, ["close!"] = close_21, go = go_2a, ["alts!"] = alts_21, ["offer!"] = offer_21, ["poll!"] = poll_21, pipe = pipe, ["pipeline-async"] = pipeline_async, pipeline = pipeline, ["pipeline-async-unordered"] = pipeline_async_unordered, ["pipeline-unordered"] = pipeline_unordered, reduce = reduce, reduced = reduced, ["reduced?"] = reduced_3f, transduce = transduce, split = split, ["onto-chan!"] = onto_chan_21, ["to-chan!"] = to_chan_21, mult = mult, tap = tap, untap = untap, ["untap-all"] = untap_all, mix = mix, admix = admix, unmix = unmix, ["unmix-all"] = unmix_all, toggle = toggle, ["solo-mode"] = solo_mode, pub = pub, sub = sub, unsub = unsub, ["unsub-all"] = unsub_all, map = map, merge = merge, into = into, take = take, buffers = {FixedBuffer = FixedBuffer, SlidingBuffer = SlidingBuffer, DroppingBuffer = DroppingBuffer, PromiseBuffer = PromiseBuffer}, tcp = tcp}
+  return {buffer = buffer, ["dropping-buffer"] = dropping_buffer, ["sliding-buffer"] = sliding_buffer, ["promise-buffer"] = promise_buffer, ["unblocking-buffer?"] = unblocking_buffer_3f, chan = chan, ["promise-chan"] = promise_chan, ["take!"] = take_21, ["<!!"] = _3c_21_21, ["<!"] = _3c_21, timeout = timeout, ["put!"] = put_21, [">!!"] = _3e_21_21, [">!"] = _3e_21, ["close!"] = close_21, go = go_2a, ["alts!"] = alts_21, ["offer!"] = offer_21, ["poll!"] = poll_21, pipe = pipe, ["pipeline-async"] = pipeline_async, pipeline = pipeline, ["pipeline-async-unordered"] = pipeline_async_unordered, ["pipeline-unordered"] = pipeline_unordered, reduce = reduce, reduced = reduced, ["reduced?"] = reduced_3f, transduce = transduce, split = split, ["onto-chan!"] = onto_chan_21, ["to-chan!"] = to_chan_21, mult = mult, tap = tap, untap = untap, ["untap-all"] = untap_all, mix = mix, admix = admix, unmix = unmix, ["unmix-all"] = unmix_all, toggle = toggle, ["solo-mode"] = solo_mode, pub = pub, sub = sub, unsub = unsub, ["unsub-all"] = unsub_all, map = map, merge = merge, into = into, take = take, buffers = {FixedBuffer = FixedBuffer, SlidingBuffer = SlidingBuffer, DroppingBuffer = DroppingBuffer, PromiseBuffer = PromiseBuffer}}
 end
-local _local_518_ = require("async")
-local _3c_21 = _local_518_["<!"]
-local _3e_21 = _local_518_[">!"]
-local _3c_21_21 = _local_518_["<!!"]
-local _3e_21_21 = _local_518_[">!!"]
-local close_21 = _local_518_["close!"]
-local chan = _local_518_["chan"]
-local promise_chan = _local_518_["promise-chan"]
-local chan_3f = _local_518_["chan?"]
-local tcp = _local_518_["tcp"]
+local _local_485_ = require("async")
+local _3c_21 = _local_485_["<!"]
+local _3e_21 = _local_485_[">!"]
+local _3c_21_21 = _local_485_["<!!"]
+local _3e_21_21 = _local_485_[">!!"]
+local close_21 = _local_485_["close!"]
+local chan = _local_485_["chan"]
+local promise_chan = _local_485_["promise-chan"]
+local tcp = _local_485_["tcp"]
 local http_parser
 package.preload["http-parser"] = package.preload["http-parser"] or function(...)
-  local _local_563_ = require("readers")
-  local make_reader = _local_563_["make-reader"]
-  local reader = _local_563_
+  local _local_530_ = require("readers")
+  local make_reader = _local_530_["make-reader"]
+  local reader = _local_530_
   local json = require("json")
   local utils = require("utils")
   local function parse_header(line)
-    local _634_, _635_ = line:match(" *([^:]+) *: *(.*)")
-    if ((nil ~= _634_) and (nil ~= _635_)) then
-      local header = _634_
-      local value = _635_
+    local _601_, _602_ = line:match(" *([^:]+) *: *(.*)")
+    if ((nil ~= _601_) and (nil ~= _602_)) then
+      local header = _601_
+      local value = _602_
       return header, value
     else
       return nil
@@ -2882,18 +2738,18 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
       return headers
     else
       local _ = line
-      local function _639_()
-        local _637_, _638_ = parse_header((line or ""))
-        if ((nil ~= _637_) and (nil ~= _638_)) then
-          local header = _637_
-          local value = _638_
+      local function _606_()
+        local _604_, _605_ = parse_header((line or ""))
+        if ((nil ~= _604_) and (nil ~= _605_)) then
+          local header = _604_
+          local value = _605_
           headers[header] = value
           return headers
         else
           return nil
         end
       end
-      return read_headers(src, read_fn, _639_())
+      return read_headers(src, read_fn, _606_())
     end
   end
   local function parse_response_status_line(status)
@@ -2902,7 +2758,7 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
         local field = fields[1]
         local fields0 = {select(2, (table.unpack or _G.unpack)(fields))}
         local part = reader0()
-        local function _642_()
+        local function _609_()
           if (field == "protocol-version") then
             local name, major, minor = part:match("([^/]+)/(%d).(%d)")
             res[field] = {name = name, major = tonumber(major), minor = tonumber(minor)}
@@ -2913,7 +2769,7 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
             return res
           end
         end
-        return loop(reader0, fields0, _642_())
+        return loop(reader0, fields0, _609_())
       else
         local _ = fields
         local reason = status:gsub(string.format("%s/%s.%s +%s +", res["protocol-version"].name, res["protocol-version"].major, res["protocol-version"].minor, res.status), "")
@@ -2928,15 +2784,15 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
   end
   local function body_reader(src, read_fn)
     local buffer = ""
-    local function _644_(src0, pattern)
+    local function _611_(src0, pattern)
       local rdr = reader["string-reader"](buffer)
       local buffer_content = rdr:read(pattern)
-      local and_645_ = (nil ~= pattern)
-      if and_645_ then
+      local and_612_ = (nil ~= pattern)
+      if and_612_ then
         local n = pattern
-        and_645_ = ("number" == type(n))
+        and_612_ = ("number" == type(n))
       end
-      if and_645_ then
+      if and_612_ then
         local n = pattern
         local len
         if buffer_content then
@@ -2972,15 +2828,15 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
         end
       elseif ((pattern == "*a") or (pattern == "a")) then
         buffer = ""
-        local _653_ = read_fn(src0, pattern)
-        if (_653_ == nil) then
+        local _620_ = read_fn(src0, pattern)
+        if (_620_ == nil) then
           if buffer_content then
             return buffer_content
           else
             return nil
           end
-        elseif (nil ~= _653_) then
-          local data = _653_
+        elseif (nil ~= _620_) then
+          local data = _620_
           return ((buffer_content or "") .. data)
         else
           return nil
@@ -2990,7 +2846,7 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
         return error(tostring(pattern))
       end
     end
-    local function _657_(src0)
+    local function _624_(src0)
       local rdr = reader["string-reader"](buffer)
       local buffer_content = rdr:read("*l")
       local read_more_3f = not buffer:find("\n")
@@ -3008,10 +2864,10 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
         return buffer_content
       end
     end
-    local function _661_(src0)
+    local function _628_(src0)
       return src0:close()
     end
-    local function _662_(src0, bytes)
+    local function _629_(src0, bytes)
       assert(("number" == type(bytes)), "expected number of bytes to peek")
       local rdr = reader["string-reader"](buffer)
       local content = (rdr:read(bytes) or "")
@@ -3024,13 +2880,13 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
         return buffer
       end
     end
-    return make_reader(src, {["read-bytes"] = _644_, ["read-line"] = _657_, close = _661_, peek = _662_})
+    return make_reader(src, {["read-bytes"] = _611_, ["read-line"] = _624_, close = _628_, peek = _629_})
   end
-  local function parse_http_response(src, read_fn, _664_)
-    local as = _664_["as"]
-    local parse_headers_3f = _664_["parse-headers?"]
-    local start = _664_["start"]
-    local time = _664_["time"]
+  local function parse_http_response(src, read_fn, _631_)
+    local as = _631_["as"]
+    local parse_headers_3f = _631_["parse-headers?"]
+    local start = _631_["start"]
+    local time = _631_["time"]
     local status = read_response_status_line(src, read_fn)
     local headers = read_headers(src, read_fn)
     local parsed_headers
@@ -3046,33 +2902,33 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
       parsed_headers = tbl_16_auto
     end
     local stream = body_reader(src, read_fn)
-    local _666_
+    local _633_
     if parse_headers_3f then
-      _666_ = parsed_headers
+      _633_ = parsed_headers
     else
-      _666_ = headers
+      _633_ = headers
     end
-    status["headers"] = _666_
+    status["headers"] = _633_
     status["length"] = tonumber(parsed_headers["Content-Length"])
-    local _668_
+    local _635_
     if (start and time) then
-      _668_ = math.ceil((1000 * (time() - start)))
+      _635_ = math.ceil((1000 * (time() - start)))
     else
-      _668_ = nil
+      _635_ = nil
     end
-    status["request-time"] = _668_
-    local _670_
+    status["request-time"] = _635_
+    local _637_
     if (as == "raw") then
-      _670_ = stream:read((parsed_headers["Content-Length"] or "*a"))
+      _637_ = stream:read((parsed_headers["Content-Length"] or "*a"))
     elseif (as == "json") then
-      _670_ = json.parse(stream)
+      _637_ = json.parse(stream)
     elseif (as == "stream") then
-      _670_ = stream
+      _637_ = stream
     else
       local _ = as
-      _670_ = error(string.format("unsupported coersion method '%s'", as))
+      _637_ = error(string.format("unsupported coersion method '%s'", as))
     end
-    status["body"] = _670_
+    status["body"] = _637_
     return status
   end
   --[[ (let [req (build-http-response 200 "OK" {:connection "close"} "vaiv
@@ -3084,11 +2940,11 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
         local field = fields[1]
         local fields0 = {select(2, (table.unpack or _G.unpack)(fields))}
         local part = reader0()
-        local function _676_()
+        local function _643_()
           res[field] = utils["as-data"](part)
           return res
         end
-        return loop(reader0, fields0, _676_())
+        return loop(reader0, fields0, _643_())
       else
         local _ = fields
         return res
@@ -3114,50 +2970,50 @@ package.preload["http-parser"] = package.preload["http-parser"] or function(...)
     local port = authority:match(":(%d+)")
     local host
     if userinfo then
-      local _678_
+      local _645_
       if port then
-        _678_ = ":"
+        _645_ = ":"
       else
-        _678_ = ""
+        _645_ = ""
       end
-      host = authority:match(("@([^:]+)" .. _678_))
+      host = authority:match(("@([^:]+)" .. _645_))
     else
-      local _680_
+      local _647_
       if port then
-        _680_ = ":"
+        _647_ = ":"
       else
-        _680_ = ""
+        _647_ = ""
       end
-      host = authority:match(("([^:]+)" .. _680_))
+      host = authority:match(("([^:]+)" .. _647_))
     end
     return {userinfo = userinfo, port = port, host = host}
   end
   local function parse_url(url)
     local scheme = url:match("^([^:]+)://")
-    local function _683_()
+    local function _650_()
       if scheme then
         return url:match("//([^/]+)/")
       else
         return url:match("^([^/]+)/")
       end
     end
-    local _let_684_ = parse_authority(_683_())
-    local host = _let_684_["host"]
-    local port = _let_684_["port"]
-    local userinfo = _let_684_["userinfo"]
+    local _let_651_ = parse_authority(_650_())
+    local host = _let_651_["host"]
+    local port = _let_651_["port"]
+    local userinfo = _let_651_["userinfo"]
     local scheme0 = (scheme or "http")
     local port0
-    local or_685_ = port
-    if not or_685_ then
+    local or_652_ = port
+    if not or_652_ then
       if (scheme0 == "https") then
-        or_685_ = 443
+        or_652_ = 443
       elseif (scheme0 == "http") then
-        or_685_ = 80
+        or_652_ = 80
       else
-        or_685_ = nil
+        or_652_ = nil
       end
     end
-    port0 = or_685_
+    port0 = or_652_
     local path = url:match("//[^/]+/([^?#]+)")
     local query = url:match("%?([^#]+)#?")
     local fragment = url:match("#([^?]+)%??")
@@ -3173,122 +3029,122 @@ package.preload["readers"] = package.preload["readers"] or function(...)
       return nil
     end
   end
-  local function make_reader(source, _520_)
-    local read_bytes = _520_["read-bytes"]
-    local read_line = _520_["read-line"]
-    local close = _520_["close"]
-    local peek = _520_["peek"]
+  local function make_reader(source, _487_)
+    local read_bytes = _487_["read-bytes"]
+    local read_line = _487_["read-line"]
+    local close = _487_["close"]
+    local peek = _487_["peek"]
     local close0
     if close then
-      local function _521_(_, ...)
+      local function _488_(_, ...)
         return ok_3f(pcall(close, source, ...))
       end
-      close0 = _521_
+      close0 = _488_
     else
-      local function _522_()
+      local function _489_()
         return nil
       end
-      close0 = _522_
+      close0 = _489_
     end
-    local _524_
+    local _491_
     if read_bytes then
-      local function _525_(_, pattern, ...)
+      local function _492_(_, pattern, ...)
         return ok_3f(pcall(read_bytes, source, pattern, ...))
       end
-      _524_ = _525_
+      _491_ = _492_
     else
-      local function _526_()
+      local function _493_()
         return nil
       end
-      _524_ = _526_
+      _491_ = _493_
     end
-    local _528_
+    local _495_
     if read_line then
-      local function _529_()
-        local function _530_(_, ...)
+      local function _496_()
+        local function _497_(_, ...)
           return ok_3f(pcall(read_line, source, ...))
         end
-        return _530_
+        return _497_
       end
-      _528_ = _529_
+      _495_ = _496_
     else
-      local function _531_()
-        local function _532_()
+      local function _498_()
+        local function _499_()
           return nil
         end
-        return _532_
+        return _499_
       end
-      _528_ = _531_
+      _495_ = _498_
     end
-    local _534_
+    local _501_
     if peek then
-      local function _535_(_, pattern, ...)
+      local function _502_(_, pattern, ...)
         return ok_3f(pcall(peek, source, pattern, ...))
       end
-      _534_ = _535_
+      _501_ = _502_
     else
-      local function _536_()
+      local function _503_()
         return nil
       end
-      _534_ = _536_
+      _501_ = _503_
     end
-    local function _538_(_241)
+    local function _505_(_241)
       return ("#<" .. tostring(_241):gsub("table:", "Reader:") .. ">")
     end
-    return setmetatable({close = close0, read = _524_, lines = _528_, peek = _534_}, {__close = close0, __name = "Reader", __fennelview = _538_})
+    return setmetatable({close = close0, read = _491_, lines = _495_, peek = _501_}, {__close = close0, __name = "Reader", __fennelview = _505_})
   end
   local function file_reader(file)
     local file0
     do
-      local _539_ = type(file)
-      if (_539_ == "string") then
+      local _506_ = type(file)
+      if (_506_ == "string") then
         file0 = io.open(file, "r")
       else
-        local _ = _539_
+        local _ = _506_
         file0 = file
       end
     end
-    local function _541_(_241)
+    local function _508_(_241)
       return _241:close()
     end
-    local function _542_(f, pattern)
+    local function _509_(f, pattern)
       return f:read(pattern)
     end
-    local function _543_(f, pattern)
+    local function _510_(f, pattern)
       assert(("number" == type(pattern)), "expected number of bytes to peek")
       local res = f:read(pattern)
       f:seek("cur", ( - pattern))
       return res
     end
-    return make_reader(file0, {close = _541_, ["read-bytes"] = _542_, ["read-line"] = file0:lines(), peek = _543_})
+    return make_reader(file0, {close = _508_, ["read-bytes"] = _509_, ["read-line"] = file0:lines(), peek = _510_})
   end
   local function string_reader(string)
     local i, closed = 1, false
     local len = #string
     local try_read_line
-    local function _544_(s, pattern)
-      local _545_, _546_, _547_ = s:find(pattern, i)
-      if ((nil ~= _545_) and (nil ~= _546_) and (nil ~= _547_)) then
-        local start = _545_
-        local _end = _546_
-        local s0 = _547_
+    local function _511_(s, pattern)
+      local _512_, _513_, _514_ = s:find(pattern, i)
+      if ((nil ~= _512_) and (nil ~= _513_) and (nil ~= _514_)) then
+        local start = _512_
+        local _end = _513_
+        local s0 = _514_
         i = (_end + 1)
         return s0
       else
         return nil
       end
     end
-    try_read_line = _544_
+    try_read_line = _511_
     local read_line
-    local function _549_(s)
+    local function _516_(s)
       if (i <= len) then
         return (try_read_line(s, "(.-)\13?\n") or try_read_line(s, "(.-)\13?$"))
       else
         return nil
       end
     end
-    read_line = _549_
-    local function _551_(_)
+    read_line = _516_
+    local function _518_(_)
       if not closed then
         i = (len + 1)
         closed = true
@@ -3297,19 +3153,19 @@ package.preload["readers"] = package.preload["readers"] or function(...)
         return nil
       end
     end
-    local function _553_(s, pattern)
+    local function _520_(s, pattern)
       if (i <= len) then
         if ((pattern == "*l") or (pattern == "l")) then
           return read_line(s)
         elseif ((pattern == "*a") or (pattern == "a")) then
           return s:sub(i)
         else
-          local and_554_ = (nil ~= pattern)
-          if and_554_ then
+          local and_521_ = (nil ~= pattern)
+          if and_521_ then
             local bytes = pattern
-            and_554_ = ("number" == type(bytes))
+            and_521_ = ("number" == type(bytes))
           end
-          if and_554_ then
+          if and_521_ then
             local bytes = pattern
             local res = s:sub(i, (i + bytes + -1))
             i = (i + bytes)
@@ -3322,14 +3178,14 @@ package.preload["readers"] = package.preload["readers"] or function(...)
         return nil
       end
     end
-    local function _558_(s, pattern)
+    local function _525_(s, pattern)
       if (i <= len) then
-        local and_559_ = (nil ~= pattern)
-        if and_559_ then
+        local and_526_ = (nil ~= pattern)
+        if and_526_ then
           local bytes = pattern
-          and_559_ = ("number" == type(bytes))
+          and_526_ = ("number" == type(bytes))
         end
-        if and_559_ then
+        if and_526_ then
           local bytes = pattern
           local res = s:sub(i, (i + bytes + -1))
           return res
@@ -3341,7 +3197,7 @@ package.preload["readers"] = package.preload["readers"] or function(...)
         return nil
       end
     end
-    return make_reader(string, {close = _551_, ["read-bytes"] = _553_, ["read-line"] = read_line, peek = _558_})
+    return make_reader(string, {close = _518_, ["read-bytes"] = _520_, ["read-line"] = read_line, peek = _525_})
   end
   return {["make-reader"] = make_reader, ["file-reader"] = file_reader, ["string-reader"] = string_reader}
 end
@@ -3358,34 +3214,34 @@ package.preload["json"] = package.preload["json"] or function(...)
     return (("table" == type(val)) and {object = val})
   end
   local function array_3f(val, _3fmax)
-    local and_564_ = object_3f(val)
-    if and_564_ then
-      local _565_ = #val
-      if (_565_ == 0) then
-        and_564_ = false
-      elseif (nil ~= _565_) then
-        local len = _565_
+    local and_531_ = object_3f(val)
+    if and_531_ then
+      local _532_ = #val
+      if (_532_ == 0) then
+        and_531_ = false
+      elseif (nil ~= _532_) then
+        local len = _532_
         local max = (_3fmax or len)
-        local _570_ = next(val, max)
-        local and_572_ = (nil ~= _570_)
-        if and_572_ then
-          local k = _570_
-          and_572_ = ("number" == type(k))
+        local _537_ = next(val, max)
+        local and_539_ = (nil ~= _537_)
+        if and_539_ then
+          local k = _537_
+          and_539_ = ("number" == type(k))
         end
-        if and_572_ then
-          local k = _570_
-          and_564_ = array_3f(val, k)
-        elseif (_570_ == nil) then
-          and_564_ = {n = max, array = val}
+        if and_539_ then
+          local k = _537_
+          and_531_ = array_3f(val, k)
+        elseif (_537_ == nil) then
+          and_531_ = {n = max, array = val}
         else
-          local _ = _570_
-          and_564_ = false
+          local _ = _537_
+          and_531_ = false
         end
       else
-        and_564_ = nil
+        and_531_ = nil
       end
     end
-    return and_564_
+    return and_531_
   end
   local function function_3f(val)
     return (("function" == type(val)) and {["function"] = val})
@@ -3395,18 +3251,18 @@ package.preload["json"] = package.preload["json"] or function(...)
   end
   local function escape_string(str)
     local escs
-    local function _579_(_241, _242)
+    local function _546_(_241, _242)
       return ("\\%03d"):format(_242:byte())
     end
-    escs = setmetatable({["\7"] = "\\a", ["\8"] = "\\b", ["\12"] = "\\f", ["\11"] = "\\v", ["\13"] = "\\r", ["\t"] = "\\t", ["\\"] = "\\\\", ["\""] = "\\\"", ["\n"] = "\\n"}, {__index = _579_})
+    escs = setmetatable({["\7"] = "\\a", ["\8"] = "\\b", ["\12"] = "\\f", ["\11"] = "\\v", ["\13"] = "\\r", ["\t"] = "\\t", ["\\"] = "\\\\", ["\""] = "\\\"", ["\n"] = "\\n"}, {__index = _546_})
     return ("\"" .. str:gsub("[%c\\\"]", escs) .. "\"")
   end
   local function json(val)
-    local _580_ = guess(val)
-    if ((_G.type(_580_) == "table") and (nil ~= _580_.array) and (nil ~= _580_.n)) then
-      local array = _580_.array
-      local n = _580_.n
-      local _581_
+    local _547_ = guess(val)
+    if ((_G.type(_547_) == "table") and (nil ~= _547_.array) and (nil ~= _547_.n)) then
+      local array = _547_.array
+      local n = _547_.n
+      local _548_
       do
         local tbl_21_auto = {}
         local i_22_auto = 0
@@ -3418,12 +3274,12 @@ package.preload["json"] = package.preload["json"] or function(...)
           else
           end
         end
-        _581_ = tbl_21_auto
+        _548_ = tbl_21_auto
       end
-      return ("[" .. table.concat(_581_, ", ") .. "]")
-    elseif ((_G.type(_580_) == "table") and (nil ~= _580_.object)) then
-      local object = _580_.object
-      local _583_
+      return ("[" .. table.concat(_548_, ", ") .. "]")
+    elseif ((_G.type(_547_) == "table") and (nil ~= _547_.object)) then
+      local object = _547_.object
+      local _550_
       do
         local tbl_21_auto = {}
         local i_22_auto = 0
@@ -3435,32 +3291,32 @@ package.preload["json"] = package.preload["json"] or function(...)
           else
           end
         end
-        _583_ = tbl_21_auto
+        _550_ = tbl_21_auto
       end
-      return ("{" .. table.concat(_583_, ", ") .. "}")
-    elseif ((_G.type(_580_) == "table") and (nil ~= _580_.string)) then
-      local s = _580_.string
+      return ("{" .. table.concat(_550_, ", ") .. "}")
+    elseif ((_G.type(_547_) == "table") and (nil ~= _547_.string)) then
+      local s = _547_.string
       return escape_string(s)
-    elseif ((_G.type(_580_) == "table") and (nil ~= _580_.number)) then
-      local n = _580_.number
+    elseif ((_G.type(_547_) == "table") and (nil ~= _547_.number)) then
+      local n = _547_.number
       return string.gsub(tostring(n), ",", ".")
-    elseif (_580_ == nil) then
+    elseif (_547_ == nil) then
       return null
     else
-      local _ = _580_
+      local _ = _547_
       return escape_string(tostring(val))
     end
   end
   local function skip_space(rdr)
     local function loop()
-      local _586_ = rdr:peek(1)
-      local and_587_ = (nil ~= _586_)
-      if and_587_ then
-        local c = _586_
-        and_587_ = c:match("[ \t\n]")
+      local _553_ = rdr:peek(1)
+      local and_554_ = (nil ~= _553_)
+      if and_554_ then
+        local c = _553_
+        and_554_ = c:match("[ \t\n]")
       end
-      if and_587_ then
-        local c = _586_
+      if and_554_ then
+        local c = _553_
         return loop(rdr:read(1))
       else
         return nil
@@ -3470,18 +3326,18 @@ package.preload["json"] = package.preload["json"] or function(...)
   end
   local function parse_num(rdr)
     local function loop(numbers)
-      local _590_ = rdr:peek(1)
-      local and_591_ = (nil ~= _590_)
-      if and_591_ then
-        local n = _590_
-        and_591_ = n:match("[-0-9.eE+]")
+      local _557_ = rdr:peek(1)
+      local and_558_ = (nil ~= _557_)
+      if and_558_ then
+        local n = _557_
+        and_558_ = n:match("[-0-9.eE+]")
       end
-      if and_591_ then
-        local n = _590_
+      if and_558_ then
+        local n = _557_
         rdr:read(1)
         return loop((numbers .. n))
       else
-        local _ = _590_
+        local _ = _557_
         return tonumber(numbers)
       end
     end
@@ -3490,17 +3346,17 @@ package.preload["json"] = package.preload["json"] or function(...)
   local function parse_string(rdr)
     rdr:read(1)
     local function loop(chars, escaped_3f)
-      local _594_ = rdr:read(1)
-      if (_594_ == "\\") then
+      local _561_ = rdr:read(1)
+      if (_561_ == "\\") then
         return loop(chars, not escaped_3f)
-      elseif (_594_ == "\"") then
+      elseif (_561_ == "\"") then
         if escaped_3f then
           return loop((chars .. "\""), false)
         else
           return chars
         end
       else
-        local _ = _594_
+        local _ = _561_
         return loop((chars .. _), false)
       end
     end
@@ -3510,33 +3366,33 @@ package.preload["json"] = package.preload["json"] or function(...)
     rdr:read(1)
     local function loop(obj)
       skip_space(rdr)
-      local _597_ = rdr:peek(1)
-      if (_597_ == "}") then
+      local _564_ = rdr:peek(1)
+      if (_564_ == "}") then
         rdr:read(1)
         return obj
       else
-        local _ = _597_
+        local _ = _564_
         local key = parse()
         skip_space(rdr)
-        local _598_ = rdr:peek(1)
-        if (_598_ == ":") then
+        local _565_ = rdr:peek(1)
+        if (_565_ == ":") then
           local _0 = rdr:read(1)
           local value = parse()
           obj[key] = value
           skip_space(rdr)
-          local _599_ = rdr:peek(1)
-          if (_599_ == ",") then
+          local _566_ = rdr:peek(1)
+          if (_566_ == ",") then
             rdr:read(1)
             return loop(obj)
-          elseif (_599_ == "}") then
+          elseif (_566_ == "}") then
             rdr:read(1)
             return obj
           else
-            local _1 = _599_
+            local _1 = _566_
             return error(("JSON parse error: expected ',' or '}' after the value: " .. json(value)))
           end
         else
-          local _0 = _598_
+          local _0 = _565_
           return error(("JSON parse error: expected colon after the key: " .. json(key)))
         end
       end
@@ -3547,24 +3403,24 @@ package.preload["json"] = package.preload["json"] or function(...)
     rdr:read(1)
     local function loop(arr)
       skip_space(rdr)
-      local _603_ = rdr:peek(1)
-      if (_603_ == "]") then
+      local _570_ = rdr:peek(1)
+      if (_570_ == "]") then
         rdr:read(1)
         return arr
       else
-        local _ = _603_
+        local _ = _570_
         local val = parse()
         arr[(1 + #arr)] = val
         skip_space(rdr)
-        local _604_ = rdr:peek(1)
-        if (_604_ == ",") then
+        local _571_ = rdr:peek(1)
+        if (_571_ == ",") then
           rdr:read(1)
           return loop(arr)
-        elseif (_604_ == "]") then
+        elseif (_571_ == "]") then
           rdr:read(1)
           return arr
         else
-          local _0 = _604_
+          local _0 = _571_
           return error(("JSON parse error: expected ',' or ']' after the value: " .. json(val)))
         end
       end
@@ -3573,59 +3429,59 @@ package.preload["json"] = package.preload["json"] or function(...)
   end
   local function parse(rdr)
     local function loop()
-      local _607_ = rdr:peek(1)
-      if (_607_ == "{") then
+      local _574_ = rdr:peek(1)
+      if (_574_ == "{") then
         return parse_obj(rdr, loop)
-      elseif (_607_ == "[") then
+      elseif (_574_ == "[") then
         return parse_arr(rdr, loop)
-      elseif (_607_ == "\"") then
+      elseif (_574_ == "\"") then
         return parse_string(rdr)
       else
-        local and_608_ = (_607_ == "t")
-        if and_608_ then
-          and_608_ = ("true" == rdr:peek(4))
+        local and_575_ = (_574_ == "t")
+        if and_575_ then
+          and_575_ = ("true" == rdr:peek(4))
         end
-        if and_608_ then
+        if and_575_ then
           rdr:read(4)
           return true
         else
-          local and_610_ = (_607_ == "f")
-          if and_610_ then
-            and_610_ = ("false" == rdr:peek(5))
+          local and_577_ = (_574_ == "f")
+          if and_577_ then
+            and_577_ = ("false" == rdr:peek(5))
           end
-          if and_610_ then
+          if and_577_ then
             rdr:read(5)
             return false
           else
-            local and_612_ = (_607_ == "n")
-            if and_612_ then
-              and_612_ = ("null" == rdr:peek(4))
+            local and_579_ = (_574_ == "n")
+            if and_579_ then
+              and_579_ = ("null" == rdr:peek(4))
             end
-            if and_612_ then
+            if and_579_ then
               rdr:read(4)
               return nil
             else
-              local and_614_ = (nil ~= _607_)
-              if and_614_ then
-                local c = _607_
-                and_614_ = c:match("[ \t\n]")
+              local and_581_ = (nil ~= _574_)
+              if and_581_ then
+                local c = _574_
+                and_581_ = c:match("[ \t\n]")
               end
-              if and_614_ then
-                local c = _607_
+              if and_581_ then
+                local c = _574_
                 return loop(skip_space(rdr))
               else
-                local and_616_ = (nil ~= _607_)
-                if and_616_ then
-                  local n = _607_
-                  and_616_ = n:match("[-0-9]")
+                local and_583_ = (nil ~= _574_)
+                if and_583_ then
+                  local n = _574_
+                  and_583_ = n:match("[-0-9]")
                 end
-                if and_616_ then
-                  local n = _607_
+                if and_583_ then
+                  local n = _574_
                   return parse_num(rdr)
-                elseif (_607_ == nil) then
+                elseif (_574_ == nil) then
                   return error("JSON parse error: end of stream")
                 else
-                  local _ = _607_
+                  local _ = _574_
                   return error(string.format("JSON parse error: unexpected token ('%s' (code %d))", _, _:byte()))
                 end
               end
@@ -3640,10 +3496,10 @@ package.preload["json"] = package.preload["json"] or function(...)
 end
 package.preload["utils"] = package.preload["utils"] or function(...)
   local function __3ekebab_case(str)
-    local function _619_()
+    local function _586_()
       local res,case_change_3f = "", false
       for c in string.gmatch(str, ".") do
-        local function _620_()
+        local function _587_()
           local delim_3f = c:match("[-_ ]")
           local upper_3f = (c == c:upper())
           if delim_3f then
@@ -3651,22 +3507,23 @@ package.preload["utils"] = package.preload["utils"] or function(...)
           elseif (upper_3f and case_change_3f) then
             return {(res .. "-" .. c:lower()), nil}
           else
-            return {(res .. c), true}
+            return {(res .. c:lower()), (not upper_3f and true)}
           end
         end
-        local _set_622_ = _620_()
-        res = _set_622_[1]
-        case_change_3f = _set_622_[2]
+        local _set_589_ = _587_()
+        res = _set_589_[1]
+        case_change_3f = _set_589_[2]
       end
       return {res, case_change_3f}
     end
-    local _let_623_ = _619_()
-    local res = _let_623_[1]
+    local _let_590_ = _586_()
+    local res = _let_590_[1]
     return res
   end
+  --[[ (do (assert (= "foo-bar" (->kebab-case "foo-bar")) "foo-bar fail") (assert (= "foo-bar" (->kebab-case "Foo-Bar")) "Foo-Bar fail") (assert (= "foo-bar" (->kebab-case "foo_bar")) "foo_bar fail") (assert (= "foo-bar" (->kebab-case "foo bar")) "foo bar fail") (assert (= "foo-bar" (->kebab-case "fooBar")) "fooBar fail") (assert (= "foo-bar" (->kebab-case "FooBar")) "FooBar fail") (assert (= "foo-bar" (->kebab-case "FOO BAR")) "FOO BAR fail") (assert (= "foo-bar" (->kebab-case "FOO_BAR")) "FOO_BAR fail") (assert (= "foo-bar" (->kebab-case "FOO-BAR")) "FOO-BAR fail")) ]]
   local function capitalize_header(header)
     local header0 = __3ekebab_case(header)
-    local _624_
+    local _591_
     do
       local tbl_21_auto = {}
       local i_22_auto = 0
@@ -3678,17 +3535,17 @@ package.preload["utils"] = package.preload["utils"] or function(...)
         else
         end
       end
-      _624_ = tbl_21_auto
+      _591_ = tbl_21_auto
     end
-    return table.concat(_624_, "-")
+    return table.concat(_591_, "-")
   end
   local function as_data(value)
-    local _626_ = tonumber(value)
-    if (nil ~= _626_) then
-      local n = _626_
+    local _593_ = tonumber(value)
+    if (nil ~= _593_) then
+      local n = _593_
       return n
     else
-      local _ = _626_
+      local _ = _593_
       if (value == "true") then
         return true
       elseif (value == "false") then
@@ -3699,34 +3556,187 @@ package.preload["utils"] = package.preload["utils"] or function(...)
       end
     end
   end
-  local function format_path(_629_)
-    local path = _629_["path"]
-    local query = _629_["query"]
-    local fragment = _629_["fragment"]
-    local _630_
+  local function format_path(_596_)
+    local path = _596_["path"]
+    local query = _596_["query"]
+    local fragment = _596_["fragment"]
+    local _597_
     if query then
-      _630_ = ("?" .. query)
+      _597_ = ("?" .. query)
     else
-      _630_ = ""
+      _597_ = ""
     end
-    local _632_
+    local _599_
     if fragment then
-      _632_ = ("?" .. fragment)
+      _599_ = ("?" .. fragment)
     else
-      _632_ = ""
+      _599_ = ""
     end
-    return ("/" .. (path or "") .. _630_ .. _632_)
+    return ("/" .. (path or "") .. _597_ .. _599_)
   end
   return {["format-path"] = format_path, ["as-data"] = as_data, ["capitalize-header"] = capitalize_header}
 end
 http_parser = require("http-parser")
 local utils = require("utils")
+local tcp0
+package.preload["tcp"] = package.preload["tcp"] or function(...)
+  local _local_656_ = require("async")
+  local chan = _local_656_["chan"]
+  local _3c_21 = _local_656_["<!"]
+  local _3e_21 = _local_656_[">!"]
+  local offer_21 = _local_656_["offer!"]
+  local timeout = _local_656_["timeout"]
+  local close_21 = _local_656_["close!"]
+  local socket = require("socket")
+  local function set_chunk_size(self, pattern_or_size)
+    self["chunk-size"] = pattern_or_size
+    return nil
+  end
+  local function socket_channel(client, xform, err_handler)
+    local recv = chan(1024, xform, err_handler)
+    local resp = chan(1024, xform, err_handler)
+    local ready = chan()
+    local close
+    local function _657_(self)
+      recv["close!"](recv)
+      resp["close!"](resp)
+      self.closed = true
+      return nil
+    end
+    close = _657_
+    local c
+    local function _658_(_, val, handler, enqueue_3f)
+      return recv["put!"](recv, val, handler, enqueue_3f)
+    end
+    local function _659_(_, handler, enqueue_3f)
+      offer_21(ready, "ready")
+      return resp["take!"](resp, handler, enqueue_3f)
+    end
+    local function _660_(_241)
+      return ("#<" .. tostring(_241):gsub("table:", "SocketChannel:") .. ">")
+    end
+    c = setmetatable({puts = recv.puts, takes = resp.takes, ["put!"] = _658_, ["take!"] = _659_, ["close!"] = close, close = close, ["chunk-size"] = 1024, ["set-chunk-size"] = set_chunk_size}, {__index = getmetatable(ready).__index, __name = "SocketChannel", __fennelview = _660_})
+    do
+      local _let_663_ = require("async")
+      local go_1_auto = _let_663_["go"]
+      local function _664_()
+        local _2_661_ = _3c_21(recv)
+        local data = _2_661_
+        local _4_662_ = 0
+        local i = _4_662_
+        local function recur(data0, i0)
+          if (nil ~= data0) then
+            local _665_, _666_ = socket.select(nil, {client}, 0)
+            if (true and ((_G.type(_666_) == "table") and (nil ~= _666_[1]))) then
+              local _ = _665_
+              local s = _666_[1]
+              local _667_, _668_, _669_ = s:send(data0, i0)
+              if ((_667_ == nil) and (_668_ == "timeout") and (nil ~= _669_)) then
+                local j = _669_
+                _3c_21(timeout(10))
+                return recur(data0, j)
+              elseif ((_667_ == nil) and (_668_ == "closed")) then
+                s:close()
+                return close_21(c)
+              else
+                local _0 = _667_
+                return recur(_3c_21(recv), 0)
+              end
+            else
+              local _ = _665_
+              _3c_21(timeout(10))
+              return recur(data0, i0)
+            end
+          else
+            return nil
+          end
+        end
+        return recur(_2_661_, _4_662_)
+      end
+      go_1_auto(_664_)
+    end
+    do
+      local _let_674_ = require("async")
+      local go_1_auto = _let_674_["go"]
+      local function _675_()
+        local _2_673_ = true
+        local wait_3f = _2_673_
+        local function recur(wait_3f0)
+          if wait_3f0 then
+            _3c_21(ready)
+          else
+          end
+          local _677_, _678_, _679_ = client:receive(c["chunk-size"])
+          if (nil ~= _677_) then
+            local data = _677_
+            _3e_21(resp, data)
+            return recur(true)
+          elseif ((_677_ == nil) and (_678_ == "closed") and (_679_ == "")) then
+            client:close()
+            return close_21(c)
+          elseif ((_677_ == nil) and (_678_ == "closed") and (nil ~= _679_)) then
+            local data = _679_
+            client:close()
+            _3e_21(resp, data)
+            return close_21(c)
+          elseif ((_677_ == nil) and (_678_ == "timeout") and (_679_ == "")) then
+            _3c_21(timeout(10))
+            return recur(false)
+          elseif ((_677_ == nil) and (_678_ == "timeout") and (nil ~= _679_)) then
+            local data = _679_
+            _3e_21(resp, data)
+            _3c_21(timeout(10))
+            return recur(true)
+          else
+            return nil
+          end
+        end
+        return recur(_2_673_)
+      end
+      go_1_auto(_675_)
+    end
+    return c
+  end
+  local function chan0(_681_, xform, err_handler)
+    local host = _681_["host"]
+    local port = _681_["port"]
+    assert(socket, "tcp module requires luasocket")
+    local host0 = (host or "localhost")
+    local function _682_(...)
+      local _683_, _684_ = ...
+      if (nil ~= _683_) then
+        local client = _683_
+        local function _685_(...)
+          local _686_, _687_ = ...
+          if true then
+            local _ = _686_
+            return socket_channel(client, xform, err_handler)
+          elseif ((_686_ == nil) and (nil ~= _687_)) then
+            local err = _687_
+            return error(err)
+          else
+            return nil
+          end
+        end
+        return _685_(client:settimeout(0))
+      elseif ((_683_ == nil) and (nil ~= _684_)) then
+        local err = _684_
+        return error(err)
+      else
+        return nil
+      end
+    end
+    return _682_(socket.connect(host0, port))
+  end
+  return {chan = chan0}
+end
+tcp0 = require("tcp")
 local function header__3estring(header, value)
   return (utils["capitalize-header"](header) .. ": " .. tostring(value) .. "\13\n")
 end
 local function headers__3estring(headers)
   if (headers and next(headers)) then
-    local function _689_()
+    local function _690_()
       local tbl_21_auto = {}
       local i_22_auto = 0
       for header, value in pairs(headers) do
@@ -3739,17 +3749,17 @@ local function headers__3estring(headers)
       end
       return tbl_21_auto
     end
-    return table.concat(_689_())
+    return table.concat(_690_())
   else
     return nil
   end
 end
 local function make_read_fn(receive)
-  local function _692_(src, pattern)
+  local function _693_(src, pattern)
     src["set-chunk-size"](src, pattern)
     return receive(src)
   end
-  return _692_
+  return _693_
 end
 local HTTP_VERSION = "HTTP/1.1"
 local function build_http_request(method, request_target, _3fheaders, _3fcontent)
@@ -3760,10 +3770,10 @@ local function build_http_response(status, reason, _3fheaders, _3fcontent)
 end
 local http = setmetatable({}, {__index = {version = "0.0.1"}})
 http.request = function(method, url, _3fopts)
-  local _let_693_ = http_parser["parse-url"](url)
-  local host = _let_693_["host"]
-  local port = _let_693_["port"]
-  local parsed = _let_693_
+  local _let_694_ = http_parser["parse-url"](url)
+  local host = _let_694_["host"]
+  local port = _let_694_["port"]
+  local parsed = _let_694_
   local opts
   do
     local tbl_16_auto = {as = "raw", ["async?"] = false}
@@ -3779,28 +3789,28 @@ http.request = function(method, url, _3fopts)
   local headers
   do
     local tbl_16_auto
-    local _695_
+    local _696_
     if port then
-      _695_ = (":" .. port)
+      _696_ = (":" .. port)
     else
-      _695_ = ""
+      _696_ = ""
     end
-    local _698_
+    local _699_
     do
-      local _697_ = opts.body
-      local and_699_ = (nil ~= _697_)
-      if and_699_ then
-        local body = _697_
-        and_699_ = ("string" == type(body))
+      local _698_ = opts.body
+      local and_700_ = (nil ~= _698_)
+      if and_700_ then
+        local body = _698_
+        and_700_ = ("string" == type(body))
       end
-      if and_699_ then
-        local body = _697_
-        _698_ = #body
+      if and_700_ then
+        local body = _698_
+        _699_ = #body
       else
-        _698_ = nil
+        _699_ = nil
       end
     end
-    tbl_16_auto = {host = (host .. _695_), ["content-length"] = _698_}
+    tbl_16_auto = {host = (host .. _696_), ["content-length"] = _699_}
     for k, v in pairs((opts.headers or {})) do
       local k_17_auto, v_18_auto = k, v
       if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
@@ -3812,7 +3822,7 @@ http.request = function(method, url, _3fopts)
   end
   local path = utils["format-path"](parsed)
   local req = build_http_request(method, path, headers, opts.body)
-  local chan0 = tcp.chan(parsed)
+  local chan0 = tcp0.chan(parsed)
   do
     opts["start"] = socket.gettime()
     opts["time"] = socket.gettime
@@ -3820,13 +3830,13 @@ http.request = function(method, url, _3fopts)
   if opts["async?"] then
     local res = promise_chan()
     do
-      local _let_704_ = require("async")
-      local go_1_auto = _let_704_["go"]
-      local function _705_()
+      local _let_705_ = require("async")
+      local go_1_auto = _let_705_["go"]
+      local function _706_()
         _3e_21(chan0, req)
         return _3e_21(res, http_parser["parse-http-response"](chan0, make_read_fn(_3c_21), opts))
       end
-      go_1_auto(_705_)
+      go_1_auto(_706_)
     end
     return res
   else
