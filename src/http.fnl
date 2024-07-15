@@ -104,6 +104,7 @@ Several options available for the `as` key:
 - `:stream` - the body will be a stream object with a `read` method.
 - `:raw` - the body will be a string.
   This is the default value for `as`.
+- `:json` - the body will be parsed as JSON.
 
 When supplying a non-string body, headers should contain a
 \"content-length\" key. For a string body, if the \"content-length\"
@@ -166,6 +167,7 @@ Several options available for the `as` key:
 - `:stream` - the body will be a stream object with a `read` method.
 - `:raw` - the body will be a string.
   This is the default value for `as`.
+- `:json` - the body will be parsed as JSON.
 
 When supplying a non-string body, headers should contain a
 \"content-length\" key. For a string body, if the \"content-length\"

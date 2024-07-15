@@ -1,5 +1,5 @@
 (local reader
-  (require :reader))
+  (require :readers))
 
 (local null "null")
 

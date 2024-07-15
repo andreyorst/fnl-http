@@ -1,6 +1,6 @@
 (local {: make-reader
         &as reader}
-  (include :reader))
+  (include :readers))
 
 (local json
   (include :json))
@@ -69,32 +69,44 @@ Uses `read-fn` on the `src` to obtain the data."
    src
    {:read-bytes (fn [src pattern]
                   (let [rdr (reader.string-reader buffer)
-                        content (or (rdr:read pattern) "")]
+                        buffer-content (rdr:read pattern)]
                     (case pattern
                       (where n (= :number (type n)))
-                      (let [len (length content)]
+                      (let [len (if buffer-content (length buffer-content) 0)
+                            read-more? (< len n)]
                         (set buffer (string.sub buffer (+ len 1)))
-                        (if (= n len)
-                            content
-                            (.. content (or (read-fn src (- n len)) ""))))
+                        (if read-more?
+                            (if buffer-content
+                                (.. buffer-content (or (read-fn src (- n len)) ""))
+                                (read-fn src (- n len)))
+                            buffer-content))
                       (where (or :*l :l))
                       (let [read-more? (not (buffer:find "\n"))]
-                        (set buffer (string.sub buffer (+ (length content) 1)))
+                        (when buffer-content
+                          (set buffer (string.sub buffer (+ (length buffer-content) 2))))
                         (if read-more?
-                            (.. content (or (read-fn src pattern) ""))
-                            content))
+                            (if buffer-content
+                                (.. buffer-content (or (read-fn src pattern) ""))
+                                (read-fn src pattern))
+                            buffer-content))
                       (where (or :*a :a))
                       (do (set buffer "")
-                          (.. content (or (read-fn src pattern) "")))
+                          (case (read-fn src pattern)
+                            nil (when buffer-content
+                                  buffer-content)
+                            data (.. (or buffer-content "") data)))
                       _ (error (tostring pattern)))))
     :read-line (fn [src]
                  (let [rdr (reader.string-reader buffer)
-                       content (rdr:read :*l)
-                       read-more? (not (string.find buffer "\n"))]
-                   (set buffer (string.sub (+ (length content) 1)))
+                       buffer-content (rdr:read :*l)
+                       read-more? (not (buffer:find "\n"))]
+                   (when buffer-content
+                     (set buffer (string.sub buffer (+ (length buffer-content) 2))))
                    (if read-more?
-                       (.. content (or (read-fn src :*l) ""))
-                       content)))
+                       (if buffer-content
+                           (.. buffer-content (or (read-fn src :*l) ""))
+                           (read-fn src :*l))
+                       buffer-content)))
     :close (fn [src] (src:close))
     :peek (fn [src bytes]
             (assert (= :number (type bytes)) "expected number of bytes to peek")
