@@ -26,15 +26,15 @@ each is `nil`."
     (-> {: close
          :read (if read-bytes
                    (fn [_ pattern ...]
-                     (ok? (pcall read-bytes source pattern ...))) #nil)
+                     (read-bytes source pattern ...)) #nil)
          :lines (if read-line
                     (fn []
                       (fn [_ ...]
-                        (ok? (pcall read-line source ...))))
+                        (read-line source ...)))
                     (fn [] #nil))
          :peek (if peek
                    (fn [_ pattern ...]
-                     (ok? (pcall peek source pattern ...)))
+                     (peek source pattern ...))
                    #nil)}
         (setmetatable
          {:__close close

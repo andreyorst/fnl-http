@@ -51,20 +51,34 @@
             _ (recur (<! recv) 0))
           _ (do (<! (timeout 10))
                 (recur data i)))))
-    (go-loop [wait? true]
+    (go-loop [wait? true
+              part ""
+              remaining nil]
       (when wait?
         (<! ready))
-      (case (client:receive c.chunk-size)
-        data
-        (do (>! resp data) (recur true))
-        (nil :closed "")
-        (do (client:close) (close! c))
-        (nil :closed data)
-        (do (client:close) (>! resp data) (close! c))
-        (nil :timeout "")
-        (do (<! (timeout 10)) (recur false))
-        (nil :timeout data)
-        (do (>! resp data) (<! (timeout 10)) (recur true))))
+      (let [size (or remaining c.chunk-size)]
+          (case (client:receive size "")
+            data
+            (do (>! resp (.. part data))
+                (recur true "" nil))
+            (where (nil :closed ?data)
+                   (or (= ?data nil) (= ?data "")))
+            (do (client:close)
+                (close! c))
+            (nil :closed data)
+            (do (client:close)
+                (>! resp data)
+                (close! c))
+            (where (nil :timeout ?data)
+                   (or (= ?data nil) (= ?data "")))
+            (do (<! (timeout 10))
+                (recur false part remaining))
+            (nil :timeout data)
+            (let [remaining (- size (length data))]
+              (<! (timeout 10))
+              (recur (= remaining 0)
+                     (.. part data)
+                     (and (> remaining 0) remaining))))))
     c))
 
 (fn chan [{: host : port} xform err-handler]

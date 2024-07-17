@@ -137,14 +137,14 @@ are made."
         (let [res (promise-chan)]
           (go (>! chan req)
               (>! res (http-parser.parse-http-response
-                       chan
-                       (make-read-fn <!)
+                       (doto chan
+                         (tset :read (make-read-fn <!)))
                        opts)))
           res)
         (do (>!! chan req)
             (http-parser.parse-http-response
-             chan
-             (make-read-fn <!!)
+             (doto chan
+               (tset :read (make-read-fn <!!)))
              opts)))))
 
 (macro define-http-method [method]
