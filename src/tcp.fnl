@@ -28,6 +28,7 @@
                :put! (fn [_  val handler enqueue?]
                        (recv:put! val handler enqueue?))
                :take! (fn [_ handler enqueue?]
+                        ;; TODO: test extensively
                         (offer! ready :ready)
                         (resp:take! handler enqueue?))
                :close! close
@@ -57,28 +58,35 @@
       (when wait?
         (<! ready))
       (let [size (or remaining c.chunk-size)]
-          (case (client:receive size "")
-            data
-            (do (>! resp (.. part data))
-                (recur true "" nil))
-            (where (nil :closed ?data)
-                   (or (= ?data nil) (= ?data "")))
-            (do (client:close)
-                (close! c))
-            (nil :closed data)
-            (do (client:close)
-                (>! resp data)
-                (close! c))
-            (where (nil :timeout ?data)
-                   (or (= ?data nil) (= ?data "")))
-            (do (<! (timeout 10))
-                (recur false part remaining))
-            (nil :timeout data)
-            (let [remaining (- size (length data))]
-              (<! (timeout 10))
-              (recur (= remaining 0)
-                     (.. part data)
-                     (and (> remaining 0) remaining))))))
+        (case (client:receive size "")
+          data
+          (do (>! resp (.. part data))
+              (recur true "" nil))
+          (where (nil :closed ?data)
+                 (or (= ?data nil) (= ?data "")))
+          (do (client:close)
+              (close! c))
+          (nil :closed data)
+          (do (client:close)
+              (>! resp data)
+              (close! c))
+          (where (nil :timeout ?data)
+                 (or (= ?data nil) (= ?data "")))
+          (do (<! (timeout 10))
+              (recur false part remaining))
+          (nil :timeout data)
+          (let [bytes? (= :number (type size))
+                remaining (if bytes?
+                              (- size (length data))
+                              size)]
+            (<! (timeout 10))
+            (if bytes?
+                (recur (= remaining 0)
+                       (.. part data)
+                       (and (> remaining 0) remaining))
+                (recur false
+                       (.. part data)
+                       remaining)))))
     c))
 
 (fn chan [{: host : port} xform err-handler]

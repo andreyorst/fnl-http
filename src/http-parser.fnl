@@ -61,6 +61,8 @@ append or override existing headers."
   (parse-response-status-line (src:read :*l)))
 
 (fn body-reader [src]
+  "Read the body of the request, with possible buffering via the `peek`
+method."
   (var buffer "")
   (make-reader
    src
@@ -116,6 +118,7 @@ append or override existing headers."
                     (set buffer (.. buffer (or data "")))
                     buffer))))}))
 
+;; TODO: needs to process chunk extensions
 (fn read-chunk-size [src]
   (case (src:read :*l)
     "" (read-chunk-size src)
@@ -124,11 +127,25 @@ append or override existing headers."
       size (tonumber (.. "0x" size))
       _ (error (string.format "line missing chunk size: %q" line)))))
 
+;; TODO: think about rewriting it so the chunk is not required to be
+;;       read in full.  The main problem with this approach is the
+;;       possible chunk size - if the server sends a chunk large
+;;       enough it can fill the memory, even if the user requested a
+;;       stream.  Problem with such reads is the *l pattern, supported
+;;       by luasocket. The chunk ends with a newline, followed by the
+;;       next chunk size, and there's no way of detecting whether we
+;;       read a full logical line, or hit the end of the
+;;       chunk. Perhaps returned string length can be compared to the
+;;       remaining bytes, and then the next chunk size can be
+;;       requested.  Maybe I'm overthinking this.
 (fn chunked-body-reader [src initial-chunk]
+  "Reads body in chunks, buffering each fully, and requesting the next
+chunk, once the buffer is empty."
   (var chunk-size initial-chunk)
   (var buffer (or (src:read chunk-size) ""))
   (var more? true)
   (fn read-more []
+    ;; TODO: needs to process entity headers after the last chunk.
     (when more?
       (set chunk-size (read-chunk-size src))
       (if (> chunk-size 0)
@@ -166,12 +183,12 @@ append or override existing headers."
                       (let [buffer-content (rdr:read :*a)]
                         (set buffer "")
                         (while (read-more) nil)
-                          (let [rdr (reader.string-reader buffer)]
-                            (set buffer "")
-                            (case (rdr:read :*a)
-                              nil (when buffer-content
-                                    buffer-content)
-                              data (.. (or buffer-content "") data))))
+                        (let [rdr (reader.string-reader buffer)]
+                          (set buffer "")
+                          (case (rdr:read :*a)
+                            nil (when buffer-content
+                                  buffer-content)
+                            data (.. (or buffer-content "") data))))
                       _ (error (tostring pattern)))))
     :read-line (fn [src]
                  (let [rdr (reader.string-reader buffer)
