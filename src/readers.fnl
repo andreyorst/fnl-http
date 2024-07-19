@@ -1,5 +1,7 @@
 (fn ok? [ok? ...] (when ok? ...))
 
+(local Reader {})
+
 (fn make-reader [source {: read-bytes : read-line : close : peek}]
   "Generic reader generator.
 Accepts methods, that the `source` is going to be passed, and produce
@@ -37,7 +39,8 @@ each is `nil`."
                      (peek source pattern ...))
                    #nil)}
         (setmetatable
-         {:__close close
+         {:reader Reader
+          :__close close
           :__name "Reader"
           :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")}))))
 
@@ -97,6 +100,10 @@ Accepts a `string`."
                     res)
                   _ (error "expected number of bytes to peek"))))})))
 
+(fn reader? [obj]
+  (= Reader (. (getmetatable obj) :reader)))
+
 {: make-reader
  : file-reader
- : string-reader}
+ : string-reader
+ : reader?}

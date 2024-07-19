@@ -86,7 +86,7 @@
                        (and (> remaining 0) remaining))
                 (recur false
                        (.. part data)
-                       remaining)))))
+                       remaining))))))
     c))
 
 (fn chan [{: host : port} xform err-handler]

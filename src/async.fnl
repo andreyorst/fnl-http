@@ -1660,6 +1660,7 @@ default, unless `buf-or-n` is given."
  : promise-buffer
  : unblocking-buffer?
  : chan
+ : chan?
  : promise-chan
  : take!
  : <!!

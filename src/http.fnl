@@ -26,7 +26,7 @@ SOFTWARE.
   (require :socket))
 
 (local {: <! : >! : <!! : >!! : close!
-        : chan : promise-chan
+        : chan : chan? : promise-chan
         : tcp}
   (include :async))
 
@@ -42,6 +42,9 @@ SOFTWARE.
 
 (local tcp
   (include :tcp))
+
+(local {: reader?}
+  (require :readers))
 
 ;;; Helper functions
 
@@ -87,6 +90,52 @@ number of bytes to read."
    (or (headers->string ?headers) "")
    (or ?content "")))
 
+(fn encode-chunk [data]
+  (let [len (length data)]
+    (if (> len 0)
+        (string.format "%x\r\n%s\r\n" len data)
+        (string.format "%x\r\n\r\n" len))))
+
+(fn prepare-chunk [body read-fn]
+  (if (chan? body)
+      (case (read-fn body)
+        data (values true (encode-chunk data))
+        nil (values false (encode-chunk "")))
+      (reader? body)
+      (case (body:read 1024)
+        data (values true (encode-chunk data))
+        nil (values false (encode-chunk "")))
+      (error (.. "unsupported body type: " (tostring body)))))
+
+(fn send-chunk [dst send-fn data read-fn]
+  (let [(more? data) (prepare-chunk data read-fn)]
+    (send-fn dst data)
+    more?))
+
+(fn prepare-amount [body read-fn amount]
+  (if (reader? body)
+      (body:read amount)
+      (error (.. "unsupported body type: " (tostring body)))))
+
+(fn send-amount [dst send-fn data read-fn amount]
+  (let [len (if (< 4 amount) 4 amount)
+        data (prepare-amount data read-fn len)
+        remaining (- amount len)]
+    (send-fn dst data)
+    (when (> remaining 0)
+      remaining)))
+
+(fn stream-body [dst body send receive
+                 {: transfer-encoding : content-length}]
+  (if (= transfer-encoding "chunked")
+      (while (send-chunk dst send body receive) nil)
+      (and content-length
+           (reader? body))
+      ((fn loop [remaining]
+         (case (send-amount dst send body receive remaining)
+           remaining (loop remaining)))
+       content-length)))
+
 (local http (setmetatable {} {:__index {:version "0.0.1"}}))
 
 (fn http.request [method url ?opts]
@@ -99,8 +148,8 @@ table containing the following keys:
   The result is an instance of a `promise-chan`, and the body must
   be read inside of a `go` block.
 - `:headers` - a table with the HTTP headers for the request
-- `:body` - an optional string body.
-- `:as` - how to coerce the output.
+- `:body` - an optional body.
+- `:as` - how to coerce the body of the response.
 
 Several options available for the `as` key:
 
@@ -109,11 +158,12 @@ Several options available for the `as` key:
   This is the default value for `as`.
 - `:json` - the body will be parsed as JSON.
 
-When supplying a non-string body, headers should contain a
+The body can be a string, a channel, or a Reader object. When
+supplying a non-string body, headers should contain a
 \"content-length\" key. For a string body, if the \"content-length\"
 header is missing it is automatically determined by calling the
 `length` function, ohterwise no attempts at detecting content-length
-are made."
+are made and the body is sent using chunked transfer encoding."
   (let [{: host : port &as parsed} (http-parser.parse-url url)
         opts (collect [k v (pairs (or ?opts {}))
                        :into {:as :raw
@@ -125,10 +175,32 @@ are made."
                                  :content-length
                                  (case opts.body
                                    (where body (= :string (type body)))
-                                   (length body))}]
+                                   (length body))
+                                 :transfer-encoding
+                                 (case opts.body
+                                   (where body
+                                          (not= :string (type body)))
+                                   "chunked")}]
                   k v)
-        path (utils.format-path parsed)
-        req (build-http-request method path headers opts.body)
+        headers (if (chan? opts.body)
+                    ;; force chunked encoding for channels supplied as a body
+                    (doto headers
+                      (tset :content-length nil)
+                      (tset :transfer-encoding "chunked"))
+                    ;; force streaming for readers if content-length was supplied
+                    (and (reader? opts.body)
+                         headers.content-length)
+                    (doto headers
+                      (tset :transfer-encoding nil)))
+        req (build-http-request
+             method
+             (utils.format-path parsed)
+             headers
+             (if (= headers.transfer-encoding "chunked")
+                 (let [(_ data) (prepare-chunk opts.body (if opts.async? <! <!!))]
+                   data)
+                 (= :string (type opts.body))
+                 opts.body))
         chan (tcp.chan parsed)]
     (doto opts
       (tset :start (socket.gettime))
@@ -136,12 +208,14 @@ are made."
     (if opts.async?
         (let [res (promise-chan)]
           (go (>! chan req)
+              (stream-body chan opts.body >! <! headers)
               (>! res (http-parser.parse-http-response
                        (doto chan
                          (tset :read (make-read-fn <!)))
                        opts)))
           res)
         (do (>!! chan req)
+            (stream-body chan opts.body >!! <!! headers)
             (http-parser.parse-http-response
              (doto chan
                (tset :read (make-read-fn <!!)))
@@ -162,8 +236,8 @@ table containing the following keys:
   The result is an instance of a `promise-chan`, and the body must
   be read inside of a `go` block.
 - `:headers` - a table with the HTTP headers for the request
-- `:body` - an optional string body.
-- `:as` - how to coerce the output.
+- `:body` - an optional body.
+- `:as` - how to coerce the body of the response.
 
 Several options available for the `as` key:
 
@@ -172,11 +246,12 @@ Several options available for the `as` key:
   This is the default value for `as`.
 - `:json` - the body will be parsed as JSON.
 
-When supplying a non-string body, headers should contain a
+The body can be a string, a channel, or a Reader object. When
+supplying a non-string body, headers should contain a
 \"content-length\" key. For a string body, if the \"content-length\"
 header is missing it is automatically determined by calling the
 `length` function, ohterwise no attempts at detecting content-length
-are made.")}
+are made and the body is sent using chunked transfer encoding.")}
      (http.request ,(tostring method) url# opts#)))
 
 (define-http-method get)

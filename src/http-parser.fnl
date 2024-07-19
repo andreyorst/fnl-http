@@ -1,5 +1,5 @@
 (local {: make-reader
-        &as reader}
+        : string-reader}
   (include :readers))
 
 (local json
@@ -67,7 +67,7 @@ method."
   (make-reader
    src
    {:read-bytes (fn [src pattern]
-                  (let [rdr (reader.string-reader buffer)
+                  (let [rdr (string-reader buffer)
                         buffer-content (rdr:read pattern)]
                     (case pattern
                       (where n (= :number (type n)))
@@ -96,7 +96,7 @@ method."
                             data (.. (or buffer-content "") data)))
                       _ (error (tostring pattern)))))
     :read-line (fn [src]
-                 (let [rdr (reader.string-reader buffer)
+                 (let [rdr (string-reader buffer)
                        buffer-content (rdr:read :*l)
                        read-more? (not (buffer:find "\n"))]
                    (when buffer-content
@@ -109,7 +109,7 @@ method."
     :close (fn [src] (src:close))
     :peek (fn [src bytes]
             (assert (= :number (type bytes)) "expected number of bytes to peek")
-            (let [rdr (reader.string-reader buffer)
+            (let [rdr (string-reader buffer)
                   content (or (rdr:read bytes) "")
                   len (length content)]
               (if (= bytes len)
@@ -118,8 +118,8 @@ method."
                     (set buffer (.. buffer (or data "")))
                     buffer))))}))
 
-;; TODO: needs to process chunk extensions
 (fn read-chunk-size [src]
+  ;; TODO: needs to process chunk extensions
   (case (src:read :*l)
     "" (read-chunk-size src)
     line
@@ -127,20 +127,14 @@ method."
       size (tonumber (.. "0x" size))
       _ (error (string.format "line missing chunk size: %q" line)))))
 
-;; TODO: think about rewriting it so the chunk is not required to be
-;;       read in full.  The main problem with this approach is the
-;;       possible chunk size - if the server sends a chunk large
-;;       enough it can fill the memory, even if the user requested a
-;;       stream.  Problem with such reads is the *l pattern, supported
-;;       by luasocket. The chunk ends with a newline, followed by the
-;;       next chunk size, and there's no way of detecting whether we
-;;       read a full logical line, or hit the end of the
-;;       chunk. Perhaps returned string length can be compared to the
-;;       remaining bytes, and then the next chunk size can be
-;;       requested.  Maybe I'm overthinking this.
 (fn chunked-body-reader [src initial-chunk]
   "Reads body in chunks, buffering each fully, and requesting the next
 chunk, once the buffer is empty."
+  ;; TODO: think about rewriting it so the chunk is not required to be
+  ;;       read in full.  The main problem with this approach is the
+  ;;       possible chunk size - if the server sends a chunk large
+  ;;       enough it can fill the memory, even if the user requested a
+  ;;       stream.
   (var chunk-size initial-chunk)
   (var buffer (or (src:read chunk-size) ""))
   (var more? true)
@@ -151,11 +145,11 @@ chunk, once the buffer is empty."
       (if (> chunk-size 0)
           (set buffer (.. buffer (or (src:read chunk-size) "")))
           (set more? false)))
-    (values (> chunk-size 0) (reader.string-reader buffer)))
+    (values (> chunk-size 0) (string-reader buffer)))
   (make-reader
    src
    {:read-bytes (fn [src pattern]
-                  (let [rdr (reader.string-reader buffer)]
+                  (let [rdr (string-reader buffer)]
                     (case pattern
                       (where n (= :number (type n)))
                       (let [buffer-content (rdr:read pattern)
@@ -183,7 +177,7 @@ chunk, once the buffer is empty."
                       (let [buffer-content (rdr:read :*a)]
                         (set buffer "")
                         (while (read-more) nil)
-                        (let [rdr (reader.string-reader buffer)]
+                        (let [rdr (string-reader buffer)]
                           (set buffer "")
                           (case (rdr:read :*a)
                             nil (when buffer-content
@@ -191,7 +185,7 @@ chunk, once the buffer is empty."
                             data (.. (or buffer-content "") data))))
                       _ (error (tostring pattern)))))
     :read-line (fn [src]
-                 (let [rdr (reader.string-reader buffer)
+                 (let [rdr (string-reader buffer)
                        buffer-content (rdr:read :*l)
                        read-more? (not (buffer:find "\n"))]
                    (when buffer-content
@@ -204,7 +198,7 @@ chunk, once the buffer is empty."
     :close (fn [src] (src:close))
     :peek (fn [src bytes]
             (assert (= :number (type bytes)) "expected number of bytes to peek")
-            (let [rdr (reader.string-reader buffer)
+            (let [rdr (string-reader buffer)
                   content (or (rdr:read bytes) "")
                   len (length content)]
               (if (= bytes len)
@@ -249,7 +243,7 @@ its headers, and a body stream."
 
 (comment
  (let [req (build-http-response 200 "OK" {:connection :close} "vaiv\ndaun\n")
-       rdr (reader.string-reader req)
+       rdr (string-reader req)
        {: body : headers : reason-phrase : status}
        (parse-http-response rdr (fn [src pattern] (src:read pattern)) {:as :raw})]
    (= req (build-http-response status reason-phrase headers body)))
@@ -284,7 +278,7 @@ its headers, and a body stream."
 
 (comment
  (let [req (build-http-request :get "/" {:connection :close} "vaiv\ndaun\n")
-       rdr (reader.string-reader req)
+       rdr (string-reader req)
        {: headers : method : path : content}
        (parse-http-request rdr (fn [src pattern] (src:read pattern)) rdr)]
    (= req (build-http-request method path headers content)))
