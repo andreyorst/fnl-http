@@ -4215,14 +4215,64 @@ local function stream_body(dst, body, send, receive, _776_)
   end
 end
 local http = setmetatable({}, {__index = {version = "0.0.1"}})
+local function prepare_headers(_3fheaders, _3fbody, host, port)
+  local headers
+  do
+    local tbl_16_auto
+    local _780_
+    if port then
+      _780_ = (":" .. port)
+    else
+      _780_ = ""
+    end
+    local _783_
+    do
+      local _782_ = type(_3fbody)
+      if (_782_ == "string") then
+        _783_ = #_3fbody
+      else
+        _783_ = nil
+      end
+    end
+    local _787_
+    do
+      local _786_ = type(_3fbody)
+      if (_786_ == "string") then
+        _787_ = nil
+      else
+        local _ = _786_
+        _787_ = "chunked"
+      end
+    end
+    tbl_16_auto = {host = (host .. _780_), ["content-length"] = _783_, ["transfer-encoding"] = _787_}
+    for k, v in pairs((_3fheaders or {})) do
+      local k_17_auto, v_18_auto = k, v
+      if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
+        tbl_16_auto[k_17_auto] = v_18_auto
+      else
+      end
+    end
+    headers = tbl_16_auto
+  end
+  if chan_3f(_3fbody) then
+    headers["content-length"] = nil
+    headers["transfer-encoding"] = "chunked"
+    return headers
+  elseif (reader_3f(_3fbody) and headers["content-length"]) then
+    headers["transfer-encoding"] = nil
+    return headers
+  else
+    return headers
+  end
+end
 http.request = function(method, url, _3fopts)
-  local _let_780_ = http_parser["parse-url"](url)
-  local host = _let_780_["host"]
-  local port = _let_780_["port"]
-  local parsed = _let_780_
+  local _let_793_ = http_parser["parse-url"](url)
+  local host = _let_793_["host"]
+  local port = _let_793_["port"]
+  local parsed = _let_793_
   local opts
   do
-    local tbl_16_auto = {as = "raw", ["async?"] = false}
+    local tbl_16_auto = {as = "raw", time = socket.gettime, ["async?"] = false}
     for k, v in pairs((_3fopts or {})) do
       local k_17_auto, v_18_auto = k, v
       if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
@@ -4232,78 +4282,19 @@ http.request = function(method, url, _3fopts)
     end
     opts = tbl_16_auto
   end
-  local headers
-  do
-    local tbl_16_auto
-    local _782_
-    if port then
-      _782_ = (":" .. port)
-    else
-      _782_ = ""
-    end
-    local _785_
-    do
-      local _784_ = opts.body
-      local and_786_ = (nil ~= _784_)
-      if and_786_ then
-        local body = _784_
-        and_786_ = ("string" == type(body))
-      end
-      if and_786_ then
-        local body = _784_
-        _785_ = #body
-      else
-        _785_ = nil
-      end
-    end
-    local _791_
-    do
-      local _790_ = opts.body
-      local and_792_ = (nil ~= _790_)
-      if and_792_ then
-        local body = _790_
-        and_792_ = ("string" ~= type(body))
-      end
-      if and_792_ then
-        local body = _790_
-        _791_ = "chunked"
-      else
-        _791_ = nil
-      end
-    end
-    tbl_16_auto = {host = (host .. _782_), ["content-length"] = _785_, ["transfer-encoding"] = _791_}
-    for k, v in pairs((opts.headers or {})) do
-      local k_17_auto, v_18_auto = k, v
-      if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
-        tbl_16_auto[k_17_auto] = v_18_auto
-      else
-      end
-    end
-    headers = tbl_16_auto
-  end
-  local headers0
-  if chan_3f(opts.body) then
-    headers["content-length"] = nil
-    headers["transfer-encoding"] = "chunked"
-    headers0 = headers
-  elseif (reader_3f(opts.body) and headers["content-length"]) then
-    headers["transfer-encoding"] = nil
-    headers0 = headers
-  else
-    headers0 = headers
-  end
+  local headers = prepare_headers(opts.headers, opts.body, host, port)
   local req
-  local function _799_()
-    if (opts.body and (headers0["transfer-encoding"] == "chunked")) then
+  local function _796_()
+    if (opts.body and (headers["transfer-encoding"] == "chunked")) then
       local _, data = nil, nil
-      local function _798_()
+      local function _795_()
         if opts["async?"] then
           return _3c_21
         else
           return _3c_21_21
         end
       end
-      _, data = prepare_chunk(opts.body, _798_())
+      _, data = prepare_chunk(opts.body, _795_())
       return data
     elseif ("string" == type(opts.body)) then
       return opts.body
@@ -4311,46 +4302,43 @@ http.request = function(method, url, _3fopts)
       return nil
     end
   end
-  req = build_http_request(method, utils["format-path"](parsed), headers0, _799_())
+  req = build_http_request(method, utils["format-path"](parsed), headers, _796_())
   local chan0 = tcp0.chan(parsed)
-  print(req)
-  do
-    opts["start"] = socket.gettime()
-    opts["time"] = socket.gettime
-  end
   if opts["async?"] then
     local res = promise_chan()
+    opts.start = socket.gettime()
     do
-      local _let_800_ = require("lib.async")
-      local go_1_auto = _let_800_["go"]
-      local function _801_()
+      local _let_797_ = require("lib.async")
+      local go_1_auto = _let_797_["go"]
+      local function _798_()
         _3e_21(chan0, req)
         if opts.body then
-          stream_body(chan0, opts.body, _3e_21, _3c_21, headers0)
+          stream_body(chan0, opts.body, _3e_21, _3c_21, headers)
         else
         end
-        local _803_
+        local _800_
         do
           chan0["read"] = make_read_fn(_3c_21)
-          _803_ = chan0
+          _800_ = chan0
         end
-        return _3e_21(res, http_parser["parse-http-response"](_803_, opts))
+        return _3e_21(res, http_parser["parse-http-response"](_800_, opts))
       end
-      go_1_auto(_801_)
+      go_1_auto(_798_)
     end
     return res
   else
+    opts.start = socket.gettime()
     _3e_21_21(chan0, req)
     if opts.body then
-      stream_body(chan0, opts.body, _3e_21_21, _3c_21_21, headers0)
+      stream_body(chan0, opts.body, _3e_21_21, _3c_21_21, headers)
     else
     end
-    local _805_
+    local _802_
     do
       chan0["read"] = make_read_fn(_3c_21_21)
-      _805_ = chan0
+      _802_ = chan0
     end
-    return http_parser["parse-http-response"](_805_, opts)
+    return http_parser["parse-http-response"](_802_, opts)
   end
 end
 http.get = function(url_2_auto, opts_3_auto)
