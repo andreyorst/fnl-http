@@ -138,6 +138,24 @@ number of bytes to read."
 
 (local http (setmetatable {} {:__index {:version "0.0.1"}}))
 
+(fn prepare-headers [?headers ?body host port]
+  (let [headers (collect [k v (pairs (or ?headers {}))
+                          :into {:host (.. host (if port (.. ":" port) ""))
+                                 :content-length (case (type ?body) :string (length ?body))
+                                 :transfer-encoding (case (type ?body) :string nil _ "chunked")}]
+                  k v)]
+    (if (chan? ?body)
+        ;; force chunked encoding for channels supplied as a body
+        (doto headers
+          (tset :content-length nil)
+          (tset :transfer-encoding "chunked"))
+        ;; force streaming for readers if content-length was supplied
+        (and (reader? ?body)
+             headers.content-length)
+        (doto headers
+          (tset :transfer-encoding nil))
+        headers)))
+
 (fn http.request [method url ?opts]
   "Makes a `method` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
@@ -167,32 +185,10 @@ are made and the body is sent using chunked transfer encoding."
   (let [{: host : port &as parsed} (http-parser.parse-url url)
         opts (collect [k v (pairs (or ?opts {}))
                        :into {:as :raw
-                              :async? false}]
+                              :async? false
+                              :time socket.gettime}]
                k v)
-        headers (collect [k v (pairs (or opts.headers {}))
-                          :into {:host
-                                 (.. host (if port (.. ":" port) ""))
-                                 :content-length
-                                 (case opts.body
-                                   (where body (= :string (type body)))
-                                   (length body))
-                                 :transfer-encoding
-                                 (case opts.body
-                                   (where body
-                                          (not= :string (type body)))
-                                   "chunked")}]
-                  k v)
-        headers (if (chan? opts.body)
-                    ;; force chunked encoding for channels supplied as a body
-                    (doto headers
-                      (tset :content-length nil)
-                      (tset :transfer-encoding "chunked"))
-                    ;; force streaming for readers if content-length was supplied
-                    (and (reader? opts.body)
-                         headers.content-length)
-                    (doto headers
-                      (tset :transfer-encoding nil))
-                    headers)
+        headers (prepare-headers opts.headers opts.body host port)
         req (build-http-request
              method
              (utils.format-path parsed)
@@ -203,11 +199,9 @@ are made and the body is sent using chunked transfer encoding."
                  (= :string (type opts.body))
                  opts.body))
         chan (tcp.chan parsed)]
-    (doto opts
-      (tset :start (socket.gettime))
-      (tset :time socket.gettime))
     (if opts.async?
         (let [res (promise-chan)]
+          (set opts.start (socket.gettime))
           (go (>! chan req)
               (when opts.body
                 (stream-body chan opts.body >! <! headers))
@@ -216,7 +210,8 @@ are made and the body is sent using chunked transfer encoding."
                          (tset :read (make-read-fn <!)))
                        opts)))
           res)
-        (do (>!! chan req)
+        (do (set opts.start (socket.gettime))
+            (>!! chan req)
             (when opts.body
               (stream-body chan opts.body >!! <!! headers))
             (http-parser.parse-http-response
