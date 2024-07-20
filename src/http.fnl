@@ -28,23 +28,23 @@ SOFTWARE.
 (local {: <! : >! : <!! : >!! : close!
         : chan : chan? : promise-chan
         : tcp}
-  (include :async))
+  (include :lib.async))
 
 (import-macros
  {: go}
- (doto :async require))
+ (doto :lib.async require))
 
 (local http-parser
-  (include :http-parser))
+  (include :src.http-parser))
 
 (local utils
-  (include :utils))
+  (include :src.utils))
 
 (local tcp
-  (include :tcp))
+  (include :src.tcp))
 
 (local {: reader?}
-  (require :readers))
+  (require :src.readers))
 
 ;;; Helper functions
 
@@ -191,12 +191,13 @@ are made and the body is sent using chunked transfer encoding."
                     (and (reader? opts.body)
                          headers.content-length)
                     (doto headers
-                      (tset :transfer-encoding nil)))
+                      (tset :transfer-encoding nil))
+                    headers)
         req (build-http-request
              method
              (utils.format-path parsed)
              headers
-             (if (= headers.transfer-encoding "chunked")
+             (if (and opts.body (= headers.transfer-encoding "chunked"))
                  (let [(_ data) (prepare-chunk opts.body (if opts.async? <! <!!))]
                    data)
                  (= :string (type opts.body))
@@ -208,14 +209,16 @@ are made and the body is sent using chunked transfer encoding."
     (if opts.async?
         (let [res (promise-chan)]
           (go (>! chan req)
-              (stream-body chan opts.body >! <! headers)
+              (when opts.body
+                (stream-body chan opts.body >! <! headers))
               (>! res (http-parser.parse-http-response
                        (doto chan
                          (tset :read (make-read-fn <!)))
                        opts)))
           res)
         (do (>!! chan req)
-            (stream-body chan opts.body >!! <!! headers)
+            (when opts.body
+              (stream-body chan opts.body >!! <!! headers))
             (http-parser.parse-http-response
              (doto chan
                (tset :read (make-read-fn <!!)))

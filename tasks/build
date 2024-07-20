@@ -1,3 +1,15 @@
 ;; -*- mode: fennel; -*- vi:ft=fennel
 
-(io.popen "cd src && fennel -c http.fnl > ../http.lua")
+(local fennel
+  (require :fennel))
+
+(with-open [http (io.open :src/http.fnl :r)
+            out  (io.open :http.lua :w)]
+  (case (xpcall #(fennel.compile-string
+                  (http:read :*a)
+                  {:requireAsInclude true
+                   :skipInclude [:socket :ltn12]})
+                fennel.traceback)
+    (true lua-src) (out:write lua-src)
+    (_ message) (do (io.stderr:write message "\n")
+                    (os.exit 1))))

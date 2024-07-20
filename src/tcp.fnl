@@ -1,10 +1,10 @@
 (import-macros
  {: go-loop : go}
- (doto :async require))
+ (doto :lib.async require))
 
 (local {: chan : <! : >! : offer! : timeout
         : close!}
-  (require :async))
+  (require :lib.async))
 
 (local socket
   (require :socket))

@@ -1,6 +1,6 @@
 (local {: reader?
         : string-reader}
-  (require :readers))
+  (require :src.readers))
 
 (fn string? [val]
   (and (= :string (type val))
@@ -137,12 +137,14 @@
 
 (fn parse-arr [rdr parse]
   (rdr:read 1)
+  (var len 0)
   ((fn loop [arr]
      (skip-space rdr)
      (case (rdr:peek 1)
        "]" (do (rdr:read 1) arr)
        _ (let [val (parse)]
-           (tset arr (+ 1 (length arr)) val)
+           (set len (+ 1 len))
+           (tset arr len val)
            (skip-space rdr)
            (case (rdr:peek 1)
              "," (do (rdr:read 1) (loop arr))

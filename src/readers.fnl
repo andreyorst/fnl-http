@@ -39,7 +39,7 @@ each is `nil`."
                      (peek source pattern ...))
                    #nil)}
         (setmetatable
-         {:reader Reader
+         {:__index Reader
           :__close close
           :__name "Reader"
           :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")}))))
@@ -161,7 +161,9 @@ used."
 
 (fn reader? [obj]
   "Check if `obj` is an instance of `Reader`."
-  (= Reader (. (getmetatable obj) :reader)))
+  (match (getmetatable obj)
+    {:__index Reader} true
+    _ false))
 
 {: make-reader
  : file-reader

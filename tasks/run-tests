@@ -1,0 +1,9 @@
+;; -*- mode: fennel; -*- vi:ft=fennel
+
+(local {: run-tests}
+  (require :lib.fennel-test))
+
+(local tests
+  [:test.json-test])
+
+(run-tests tests)

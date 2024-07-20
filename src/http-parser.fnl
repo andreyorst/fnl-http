@@ -1,12 +1,12 @@
 (local {: make-reader
         : string-reader}
-  (include :readers))
+  (include :src.readers))
 
 (local json
-  (include :json))
+  (include :src.json))
 
 (local utils
-  (include :utils))
+  (include :src.utils))
 
 (fn parse-header [line]
   "Parse a single header from a `line`."
