@@ -1,6 +1,6 @@
 # http.fnl (WIP)
 
-A library for making asynchronous HTTP/1.1 requests written in Fennel using [async.fnl][1] and [luasocket][2]
+A [clj-http][1]-inspired library for making asynchronous HTTP/1.1 requests written in Fennel using [async.fnl][3] and [luasocket][3]
 
 # Building
 
@@ -203,5 +203,6 @@ This function accepts the object to read from, and a table of methods:
 All methods are optional, and nonexistent methods will return `nil` by default.
 Provide a method that throws an error, if you want your Reader to prohibit some methods.
 
-[1]: https://gitlab.com/andreyorst/async.fnl
-[2]: https://w3.impa.br/~diego/software/luasocket/home.html
+[1]: https://github.com/dakrone/clj-http
+[2]: https://gitlab.com/andreyorst/async.fnl
+[3]: https://w3.impa.br/~diego/software/luasocket/home.html

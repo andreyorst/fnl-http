@@ -38,6 +38,7 @@ package.preload["http.http"] = package.preload["http.http"] or function(...)
   local tcp0 = require("http.tcp")
   local _local_772_ = require("http.readers")
   local reader_3f = _local_772_["reader?"]
+  local file_reader = _local_772_["file-reader"]
   local _local_785_ = require("http.encoder")
   local build_http_response = _local_785_["build-http-response"]
   local encode_chunk = _local_785_["encode-chunk"]
@@ -145,11 +146,34 @@ package.preload["http.http"] = package.preload["http.http"] or function(...)
       return headers
     end
   end
+  local function wrap_body(val)
+    local _806_ = type(val)
+    if (_806_ == "table") then
+      if chan_3f(body) then
+        return body
+      elseif reader_3f(body) then
+        return body
+      else
+        return val
+      end
+    elseif (_806_ == "userdata") then
+      local _808_ = getmetatable(val)
+      if ((_G.type(_808_) == "table") and (_808_.__name == "FILE*")) then
+        return file_reader(val)
+      else
+        local _ = _808_
+        return val
+      end
+    else
+      local _ = _806_
+      return val
+    end
+  end
   http.request = function(method, url, _3fopts)
-    local _let_806_ = http_parser["parse-url"](url)
-    local host = _let_806_["host"]
-    local port = _let_806_["port"]
-    local parsed = _let_806_
+    local _let_811_ = http_parser["parse-url"](url)
+    local host = _let_811_["host"]
+    local port = _let_811_["port"]
+    local parsed = _let_811_
     local opts
     do
       local tbl_16_auto = {as = "raw", time = socket.gettime, ["async?"] = false}
@@ -162,63 +186,64 @@ package.preload["http.http"] = package.preload["http.http"] or function(...)
       end
       opts = tbl_16_auto
     end
-    local headers = prepare_headers(opts.headers, opts.body, host, port)
+    local body = wrap_body(opts.body)
+    local headers = prepare_headers(opts.headers, body, host, port)
     local req
-    local function _809_()
-      if (opts.body and (headers["transfer-encoding"] == "chunked")) then
+    local function _814_()
+      if (body and (headers["transfer-encoding"] == "chunked")) then
         local _, data = nil, nil
-        local function _808_()
+        local function _813_()
           if opts["async?"] then
             return _3c_21
           else
             return _3c_21_21
           end
         end
-        _, data = prepare_chunk(opts.body, _808_())
+        _, data = prepare_chunk(body, _813_())
         return data
-      elseif ("string" == type(opts.body)) then
-        return opts.body
+      elseif ("string" == type(body)) then
+        return body
       else
         return nil
       end
     end
-    req = build_http_request(method, utils["format-path"](parsed), headers, _809_())
+    req = build_http_request(method, utils["format-path"](parsed), headers, _814_())
     local chan0 = tcp0.chan(parsed)
     if opts["async?"] then
       local res = promise_chan()
       opts.start = socket.gettime()
       do
-        local _let_810_ = require("lib.async")
-        local go_1_auto = _let_810_["go"]
-        local function _811_()
+        local _let_815_ = require("lib.async")
+        local go_1_auto = _let_815_["go"]
+        local function _816_()
           _3e_21(chan0, req)
-          if opts.body then
-            stream_body(chan0, opts.body, _3e_21, _3c_21, headers)
+          if body then
+            stream_body(chan0, body, _3e_21, _3c_21, headers)
           else
           end
-          local _813_
+          local _818_
           do
             chan0["read"] = make_read_fn(_3c_21)
-            _813_ = chan0
+            _818_ = chan0
           end
-          return _3e_21(res, http_parser["parse-http-response"](_813_, opts))
+          return _3e_21(res, http_parser["parse-http-response"](_818_, opts))
         end
-        go_1_auto(_811_)
+        go_1_auto(_816_)
       end
       return res
     else
       opts.start = socket.gettime()
       _3e_21_21(chan0, req)
-      if opts.body then
-        stream_body(chan0, opts.body, _3e_21_21, _3c_21_21, headers)
+      if body then
+        stream_body(chan0, body, _3e_21_21, _3c_21_21, headers)
       else
       end
-      local _815_
+      local _820_
       do
         chan0["read"] = make_read_fn(_3c_21_21)
-        _815_ = chan0
+        _820_ = chan0
       end
-      return http_parser["parse-http-response"](_815_, opts)
+      return http_parser["parse-http-response"](_820_, opts)
     end
   end
   http.get = function(url_2_auto, opts_3_auto)
@@ -4416,14 +4441,14 @@ package.preload["http.encoder"] = package.preload["http.encoder"] or function(..
         return nil
       end
     else
-      return error(("unsupported body type: " .. tostring(body)))
+      return error(("unsupported body type: " .. type(body)))
     end
   end
   local function prepare_amount(body, read_fn, amount)
     if reader_3f(body) then
       return body:read(amount)
     else
-      return error(("unsupported body type: " .. tostring(body)))
+      return error(("unsupported body type: " .. type(body)))
     end
   end
   return {["build-http-response"] = build_http_response, ["encode-chunk"] = encode_chunk, ["prepare-chunk"] = prepare_chunk, ["prepare-amount"] = prepare_amount, ["build-http-request"] = build_http_request}

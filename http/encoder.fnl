@@ -56,12 +56,12 @@ string."
       (case (body:read 1024)
         data (values true (encode-chunk data))
         nil (values false (encode-chunk "")))
-      (error (.. "unsupported body type: " (tostring body)))))
+      (error (.. "unsupported body type: " (type body)))))
 
 (fn prepare-amount [body read-fn amount]
   (if (reader? body)
       (body:read amount)
-      (error (.. "unsupported body type: " (tostring body)))))
+      (error (.. "unsupported body type: " (type body)))))
 
 {: build-http-response
  : encode-chunk

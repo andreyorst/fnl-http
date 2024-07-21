@@ -19,7 +19,7 @@
 (local tcp
   (require :http.tcp))
 
-(local {: reader?}
+(local {: reader? : file-reader}
   (require :http.readers))
 
 (local {: build-http-response
@@ -83,6 +83,17 @@ number of bytes to read."
           (tset :transfer-encoding nil))
         headers)))
 
+(fn wrap-body [val]
+  (case (type val)
+    :table (if (chan? body) body
+               (reader? body) body
+               val)
+    :userdata (case (getmetatable val)
+                {:__name "FILE*"}
+                (file-reader val)
+                _ val)
+    _ val))
+
 (fn http.request [method url ?opts]
   "Makes a `method` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
@@ -115,23 +126,24 @@ are made and the body is sent using chunked transfer encoding."
                               :async? false
                               :time socket.gettime}]
                k v)
-        headers (prepare-headers opts.headers opts.body host port)
+        body (wrap-body opts.body)
+        headers (prepare-headers opts.headers body host port)
         req (build-http-request
              method
              (utils.format-path parsed)
              headers
-             (if (and opts.body (= headers.transfer-encoding "chunked"))
-                 (let [(_ data) (prepare-chunk opts.body (if opts.async? <! <!!))]
+             (if (and body (= headers.transfer-encoding "chunked"))
+                 (let [(_ data) (prepare-chunk body (if opts.async? <! <!!))]
                    data)
-                 (= :string (type opts.body))
-                 opts.body))
+                 (= :string (type body))
+                 body))
         chan (tcp.chan parsed)]
     (if opts.async?
         (let [res (promise-chan)]
           (set opts.start (socket.gettime))
           (go (>! chan req)
-              (when opts.body
-                (stream-body chan opts.body >! <! headers))
+              (when body
+                (stream-body chan body >! <! headers))
               (>! res (http-parser.parse-http-response
                        (doto chan
                          (tset :read (make-read-fn <!)))
@@ -139,8 +151,8 @@ are made and the body is sent using chunked transfer encoding."
           res)
         (do (set opts.start (socket.gettime))
             (>!! chan req)
-            (when opts.body
-              (stream-body chan opts.body >!! <!! headers))
+            (when body
+              (stream-body chan body >!! <!! headers))
             (http-parser.parse-http-response
              (doto chan
                (tset :read (make-read-fn <!!)))
