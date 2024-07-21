@@ -142,7 +142,7 @@ number of bytes to read."
   (let [headers (collect [k v (pairs (or ?headers {}))
                           :into {:host (.. host (if port (.. ":" port) ""))
                                  :content-length (case (type ?body) :string (length ?body))
-                                 :transfer-encoding (case (type ?body) :string nil _ "chunked")}]
+                                 :transfer-encoding (case (type ?body) (where (or :string :nil)) nil _ "chunked")}]
                   k v)]
     (if (chan? ?body)
         ;; force chunked encoding for channels supplied as a body
