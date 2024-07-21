@@ -1,6 +1,6 @@
 (local {: reader?
         : string-reader}
-  (require :src.readers))
+  (require :http.readers))
 
 (fn string? [val]
   (and (= :string (type val))
@@ -50,21 +50,23 @@
                   {:__index #(: "\\%03d" :format ($2:byte))}))]
     (.. "\"" (str:gsub "[%c\\\"]" escs) "\"")))
 
-(fn json [val]
+(fn encode [val]
   "Encode a Lua value `val` as JSON."
   (case (guess val)
     {:array array :n n}
     (.. "[" (-> (fcollect [i 1 n]
-                  (json (. array i)))
+                  (encode (. array i)))
                 (table.concat ", ")) "]")
     {:object object}
     (.. "{" (-> (icollect [k v (pairs object)]
-                  (.. (json k) ": " (json v)))
+                  (.. (encode k) ": " (encode v)))
                 (table.concat ", ")) "}")
     {:string s}
     (escape-string s)
     {:number n}
     (string.gsub (tostring n) "," ".")
+    true "true"
+    false "false"
     nil "null"
     _ (escape-string (tostring val))))
 
@@ -131,8 +133,8 @@
                    (case (rdr:peek 1)
                      "," (do (rdr:read 1) (loop obj))
                      "}" (do (rdr:read 1) obj)
-                     _ (error (.. "JSON parse error: expected ',' or '}' after the value: " (json value)))))
-             _ (error (.. "JSON parse error: expected colon after the key: " (json key)))))))
+                     _ (error (.. "JSON parse error: expected ',' or '}' after the value: " (encode value)))))
+             _ (error (.. "JSON parse error: expected colon after the key: " (encode key)))))))
    {}))
 
 (fn parse-arr [rdr parse]
@@ -150,10 +152,10 @@
              "," (do (rdr:read 1) (loop arr))
              "]" (do (rdr:read 1) arr)
              _ (error (.. "JSON parse error: expected ',' or ']' after the value: "
-                          (json val)))))))
+                          (encode val)))))))
    []))
 
-(fn parse [data]
+(fn decode [data]
   "Accepts `data`, which can be either a `Reader` that supports `peek`,
 and `read` methods or a string.  Parses the contents to a Lua table."
   (let [rdr (if (reader? data) data
@@ -174,5 +176,7 @@ and `read` methods or a string.  Parses the contents to a Lua table."
                    "JSON parse error: unexpected token ('%s' (code %d))"
                    c (c:byte))))))))
 
-{: json
- : parse}
+(setmetatable
+ {: encode
+  : decode}
+ {:__call (fn [_ value] (encode value))})

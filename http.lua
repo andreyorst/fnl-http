@@ -20,7 +20,236 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 " ]]
-local socket = require("socket")
+local client
+package.preload["http.http"] = package.preload["http.http"] or function(...)
+  local socket = require("socket")
+  local _local_485_ = require("lib.async")
+  local _3c_21 = _local_485_["<!"]
+  local _3e_21 = _local_485_[">!"]
+  local _3c_21_21 = _local_485_["<!!"]
+  local _3e_21_21 = _local_485_[">!!"]
+  local close_21 = _local_485_["close!"]
+  local chan = _local_485_["chan"]
+  local chan_3f = _local_485_["chan?"]
+  local promise_chan = _local_485_["promise-chan"]
+  local tcp = _local_485_["tcp"]
+  local http_parser = require("http.parser")
+  local utils = require("http.utils")
+  local tcp0 = require("http.tcp")
+  local _local_772_ = require("http.readers")
+  local reader_3f = _local_772_["reader?"]
+  local _local_785_ = require("http.encoder")
+  local build_http_response = _local_785_["build-http-response"]
+  local encode_chunk = _local_785_["encode-chunk"]
+  local prepare_chunk = _local_785_["prepare-chunk"]
+  local prepare_amount = _local_785_["prepare-amount"]
+  local build_http_request = _local_785_["build-http-request"]
+  local function make_read_fn(receive)
+    local function _786_(src, pattern)
+      src["set-chunk-size"](src, pattern)
+      return receive(src)
+    end
+    return _786_
+  end
+  local function send_chunk(dst, send_fn, data, read_fn)
+    local more_3f, data0 = prepare_chunk(data, read_fn)
+    send_fn(dst, data0)
+    return more_3f
+  end
+  local function send_amount(dst, send_fn, data, read_fn, amount)
+    local len
+    if (1024 < amount) then
+      len = 1024
+    else
+      len = amount
+    end
+    local data0 = prepare_amount(data, read_fn, len)
+    local remaining = (amount - len)
+    send_fn(dst, data0)
+    if (remaining > 0) then
+      return remaining
+    else
+      return nil
+    end
+  end
+  local function stream_body(dst, body, send, receive, _789_)
+    local transfer_encoding = _789_["transfer-encoding"]
+    local content_length = _789_["content-length"]
+    if (transfer_encoding == "chunked") then
+      while send_chunk(dst, send, body, receive) do
+      end
+      return nil
+    elseif (content_length and reader_3f(body)) then
+      local function loop(remaining)
+        local _790_ = send_amount(dst, send, body, receive, remaining)
+        if (nil ~= _790_) then
+          local remaining0 = _790_
+          return loop(remaining0)
+        else
+          return nil
+        end
+      end
+      return loop(content_length)
+    else
+      return nil
+    end
+  end
+  local http = setmetatable({}, {__index = {version = "0.0.1"}})
+  local function prepare_headers(_3fheaders, _3fbody, host, port)
+    local headers
+    do
+      local tbl_16_auto
+      local _793_
+      if port then
+        _793_ = (":" .. port)
+      else
+        _793_ = ""
+      end
+      local _796_
+      do
+        local _795_ = type(_3fbody)
+        if (_795_ == "string") then
+          _796_ = #_3fbody
+        else
+          _796_ = nil
+        end
+      end
+      local _800_
+      do
+        local _799_ = type(_3fbody)
+        if ((_799_ == "string") or (_799_ == "nil")) then
+          _800_ = nil
+        else
+          local _ = _799_
+          _800_ = "chunked"
+        end
+      end
+      tbl_16_auto = {host = (host .. _793_), ["content-length"] = _796_, ["transfer-encoding"] = _800_}
+      for k, v in pairs((_3fheaders or {})) do
+        local k_17_auto, v_18_auto = k, v
+        if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
+          tbl_16_auto[k_17_auto] = v_18_auto
+        else
+        end
+      end
+      headers = tbl_16_auto
+    end
+    if chan_3f(_3fbody) then
+      headers["content-length"] = nil
+      headers["transfer-encoding"] = "chunked"
+      return headers
+    elseif (reader_3f(_3fbody) and headers["content-length"]) then
+      headers["transfer-encoding"] = nil
+      return headers
+    else
+      return headers
+    end
+  end
+  http.request = function(method, url, _3fopts)
+    local _let_806_ = http_parser["parse-url"](url)
+    local host = _let_806_["host"]
+    local port = _let_806_["port"]
+    local parsed = _let_806_
+    local opts
+    do
+      local tbl_16_auto = {as = "raw", time = socket.gettime, ["async?"] = false}
+      for k, v in pairs((_3fopts or {})) do
+        local k_17_auto, v_18_auto = k, v
+        if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
+          tbl_16_auto[k_17_auto] = v_18_auto
+        else
+        end
+      end
+      opts = tbl_16_auto
+    end
+    local headers = prepare_headers(opts.headers, opts.body, host, port)
+    local req
+    local function _809_()
+      if (opts.body and (headers["transfer-encoding"] == "chunked")) then
+        local _, data = nil, nil
+        local function _808_()
+          if opts["async?"] then
+            return _3c_21
+          else
+            return _3c_21_21
+          end
+        end
+        _, data = prepare_chunk(opts.body, _808_())
+        return data
+      elseif ("string" == type(opts.body)) then
+        return opts.body
+      else
+        return nil
+      end
+    end
+    req = build_http_request(method, utils["format-path"](parsed), headers, _809_())
+    local chan0 = tcp0.chan(parsed)
+    if opts["async?"] then
+      local res = promise_chan()
+      opts.start = socket.gettime()
+      do
+        local _let_810_ = require("lib.async")
+        local go_1_auto = _let_810_["go"]
+        local function _811_()
+          _3e_21(chan0, req)
+          if opts.body then
+            stream_body(chan0, opts.body, _3e_21, _3c_21, headers)
+          else
+          end
+          local _813_
+          do
+            chan0["read"] = make_read_fn(_3c_21)
+            _813_ = chan0
+          end
+          return _3e_21(res, http_parser["parse-http-response"](_813_, opts))
+        end
+        go_1_auto(_811_)
+      end
+      return res
+    else
+      opts.start = socket.gettime()
+      _3e_21_21(chan0, req)
+      if opts.body then
+        stream_body(chan0, opts.body, _3e_21_21, _3c_21_21, headers)
+      else
+      end
+      local _815_
+      do
+        chan0["read"] = make_read_fn(_3c_21_21)
+        _815_ = chan0
+      end
+      return http_parser["parse-http-response"](_815_, opts)
+    end
+  end
+  http.get = function(url_2_auto, opts_3_auto)
+    return http.request("get", url_2_auto, opts_3_auto)
+  end
+  http.post = function(url_2_auto, opts_3_auto)
+    return http.request("post", url_2_auto, opts_3_auto)
+  end
+  http.put = function(url_2_auto, opts_3_auto)
+    return http.request("put", url_2_auto, opts_3_auto)
+  end
+  http.patch = function(url_2_auto, opts_3_auto)
+    return http.request("patch", url_2_auto, opts_3_auto)
+  end
+  http.options = function(url_2_auto, opts_3_auto)
+    return http.request("options", url_2_auto, opts_3_auto)
+  end
+  http.trace = function(url_2_auto, opts_3_auto)
+    return http.request("trace", url_2_auto, opts_3_auto)
+  end
+  http.head = function(url_2_auto, opts_3_auto)
+    return http.request("head", url_2_auto, opts_3_auto)
+  end
+  http.delete = function(url_2_auto, opts_3_auto)
+    return http.request("delete", url_2_auto, opts_3_auto)
+  end
+  http.connect = function(url_2_auto, opts_3_auto)
+    return http.request("connect", url_2_auto, opts_3_auto)
+  end
+  return http
+end
 package.preload["lib.async"] = package.preload["lib.async"] or function(...)
   --[[ "Copyright (c) 2023 Andrey Listopadov and contributors.  All rights reserved.
   The use and distribution terms for this software are covered by the Eclipse
@@ -2705,28 +2934,17 @@ package.preload["lib.async"] = package.preload["lib.async"] or function(...)
   end
   return {buffer = buffer, ["dropping-buffer"] = dropping_buffer, ["sliding-buffer"] = sliding_buffer, ["promise-buffer"] = promise_buffer, ["unblocking-buffer?"] = unblocking_buffer_3f, chan = chan, ["chan?"] = chan_3f, ["promise-chan"] = promise_chan, ["take!"] = take_21, ["<!!"] = _3c_21_21, ["<!"] = _3c_21, timeout = timeout, ["put!"] = put_21, [">!!"] = _3e_21_21, [">!"] = _3e_21, ["close!"] = close_21, go = go_2a, ["alts!"] = alts_21, ["offer!"] = offer_21, ["poll!"] = poll_21, pipe = pipe, ["pipeline-async"] = pipeline_async, pipeline = pipeline, ["pipeline-async-unordered"] = pipeline_async_unordered, ["pipeline-unordered"] = pipeline_unordered, reduce = reduce, reduced = reduced, ["reduced?"] = reduced_3f, transduce = transduce, split = split, ["onto-chan!"] = onto_chan_21, ["to-chan!"] = to_chan_21, mult = mult, tap = tap, untap = untap, ["untap-all"] = untap_all, mix = mix, admix = admix, unmix = unmix, ["unmix-all"] = unmix_all, toggle = toggle, ["solo-mode"] = solo_mode, pub = pub, sub = sub, unsub = unsub, ["unsub-all"] = unsub_all, map = map, merge = merge, into = into, take = take, buffers = {FixedBuffer = FixedBuffer, SlidingBuffer = SlidingBuffer, DroppingBuffer = DroppingBuffer, PromiseBuffer = PromiseBuffer}}
 end
-local _local_485_ = require("lib.async")
-local _3c_21 = _local_485_["<!"]
-local _3e_21 = _local_485_[">!"]
-local _3c_21_21 = _local_485_["<!!"]
-local _3e_21_21 = _local_485_[">!!"]
-local close_21 = _local_485_["close!"]
-local chan = _local_485_["chan"]
-local chan_3f = _local_485_["chan?"]
-local promise_chan = _local_485_["promise-chan"]
-local tcp = _local_485_["tcp"]
-local http_parser
-package.preload["src.http-parser"] = package.preload["src.http-parser"] or function(...)
-  local _local_564_ = require("src.readers")
+package.preload["http.parser"] = package.preload["http.parser"] or function(...)
+  local _local_564_ = require("http.readers")
   local make_reader = _local_564_["make-reader"]
   local string_reader = _local_564_["string-reader"]
-  local json = require("src.json")
-  local utils = require("src.utils")
+  local json = require("http.json")
+  local utils = require("http.utils")
   local function parse_header(line)
-    local _645_, _646_ = line:match(" *([^:]+) *: *(.*)")
-    if ((nil ~= _645_) and (nil ~= _646_)) then
-      local header = _645_
-      local value = _646_
+    local _646_, _647_ = line:match(" *([^:]+) *: *(.*)")
+    if ((nil ~= _646_) and (nil ~= _647_)) then
+      local header = _646_
+      local value = _647_
       return header, value
     else
       return nil
@@ -2739,18 +2957,18 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
       return headers
     else
       local _ = line
-      local function _650_()
-        local _648_, _649_ = parse_header((line or ""))
-        if ((nil ~= _648_) and (nil ~= _649_)) then
-          local header = _648_
-          local value = _649_
+      local function _651_()
+        local _649_, _650_ = parse_header((line or ""))
+        if ((nil ~= _649_) and (nil ~= _650_)) then
+          local header = _649_
+          local value = _650_
           headers[header] = value
           return headers
         else
           return nil
         end
       end
-      return read_headers(src, _650_())
+      return read_headers(src, _651_())
     end
   end
   local function parse_response_status_line(status)
@@ -2759,7 +2977,7 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         local field = fields[1]
         local fields0 = {select(2, (table.unpack or _G.unpack)(fields))}
         local part = reader()
-        local function _653_()
+        local function _654_()
           if (field == "protocol-version") then
             local name, major, minor = part:match("([^/]+)/(%d).(%d)")
             res[field] = {name = name, major = tonumber(major), minor = tonumber(minor)}
@@ -2770,7 +2988,7 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
             return res
           end
         end
-        return loop(reader, fields0, _653_())
+        return loop(reader, fields0, _654_())
       else
         local _ = fields
         local reason = status:gsub(string.format("%s/%s.%s +%s +", res["protocol-version"].name, res["protocol-version"].major, res["protocol-version"].minor, res.status), "")
@@ -2785,15 +3003,15 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
   end
   local function body_reader(src)
     local buffer = ""
-    local function _655_(src0, pattern)
+    local function _656_(src0, pattern)
       local rdr = string_reader(buffer)
       local buffer_content = rdr:read(pattern)
-      local and_656_ = (nil ~= pattern)
-      if and_656_ then
+      local and_657_ = (nil ~= pattern)
+      if and_657_ then
         local n = pattern
-        and_656_ = ("number" == type(n))
+        and_657_ = ("number" == type(n))
       end
-      if and_656_ then
+      if and_657_ then
         local n = pattern
         local len
         if buffer_content then
@@ -2829,15 +3047,15 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         end
       elseif ((pattern == "*a") or (pattern == "a")) then
         buffer = ""
-        local _664_ = src0:read(pattern)
-        if (_664_ == nil) then
+        local _665_ = src0:read(pattern)
+        if (_665_ == nil) then
           if buffer_content then
             return buffer_content
           else
             return nil
           end
-        elseif (nil ~= _664_) then
-          local data = _664_
+        elseif (nil ~= _665_) then
+          local data = _665_
           return ((buffer_content or "") .. data)
         else
           return nil
@@ -2847,7 +3065,7 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         return error(tostring(pattern))
       end
     end
-    local function _668_(src0)
+    local function _669_(src0)
       local rdr = string_reader(buffer)
       local buffer_content = rdr:read("*l")
       local read_more_3f = not buffer:find("\n")
@@ -2865,10 +3083,10 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         return buffer_content
       end
     end
-    local function _672_(src0)
+    local function _673_(src0)
       return src0:close()
     end
-    local function _673_(src0, bytes)
+    local function _674_(src0, bytes)
       assert(("number" == type(bytes)), "expected number of bytes to peek")
       local rdr = string_reader(buffer)
       local content = (rdr:read(bytes) or "")
@@ -2881,20 +3099,20 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         return buffer
       end
     end
-    return make_reader(src, {["read-bytes"] = _655_, ["read-line"] = _668_, close = _672_, peek = _673_})
+    return make_reader(src, {["read-bytes"] = _656_, ["read-line"] = _669_, close = _673_, peek = _674_})
   end
   local function read_chunk_size(src)
-    local _675_ = src:read("*l")
-    if (_675_ == "") then
+    local _676_ = src:read("*l")
+    if (_676_ == "") then
       return read_chunk_size(src)
-    elseif (nil ~= _675_) then
-      local line = _675_
-      local _676_ = line:match("%s*([0-9a-fA-F]+)")
-      if (nil ~= _676_) then
-        local size = _676_
+    elseif (nil ~= _676_) then
+      local line = _676_
+      local _677_ = line:match("%s*([0-9a-fA-F]+)")
+      if (nil ~= _677_) then
+        local size = _677_
         return tonumber(("0x" .. size))
       else
-        local _ = _676_
+        local _ = _677_
         return error(string.format("line missing chunk size: %q", line))
       end
     else
@@ -2917,14 +3135,14 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
       end
       return (chunk_size > 0), string_reader(buffer)
     end
-    local function _681_(src0, pattern)
+    local function _682_(src0, pattern)
       local rdr = string_reader(buffer)
-      local and_682_ = (nil ~= pattern)
-      if and_682_ then
+      local and_683_ = (nil ~= pattern)
+      if and_683_ then
         local n = pattern
-        and_682_ = ("number" == type(n))
+        and_683_ = ("number" == type(n))
       end
-      if and_682_ then
+      if and_683_ then
         local n = pattern
         local buffer_content = rdr:read(pattern)
         local len
@@ -2969,15 +3187,15 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         end
         local rdr0 = string_reader(buffer)
         buffer = ""
-        local _690_ = rdr0:read("*a")
-        if (_690_ == nil) then
+        local _691_ = rdr0:read("*a")
+        if (_691_ == nil) then
           if buffer_content then
             return buffer_content
           else
             return nil
           end
-        elseif (nil ~= _690_) then
-          local data = _690_
+        elseif (nil ~= _691_) then
+          local data = _691_
           return ((buffer_content or "") .. data)
         else
           return nil
@@ -2987,7 +3205,7 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         return error(tostring(pattern))
       end
     end
-    local function _694_(src0)
+    local function _695_(src0)
       local rdr = string_reader(buffer)
       local buffer_content = rdr:read("*l")
       local read_more_3f = not buffer:find("\n")
@@ -3005,10 +3223,10 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         return buffer_content
       end
     end
-    local function _698_(src0)
+    local function _699_(src0)
       return src0:close()
     end
-    local function _699_(src0, bytes)
+    local function _700_(src0, bytes)
       assert(("number" == type(bytes)), "expected number of bytes to peek")
       local rdr = string_reader(buffer)
       local content = (rdr:read(bytes) or "")
@@ -3022,13 +3240,13 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         return buffer
       end
     end
-    return make_reader(src, {["read-bytes"] = _681_, ["read-line"] = _694_, close = _698_, peek = _699_})
+    return make_reader(src, {["read-bytes"] = _682_, ["read-line"] = _695_, close = _699_, peek = _700_})
   end
-  local function parse_http_response(src, _701_)
-    local as = _701_["as"]
-    local parse_headers_3f = _701_["parse-headers?"]
-    local start = _701_["start"]
-    local time = _701_["time"]
+  local function parse_http_response(src, _702_)
+    local as = _702_["as"]
+    local parse_headers_3f = _702_["parse-headers?"]
+    local start = _702_["start"]
+    local time = _702_["time"]
     local status = read_response_status_line(src)
     local headers = read_headers(src)
     local parsed_headers
@@ -3045,8 +3263,8 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
     end
     local chunk_size
     do
-      local _703_ = string.lower((parsed_headers["Transfer-Encoding"] or ""))
-      if (_703_ == "chunked") then
+      local _704_ = string.lower((parsed_headers["Transfer-Encoding"] or ""))
+      if (_704_ == "chunked") then
         chunk_size = read_chunk_size(src)
       else
         chunk_size = nil
@@ -3058,34 +3276,34 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
     else
       stream = body_reader(src)
     end
-    local _706_
+    local _707_
     if parse_headers_3f then
-      _706_ = parsed_headers
+      _707_ = parsed_headers
     else
-      _706_ = headers
+      _707_ = headers
     end
-    status["headers"] = _706_
+    status["headers"] = _707_
     status["length"] = tonumber(parsed_headers["Content-Length"])
     status["client"] = src
-    local _708_
+    local _709_
     if (start and time) then
-      _708_ = math.ceil((1000 * (time() - start)))
+      _709_ = math.ceil((1000 * (time() - start)))
     else
-      _708_ = nil
+      _709_ = nil
     end
-    status["request-time"] = _708_
-    local _710_
+    status["request-time"] = _709_
+    local _711_
     if (as == "raw") then
-      _710_ = stream:read((parsed_headers["Content-Length"] or "*a"))
+      _711_ = stream:read((parsed_headers["Content-Length"] or "*a"))
     elseif (as == "json") then
-      _710_ = json.parse(stream)
+      _711_ = json.decode(stream)
     elseif (as == "stream") then
-      _710_ = stream
+      _711_ = stream
     else
       local _ = as
-      _710_ = error(string.format("unsupported coersion method '%s'", as))
+      _711_ = error(string.format("unsupported coersion method '%s'", as))
     end
-    status["body"] = _710_
+    status["body"] = _711_
     return status
   end
   local function parse_request_status_line(status)
@@ -3094,11 +3312,11 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
         local field = fields[1]
         local fields0 = {select(2, (table.unpack or _G.unpack)(fields))}
         local part = reader()
-        local function _716_()
+        local function _717_()
           res[field] = utils["as-data"](part)
           return res
         end
-        return loop(reader, fields0, _716_())
+        return loop(reader, fields0, _717_())
       else
         local _ = fields
         return res
@@ -3121,50 +3339,50 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
     local port = authority:match(":(%d+)")
     local host
     if userinfo then
-      local _718_
+      local _719_
       if port then
-        _718_ = ":"
+        _719_ = ":"
       else
-        _718_ = ""
+        _719_ = ""
       end
-      host = authority:match(("@([^:]+)" .. _718_))
+      host = authority:match(("@([^:]+)" .. _719_))
     else
-      local _720_
+      local _721_
       if port then
-        _720_ = ":"
+        _721_ = ":"
       else
-        _720_ = ""
+        _721_ = ""
       end
-      host = authority:match(("([^:]+)" .. _720_))
+      host = authority:match(("([^:]+)" .. _721_))
     end
     return {userinfo = userinfo, port = port, host = host}
   end
   local function parse_url(url)
     local scheme = url:match("^([^:]+)://")
-    local function _723_()
+    local function _724_()
       if scheme then
         return url:match("//([^/]+)/")
       else
         return url:match("^([^/]+)/")
       end
     end
-    local _let_724_ = parse_authority(_723_())
-    local host = _let_724_["host"]
-    local port = _let_724_["port"]
-    local userinfo = _let_724_["userinfo"]
+    local _let_725_ = parse_authority(_724_())
+    local host = _let_725_["host"]
+    local port = _let_725_["port"]
+    local userinfo = _let_725_["userinfo"]
     local scheme0 = (scheme or "http")
     local port0
-    local or_725_ = port
-    if not or_725_ then
+    local or_726_ = port
+    if not or_726_ then
       if (scheme0 == "https") then
-        or_725_ = 443
+        or_726_ = 443
       elseif (scheme0 == "http") then
-        or_725_ = 80
+        or_726_ = 80
       else
-        or_725_ = nil
+        or_726_ = nil
       end
     end
-    port0 = or_725_
+    port0 = or_726_
     local path = url:match("//[^/]+/([^?#]+)")
     local query = url:match("%?([^#]+)#?")
     local fragment = url:match("#([^?]+)%??")
@@ -3172,7 +3390,7 @@ package.preload["src.http-parser"] = package.preload["src.http-parser"] or funct
   end
   return {["parse-http-response"] = parse_http_response, ["parse-http-request"] = parse_http_request, ["parse-url"] = parse_url}
 end
-package.preload["src.readers"] = package.preload["src.readers"] or function(...)
+package.preload["http.readers"] = package.preload["http.readers"] or function(...)
   local function ok_3f(ok_3f0, ...)
     if ok_3f0 then
       return ...
@@ -3515,8 +3733,8 @@ package.preload["src.readers"] = package.preload["src.readers"] or function(...)
   end
   return {["make-reader"] = make_reader, ["file-reader"] = file_reader, ["string-reader"] = string_reader, ["reader?"] = reader_3f, ["ltn12-reader"] = (ltn_3f and ltn12_reader)}
 end
-package.preload["src.json"] = package.preload["src.json"] or function(...)
-  local _local_565_ = require("src.readers")
+package.preload["http.json"] = package.preload["http.json"] or function(...)
+  local _local_565_ = require("http.readers")
   local reader_3f = _local_565_["reader?"]
   local string_reader = _local_565_["string-reader"]
   local function string_3f(val)
@@ -3572,7 +3790,7 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
     escs = setmetatable({["\7"] = "\\a", ["\8"] = "\\b", ["\12"] = "\\f", ["\11"] = "\\v", ["\13"] = "\\r", ["\t"] = "\\t", ["\\"] = "\\\\", ["\""] = "\\\"", ["\n"] = "\\n"}, {__index = _581_})
     return ("\"" .. str:gsub("[%c\\\"]", escs) .. "\"")
   end
-  local function json(val)
+  local function encode(val)
     local _582_ = guess(val)
     if ((_G.type(_582_) == "table") and (nil ~= _582_.array) and (nil ~= _582_.n)) then
       local array = _582_.array
@@ -3582,7 +3800,7 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
         local tbl_21_auto = {}
         local i_22_auto = 0
         for i = 1, n do
-          local val_23_auto = json(array[i])
+          local val_23_auto = encode(array[i])
           if (nil ~= val_23_auto) then
             i_22_auto = (i_22_auto + 1)
             tbl_21_auto[i_22_auto] = val_23_auto
@@ -3599,7 +3817,7 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
         local tbl_21_auto = {}
         local i_22_auto = 0
         for k, v in pairs(object) do
-          local val_23_auto = (json(k) .. ": " .. json(v))
+          local val_23_auto = (encode(k) .. ": " .. encode(v))
           if (nil ~= val_23_auto) then
             i_22_auto = (i_22_auto + 1)
             tbl_21_auto[i_22_auto] = val_23_auto
@@ -3615,6 +3833,10 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
     elseif ((_G.type(_582_) == "table") and (nil ~= _582_.number)) then
       local n = _582_.number
       return string.gsub(tostring(n), ",", ".")
+    elseif (_582_ == true) then
+      return "true"
+    elseif (_582_ == false) then
+      return "false"
     elseif (_582_ == nil) then
       return "null"
     else
@@ -3744,11 +3966,11 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
             return obj
           else
             local _1 = _609_
-            return error(("JSON parse error: expected ',' or '}' after the value: " .. json(value)))
+            return error(("JSON parse error: expected ',' or '}' after the value: " .. encode(value)))
           end
         else
           local _0 = _608_
-          return error(("JSON parse error: expected colon after the key: " .. json(key)))
+          return error(("JSON parse error: expected colon after the key: " .. encode(key)))
         end
       end
     end
@@ -3778,13 +4000,13 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
           return arr
         else
           local _0 = _614_
-          return error(("JSON parse error: expected ',' or ']' after the value: " .. json(val)))
+          return error(("JSON parse error: expected ',' or ']' after the value: " .. encode(val)))
         end
       end
     end
     return loop({})
   end
-  local function parse(data)
+  local function decode(data)
     local rdr
     if reader_3f(data) then
       rdr = data
@@ -3859,14 +4081,17 @@ package.preload["src.json"] = package.preload["src.json"] or function(...)
     end
     return loop()
   end
-  return {json = json, parse = parse}
+  local function _630_(_, value)
+    return encode(value)
+  end
+  return setmetatable({encode = encode, decode = decode}, {__call = _630_})
 end
-package.preload["src.utils"] = package.preload["src.utils"] or function(...)
+package.preload["http.utils"] = package.preload["http.utils"] or function(...)
   local function __3ekebab_case(str)
-    local function _630_()
+    local function _631_()
       local res,case_change_3f = "", false
       for c in string.gmatch(str, ".") do
-        local function _631_()
+        local function _632_()
           local delim_3f = c:match("[-_ ]")
           local upper_3f = (c == c:upper())
           if delim_3f then
@@ -3877,20 +4102,20 @@ package.preload["src.utils"] = package.preload["src.utils"] or function(...)
             return {(res .. c:lower()), (not upper_3f and true)}
           end
         end
-        local _set_633_ = _631_()
-        res = _set_633_[1]
-        case_change_3f = _set_633_[2]
+        local _set_634_ = _632_()
+        res = _set_634_[1]
+        case_change_3f = _set_634_[2]
       end
       return {res, case_change_3f}
     end
-    local _let_634_ = _630_()
-    local res = _let_634_[1]
+    local _let_635_ = _631_()
+    local res = _let_635_[1]
     return res
   end
   --[[ (do (assert (= "foo-bar" (->kebab-case "foo-bar")) "foo-bar fail") (assert (= "foo-bar" (->kebab-case "Foo-Bar")) "Foo-Bar fail") (assert (= "foo-bar" (->kebab-case "foo_bar")) "foo_bar fail") (assert (= "foo-bar" (->kebab-case "foo bar")) "foo bar fail") (assert (= "foo-bar" (->kebab-case "fooBar")) "fooBar fail") (assert (= "foo-bar" (->kebab-case "FooBar")) "FooBar fail") (assert (= "foo-bar" (->kebab-case "FOO BAR")) "FOO BAR fail") (assert (= "foo-bar" (->kebab-case "FOO_BAR")) "FOO_BAR fail") (assert (= "foo-bar" (->kebab-case "FOO-BAR")) "FOO-BAR fail")) ]]
   local function capitalize_header(header)
     local header0 = __3ekebab_case(header)
-    local _635_
+    local _636_
     do
       local tbl_21_auto = {}
       local i_22_auto = 0
@@ -3902,17 +4127,17 @@ package.preload["src.utils"] = package.preload["src.utils"] or function(...)
         else
         end
       end
-      _635_ = tbl_21_auto
+      _636_ = tbl_21_auto
     end
-    return table.concat(_635_, "-")
+    return table.concat(_636_, "-")
   end
   local function as_data(value)
-    local _637_ = tonumber(value)
-    if (nil ~= _637_) then
-      local n = _637_
+    local _638_ = tonumber(value)
+    if (nil ~= _638_) then
+      local n = _638_
       return n
     else
-      local _ = _637_
+      local _ = _638_
       if (value == "true") then
         return true
       elseif (value == "false") then
@@ -3923,37 +4148,34 @@ package.preload["src.utils"] = package.preload["src.utils"] or function(...)
       end
     end
   end
-  local function format_path(_640_)
-    local path = _640_["path"]
-    local query = _640_["query"]
-    local fragment = _640_["fragment"]
-    local _641_
+  local function format_path(_641_)
+    local path = _641_["path"]
+    local query = _641_["query"]
+    local fragment = _641_["fragment"]
+    local _642_
     if query then
-      _641_ = ("?" .. query)
+      _642_ = ("?" .. query)
     else
-      _641_ = ""
+      _642_ = ""
     end
-    local _643_
+    local _644_
     if fragment then
-      _643_ = ("?" .. fragment)
+      _644_ = ("?" .. fragment)
     else
-      _643_ = ""
+      _644_ = ""
     end
-    return ("/" .. (path or "") .. _641_ .. _643_)
+    return ("/" .. (path or "") .. _642_ .. _644_)
   end
   return {["format-path"] = format_path, ["as-data"] = as_data, ["capitalize-header"] = capitalize_header}
 end
-http_parser = require("src.http-parser")
-local utils = require("src.utils")
-local tcp0
-package.preload["src.tcp"] = package.preload["src.tcp"] or function(...)
-  local _local_729_ = require("lib.async")
-  local chan = _local_729_["chan"]
-  local _3c_21 = _local_729_["<!"]
-  local _3e_21 = _local_729_[">!"]
-  local offer_21 = _local_729_["offer!"]
-  local timeout = _local_729_["timeout"]
-  local close_21 = _local_729_["close!"]
+package.preload["http.tcp"] = package.preload["http.tcp"] or function(...)
+  local _local_730_ = require("lib.async")
+  local chan = _local_730_["chan"]
+  local _3c_21 = _local_730_["<!"]
+  local _3e_21 = _local_730_[">!"]
+  local offer_21 = _local_730_["offer!"]
+  local timeout = _local_730_["timeout"]
+  local close_21 = _local_730_["close!"]
   local socket = require("socket")
   local function set_chunk_size(self, pattern_or_size)
     self["chunk-size"] = pattern_or_size
@@ -3964,53 +4186,53 @@ package.preload["src.tcp"] = package.preload["src.tcp"] or function(...)
     local resp = chan(1024, xform, err_handler)
     local ready = chan()
     local close
-    local function _730_(self)
+    local function _731_(self)
       recv["close!"](recv)
       resp["close!"](resp)
       self.closed = true
       return nil
     end
-    close = _730_
+    close = _731_
     local c
-    local function _731_(_, val, handler, enqueue_3f)
+    local function _732_(_, val, handler, enqueue_3f)
       return recv["put!"](recv, val, handler, enqueue_3f)
     end
-    local function _732_(_, handler, enqueue_3f)
+    local function _733_(_, handler, enqueue_3f)
       offer_21(ready, "ready")
       return resp["take!"](resp, handler, enqueue_3f)
     end
-    local function _733_(_241)
+    local function _734_(_241)
       return ("#<" .. tostring(_241):gsub("table:", "SocketChannel:") .. ">")
     end
-    c = setmetatable({puts = recv.puts, takes = resp.takes, ["put!"] = _731_, ["take!"] = _732_, ["close!"] = close, close = close, ["chunk-size"] = 1024, ["set-chunk-size"] = set_chunk_size}, {__index = getmetatable(ready).__index, __name = "SocketChannel", __fennelview = _733_})
+    c = setmetatable({puts = recv.puts, takes = resp.takes, ["put!"] = _732_, ["take!"] = _733_, ["close!"] = close, close = close, ["chunk-size"] = 1024, ["set-chunk-size"] = set_chunk_size}, {__index = getmetatable(ready).__index, __name = "SocketChannel", __fennelview = _734_})
     do
-      local _let_736_ = require("lib.async")
-      local go_1_auto = _let_736_["go"]
-      local function _737_()
-        local _2_734_ = _3c_21(recv)
-        local data = _2_734_
-        local _4_735_ = 0
-        local i = _4_735_
+      local _let_737_ = require("lib.async")
+      local go_1_auto = _let_737_["go"]
+      local function _738_()
+        local _2_735_ = _3c_21(recv)
+        local data = _2_735_
+        local _4_736_ = 0
+        local i = _4_736_
         local function recur(data0, i0)
           if (nil ~= data0) then
-            local _738_, _739_ = socket.select(nil, {client}, 0)
-            if (true and ((_G.type(_739_) == "table") and (nil ~= _739_[1]))) then
-              local _ = _738_
-              local s = _739_[1]
-              local _740_, _741_, _742_ = s:send(data0, i0)
-              if ((_740_ == nil) and (_741_ == "timeout") and (nil ~= _742_)) then
-                local j = _742_
+            local _739_, _740_ = socket.select(nil, {client}, 0)
+            if (true and ((_G.type(_740_) == "table") and (nil ~= _740_[1]))) then
+              local _ = _739_
+              local s = _740_[1]
+              local _741_, _742_, _743_ = s:send(data0, i0)
+              if ((_741_ == nil) and (_742_ == "timeout") and (nil ~= _743_)) then
+                local j = _743_
                 _3c_21(timeout(10))
                 return recur(data0, j)
-              elseif ((_740_ == nil) and (_741_ == "closed")) then
+              elseif ((_741_ == nil) and (_742_ == "closed")) then
                 s:close()
                 return close_21(c)
               else
-                local _0 = _740_
+                local _0 = _741_
                 return recur(_3c_21(recv), 0)
               end
             else
-              local _ = _738_
+              local _ = _739_
               _3c_21(timeout(10))
               return recur(data0, i0)
             end
@@ -4018,58 +4240,58 @@ package.preload["src.tcp"] = package.preload["src.tcp"] or function(...)
             return nil
           end
         end
-        return recur(_2_734_, _4_735_)
+        return recur(_2_735_, _4_736_)
       end
-      go_1_auto(_737_)
+      go_1_auto(_738_)
     end
     do
-      local _let_749_ = require("lib.async")
-      local go_1_auto = _let_749_["go"]
-      local function _750_()
-        local _2_746_ = true
-        local wait_3f = _2_746_
-        local _4_747_ = ""
-        local part = _4_747_
-        local _6_748_ = nil
-        local remaining = _6_748_
+      local _let_750_ = require("lib.async")
+      local go_1_auto = _let_750_["go"]
+      local function _751_()
+        local _2_747_ = true
+        local wait_3f = _2_747_
+        local _4_748_ = ""
+        local part = _4_748_
+        local _6_749_ = nil
+        local remaining = _6_749_
         local function recur(wait_3f0, part0, remaining0)
           if wait_3f0 then
             _3c_21(ready)
           else
           end
           local size = (remaining0 or c["chunk-size"])
-          local _752_, _753_, _754_ = client:receive(size, "")
-          if (nil ~= _752_) then
-            local data = _752_
+          local _753_, _754_, _755_ = client:receive(size, "")
+          if (nil ~= _753_) then
+            local data = _753_
             _3e_21(resp, (part0 .. data))
             return recur(true, "", nil)
           else
-            local and_755_ = ((_752_ == nil) and (_753_ == "closed") and true)
-            if and_755_ then
-              local _3fdata = _754_
-              and_755_ = ((_3fdata == nil) or (_3fdata == ""))
+            local and_756_ = ((_753_ == nil) and (_754_ == "closed") and true)
+            if and_756_ then
+              local _3fdata = _755_
+              and_756_ = ((_3fdata == nil) or (_3fdata == ""))
             end
-            if and_755_ then
-              local _3fdata = _754_
+            if and_756_ then
+              local _3fdata = _755_
               client:close()
               return close_21(c)
-            elseif ((_752_ == nil) and (_753_ == "closed") and (nil ~= _754_)) then
-              local data = _754_
+            elseif ((_753_ == nil) and (_754_ == "closed") and (nil ~= _755_)) then
+              local data = _755_
               client:close()
               _3e_21(resp, data)
               return close_21(c)
             else
-              local and_757_ = ((_752_ == nil) and (_753_ == "timeout") and true)
-              if and_757_ then
-                local _3fdata = _754_
-                and_757_ = ((_3fdata == nil) or (_3fdata == ""))
+              local and_758_ = ((_753_ == nil) and (_754_ == "timeout") and true)
+              if and_758_ then
+                local _3fdata = _755_
+                and_758_ = ((_3fdata == nil) or (_3fdata == ""))
               end
-              if and_757_ then
-                local _3fdata = _754_
+              if and_758_ then
+                local _3fdata = _755_
                 _3c_21(timeout(10))
                 return recur(false, part0, remaining0)
-              elseif ((_752_ == nil) and (_753_ == "timeout") and (nil ~= _754_)) then
-                local data = _754_
+              elseif ((_753_ == nil) and (_754_ == "timeout") and (nil ~= _755_)) then
+                local data = _755_
                 local bytes_3f = ("number" == type(size))
                 local remaining1
                 if bytes_3f then
@@ -4089,61 +4311,58 @@ package.preload["src.tcp"] = package.preload["src.tcp"] or function(...)
             end
           end
         end
-        return recur(_2_746_, _4_747_, _6_748_)
+        return recur(_2_747_, _4_748_, _6_749_)
       end
-      go_1_auto(_750_)
+      go_1_auto(_751_)
     end
     return c
   end
-  local function chan0(_762_, xform, err_handler)
-    local host = _762_["host"]
-    local port = _762_["port"]
+  local function chan0(_763_, xform, err_handler)
+    local host = _763_["host"]
+    local port = _763_["port"]
     assert(socket, "tcp module requires luasocket")
     local host0 = (host or "localhost")
-    local function _763_(...)
-      local _764_, _765_ = ...
-      if (nil ~= _764_) then
-        local client = _764_
-        local function _766_(...)
-          local _767_, _768_ = ...
+    local function _764_(...)
+      local _765_, _766_ = ...
+      if (nil ~= _765_) then
+        local client = _765_
+        local function _767_(...)
+          local _768_, _769_ = ...
           if true then
-            local _ = _767_
+            local _ = _768_
             return socket_channel(client, xform, err_handler)
-          elseif ((_767_ == nil) and (nil ~= _768_)) then
-            local err = _768_
+          elseif ((_768_ == nil) and (nil ~= _769_)) then
+            local err = _769_
             return error(err)
           else
             return nil
           end
         end
-        return _766_(client:settimeout(0))
-      elseif ((_764_ == nil) and (nil ~= _765_)) then
-        local err = _765_
+        return _767_(client:settimeout(0))
+      elseif ((_765_ == nil) and (nil ~= _766_)) then
+        local err = _766_
         return error(err)
       else
         return nil
       end
     end
-    return _763_(socket.connect(host0, port))
+    return _764_(socket.connect(host0, port))
   end
   return {chan = chan0}
 end
-tcp0 = require("src.tcp")
-local _local_771_ = require("src.readers")
-local reader_3f = _local_771_["reader?"]
-package.preload["src.http-encoding"] = package.preload["src.http-encoding"] or function(...)
+package.preload["http.encoder"] = package.preload["http.encoder"] or function(...)
   local HTTP_VERSION = "HTTP/1.1"
-  local _local_772_ = require("lib.async")
-  local chan_3f = _local_772_["chan?"]
-  local utils = require("src.utils")
-  local _local_773_ = require("src.readers")
-  local reader_3f = _local_773_["reader?"]
+  local _local_773_ = require("lib.async")
+  local chan_3f = _local_773_["chan?"]
+  local utils = require("http.utils")
+  local _local_774_ = require("http.readers")
+  local reader_3f = _local_774_["reader?"]
   local function header__3estring(header, value)
     return (utils["capitalize-header"](header) .. ": " .. tostring(value) .. "\13\n")
   end
   local function headers__3estring(headers)
     if (headers and next(headers)) then
-      local function _774_()
+      local function _775_()
         local tbl_21_auto = {}
         local i_22_auto = 0
         for header, value in pairs(headers) do
@@ -4156,7 +4375,7 @@ package.preload["src.http-encoding"] = package.preload["src.http-encoding"] or f
         end
         return tbl_21_auto
       end
-      return table.concat(_774_())
+      return table.concat(_775_())
     else
       return nil
     end
@@ -4177,21 +4396,21 @@ package.preload["src.http-encoding"] = package.preload["src.http-encoding"] or f
   end
   local function prepare_chunk(body, read_fn)
     if chan_3f(body) then
-      local _778_ = read_fn(body)
-      if (nil ~= _778_) then
-        local data = _778_
+      local _779_ = read_fn(body)
+      if (nil ~= _779_) then
+        local data = _779_
         return true, encode_chunk(data)
-      elseif (_778_ == nil) then
+      elseif (_779_ == nil) then
         return false, encode_chunk("")
       else
         return nil
       end
     elseif reader_3f(body) then
-      local _780_ = body:read(1024)
-      if (nil ~= _780_) then
-        local data = _780_
+      local _781_ = body:read(1024)
+      if (nil ~= _781_) then
+        local data = _781_
         return true, encode_chunk(data)
-      elseif (_780_ == nil) then
+      elseif (_781_ == nil) then
         return false, encode_chunk("")
       else
         return nil
@@ -4209,214 +4428,7 @@ package.preload["src.http-encoding"] = package.preload["src.http-encoding"] or f
   end
   return {["build-http-response"] = build_http_response, ["encode-chunk"] = encode_chunk, ["prepare-chunk"] = prepare_chunk, ["prepare-amount"] = prepare_amount, ["build-http-request"] = build_http_request}
 end
-local _local_784_ = require("src.http-encoding")
-local build_http_response = _local_784_["build-http-response"]
-local encode_chunk = _local_784_["encode-chunk"]
-local prepare_chunk = _local_784_["prepare-chunk"]
-local prepare_amount = _local_784_["prepare-amount"]
-local build_http_request = _local_784_["build-http-request"]
-local function make_read_fn(receive)
-  local function _785_(src, pattern)
-    src["set-chunk-size"](src, pattern)
-    return receive(src)
-  end
-  return _785_
-end
-local function send_chunk(dst, send_fn, data, read_fn)
-  local more_3f, data0 = prepare_chunk(data, read_fn)
-  send_fn(dst, data0)
-  return more_3f
-end
-local function send_amount(dst, send_fn, data, read_fn, amount)
-  local len
-  if (1024 < amount) then
-    len = 1024
-  else
-    len = amount
-  end
-  local data0 = prepare_amount(data, read_fn, len)
-  local remaining = (amount - len)
-  send_fn(dst, data0)
-  if (remaining > 0) then
-    return remaining
-  else
-    return nil
-  end
-end
-local function stream_body(dst, body, send, receive, _788_)
-  local transfer_encoding = _788_["transfer-encoding"]
-  local content_length = _788_["content-length"]
-  if (transfer_encoding == "chunked") then
-    while send_chunk(dst, send, body, receive) do
-    end
-    return nil
-  elseif (content_length and reader_3f(body)) then
-    local function loop(remaining)
-      local _789_ = send_amount(dst, send, body, receive, remaining)
-      if (nil ~= _789_) then
-        local remaining0 = _789_
-        return loop(remaining0)
-      else
-        return nil
-      end
-    end
-    return loop(content_length)
-  else
-    return nil
-  end
-end
-local http = setmetatable({}, {__index = {version = "0.0.1"}})
-local function prepare_headers(_3fheaders, _3fbody, host, port)
-  local headers
-  do
-    local tbl_16_auto
-    local _792_
-    if port then
-      _792_ = (":" .. port)
-    else
-      _792_ = ""
-    end
-    local _795_
-    do
-      local _794_ = type(_3fbody)
-      if (_794_ == "string") then
-        _795_ = #_3fbody
-      else
-        _795_ = nil
-      end
-    end
-    local _799_
-    do
-      local _798_ = type(_3fbody)
-      if ((_798_ == "string") or (_798_ == "nil")) then
-        _799_ = nil
-      else
-        local _ = _798_
-        _799_ = "chunked"
-      end
-    end
-    tbl_16_auto = {host = (host .. _792_), ["content-length"] = _795_, ["transfer-encoding"] = _799_}
-    for k, v in pairs((_3fheaders or {})) do
-      local k_17_auto, v_18_auto = k, v
-      if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
-        tbl_16_auto[k_17_auto] = v_18_auto
-      else
-      end
-    end
-    headers = tbl_16_auto
-  end
-  if chan_3f(_3fbody) then
-    headers["content-length"] = nil
-    headers["transfer-encoding"] = "chunked"
-    return headers
-  elseif (reader_3f(_3fbody) and headers["content-length"]) then
-    headers["transfer-encoding"] = nil
-    return headers
-  else
-    return headers
-  end
-end
-http.request = function(method, url, _3fopts)
-  local _let_805_ = http_parser["parse-url"](url)
-  local host = _let_805_["host"]
-  local port = _let_805_["port"]
-  local parsed = _let_805_
-  local opts
-  do
-    local tbl_16_auto = {as = "raw", time = socket.gettime, ["async?"] = false}
-    for k, v in pairs((_3fopts or {})) do
-      local k_17_auto, v_18_auto = k, v
-      if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
-        tbl_16_auto[k_17_auto] = v_18_auto
-      else
-      end
-    end
-    opts = tbl_16_auto
-  end
-  local headers = prepare_headers(opts.headers, opts.body, host, port)
-  local req
-  local function _808_()
-    if (opts.body and (headers["transfer-encoding"] == "chunked")) then
-      local _, data = nil, nil
-      local function _807_()
-        if opts["async?"] then
-          return _3c_21
-        else
-          return _3c_21_21
-        end
-      end
-      _, data = prepare_chunk(opts.body, _807_())
-      return data
-    elseif ("string" == type(opts.body)) then
-      return opts.body
-    else
-      return nil
-    end
-  end
-  req = build_http_request(method, utils["format-path"](parsed), headers, _808_())
-  local chan0 = tcp0.chan(parsed)
-  if opts["async?"] then
-    local res = promise_chan()
-    opts.start = socket.gettime()
-    do
-      local _let_809_ = require("lib.async")
-      local go_1_auto = _let_809_["go"]
-      local function _810_()
-        _3e_21(chan0, req)
-        if opts.body then
-          stream_body(chan0, opts.body, _3e_21, _3c_21, headers)
-        else
-        end
-        local _812_
-        do
-          chan0["read"] = make_read_fn(_3c_21)
-          _812_ = chan0
-        end
-        return _3e_21(res, http_parser["parse-http-response"](_812_, opts))
-      end
-      go_1_auto(_810_)
-    end
-    return res
-  else
-    opts.start = socket.gettime()
-    _3e_21_21(chan0, req)
-    if opts.body then
-      stream_body(chan0, opts.body, _3e_21_21, _3c_21_21, headers)
-    else
-    end
-    local _814_
-    do
-      chan0["read"] = make_read_fn(_3c_21_21)
-      _814_ = chan0
-    end
-    return http_parser["parse-http-response"](_814_, opts)
-  end
-end
-http.get = function(url_2_auto, opts_3_auto)
-  return http.request("get", url_2_auto, opts_3_auto)
-end
-http.post = function(url_2_auto, opts_3_auto)
-  return http.request("post", url_2_auto, opts_3_auto)
-end
-http.put = function(url_2_auto, opts_3_auto)
-  return http.request("put", url_2_auto, opts_3_auto)
-end
-http.patch = function(url_2_auto, opts_3_auto)
-  return http.request("patch", url_2_auto, opts_3_auto)
-end
-http.options = function(url_2_auto, opts_3_auto)
-  return http.request("options", url_2_auto, opts_3_auto)
-end
-http.trace = function(url_2_auto, opts_3_auto)
-  return http.request("trace", url_2_auto, opts_3_auto)
-end
-http.head = function(url_2_auto, opts_3_auto)
-  return http.request("head", url_2_auto, opts_3_auto)
-end
-http.delete = function(url_2_auto, opts_3_auto)
-  return http.request("delete", url_2_auto, opts_3_auto)
-end
-http.connect = function(url_2_auto, opts_3_auto)
-  return http.request("connect", url_2_auto, opts_3_auto)
-end
-return http
+client = require("http.http")
+local json = require("http.json")
+local readers = require("http.readers")
+return setmetatable({client = client, json = json, readers = readers}, {__index = client})

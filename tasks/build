@@ -3,7 +3,7 @@
 (local fennel
   (require :fennel))
 
-(with-open [http (io.open :src/http.fnl :r)
+(with-open [http (io.open :http/init.fnl :r)
             out  (io.open :http.lua :w)]
   (case (xpcall #(fennel.compile-string
                   (http:read :*a)

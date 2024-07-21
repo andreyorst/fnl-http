@@ -1,7 +1,7 @@
 (require-macros (doto :lib.fennel-test require))
 
 (local readers
-  (require :src.readers))
+  (require :http.readers))
 
 (local (ltn? ltn12)
   (pcall require :ltn12))

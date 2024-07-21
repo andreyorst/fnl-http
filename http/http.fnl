@@ -1,27 +1,3 @@
-(comment
- "MIT License
-
-Copyright (c) 2024 Andrey Listopadov
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-")
-
 (local socket
   (require :socket))
 
@@ -35,23 +11,23 @@ SOFTWARE.
  (doto :lib.async require))
 
 (local http-parser
-  (require :src.http-parser))
+  (require :http.parser))
 
 (local utils
-  (require :src.utils))
+  (require :http.utils))
 
 (local tcp
-  (require :src.tcp))
+  (require :http.tcp))
 
 (local {: reader?}
-  (require :src.readers))
+  (require :http.readers))
 
 (local {: build-http-response
         : encode-chunk
         : prepare-chunk
         : prepare-amount
         : build-http-request}
-  (require :src.http-encoding))
+  (require :http.encoder))
 
 ;;; Helper functions
 

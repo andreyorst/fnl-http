@@ -5,15 +5,15 @@
         : prepare-chunk
         : prepare-amount
         : build-http-request}
-  (require :src.http-encoding))
+  (require :http.encoder))
 
 (local {: parse-http-response
         : parse-http-request
         : parse-url}
-  (require :src.http-parser))
+  (require :http.parser))
 
 (local {: string-reader}
-  (require :src.readers))
+  (require :http.readers))
 
 (deftest http-response-parsing-test
   (testing "http response roundtrip"

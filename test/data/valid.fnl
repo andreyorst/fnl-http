@@ -9,8 +9,7 @@
  {"" 2.3456789012e+76
   " s p a c e d " [1 2 3 4 5 6 7]
   "# -- --> */" " "
-  "/\\\"쫾몾ꮘﳞ볚\b\f
-\r\t`1~!@#$%^&*()_+-=[]{}|;:',./<>?" "A key can be any string"
+  "/\\\"쫾몾ꮘﳞ볚\b\f\n\r\t`1~!@#$%^&*()_+-=[]{}|;:',./<>?" "A key can be any string"
   :0123456789 "digit"
   :ALPHA "ABCDEFGHIJKLMNOPQRSTUVWYZ"
   :E 1.23456789e+34
@@ -20,8 +19,7 @@
   :backslash "\\"
   :comment "// /* <!-- --"
   :compact [1 2 3 4 5 6 7]
-  :controls "\b\f
-\r\t"
+  :controls "\b\f\n\r\t"
   :digit "0123456789"
   :e 1.23456789e-13
   :false false

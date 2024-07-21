@@ -4,10 +4,10 @@
   (require :lib.async))
 
 (local utils
-  (require :src.utils))
+  (require :http.utils))
 
 (local {: reader?}
-  (require :src.readers))
+  (require :http.readers))
 
 (fn header->string [header value]
   "Converts `header` and `value` arguments into a valid HTTP header

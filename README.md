@@ -12,21 +12,21 @@ This command produces a file named `http.lua` at the root directory of the repos
 
 # Usage
 
-The `http` module provides the following functions:
+The `http.client` module provides the following functions:
 
-- `http.get`
-- `http.post`
-- `http.put`
-- `http.patch`
-- `http.options`
-- `http.trace`
-- `http.head`
-- `http.delete`
-- `http.connect`
+- `get`
+- `post`
+- `put`
+- `patch`
+- `options`
+- `trace`
+- `head`
+- `delete`
+- `connect`
 
 Each invokes a specified HTTP method.
 
-A generic function `http.request` accepts method name as a string.
+A generic function `client.request` accepts method name as a string.
 
 All functions accepts the `opts` table, that contains the following keys:
 
@@ -46,6 +46,12 @@ Several options available for the `as` key:
   Note, `null` values are omitted from the resulting table.
 
 ## Examples
+
+Loading the library.
+
+```fennel
+(local http (require :http))
+```
 
 ### Accessing resources synchronously
 
@@ -136,6 +142,66 @@ By using the `async.fnl` library, multiple requests can be issued, selecting the
 ```
 
 Refer to the `async.fnl` documentation for more.
+
+## Extra modules
+
+After loading the main client module, extra public modules are available:
+
+```fennel
+(local json http.json) ;; json parser and encoder
+(local readers http.readers) ;; Reader module for creating readers
+```
+
+### JSON support
+
+The `json` module contains two functions: `encode` and `decode`.
+
+The `encode` function, produces a JSON string, given any Lua value, including tables.
+**Note**, cyclic tables are not supported.
+
+You can either use `json.encode` or just call the `json` module as a function:
+
+```fennel
+(json.encode {:foo "bar" :baz [1 2 3]})
+;; "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"
+```
+
+The `decode` function, decodes a given string, or a Reader object:
+
+```fennel
+(json.decode "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}")
+;; {:baz [1 2 3] :foo "bar"}
+(json.decode (readers.string-reader "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"))
+;; {:baz [1 2 3] :foo "bar"}
+```
+
+### Readers
+
+A Reader is a stateful object, which has a few specific methods:
+
+- `read` - reads an amount of bytes (or a pattern) from the Reader, advancing it.
+- `peek` - peeks at a specified amount of bytes without advancing the Reader.
+- `lines` - returns a function, that returns lines, similarly to `(: (io.open "file") :lines)`
+- `close` - closes the Reader, such that all methods no longer return any values.
+
+Readers are helpful for processing large request bodies, allowing stream-like workflow.
+
+There are a few predefined readers:
+
+- `file-reader` - wraps a file handle, or a path string, and returns a Reader.
+- `string-reader` - wraps a string, returning a Reader.
+- `ltn12-reader` - wraps an LTN12 source, returning a Reader <sup><i>yo dawg we put a reader on your reader, so you could read while you read</i></sup>.
+
+You can create your own Reader objects with the `make-reader` function.
+This function accepts the object to read from, and a table of methods:
+
+- `read-bytes` - should read a specified amount of bytes, and advance the object in some way.
+- `read-line` - should return a single line, and advance the object.
+- `peek` - should read a specified amount of bytes, without advancing a reader.
+- `close` - should close the object, such that other functions will no longer use it, and return `nil` on any call.
+
+All methods are optional, and nonexistent methods will return `nil` by default.
+Provide a method that throws an error, if you want your Reader to prohibit some methods.
 
 [1]: https://gitlab.com/andreyorst/async.fnl
 [2]: https://w3.impa.br/~diego/software/luasocket/home.html

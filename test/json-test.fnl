@@ -1,13 +1,13 @@
 (require-macros (doto :lib.fennel-test require))
 
-(local {: parse : json}
-  (require :src.json))
+(local {: decode : encode}
+  (require :http.json))
 
 (local readers
-  (require :src.readers))
+  (require :http.readers))
 
-(deftest parse-valid
+(deftest parse-valid-test
   (local valid (require :test.data.valid))
   (testing "parsing file"
-           (let [parsed (parse (readers.file-reader "test/data/valid.json"))]
-             (assert-eq valid parsed))))
+    (let [parsed (decode (readers.file-reader "test/data/valid.json"))]
+      (assert-eq valid parsed))))

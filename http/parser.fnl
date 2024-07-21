@@ -1,12 +1,12 @@
 (local {: make-reader
         : string-reader}
-  (require :src.readers))
+  (require :http.readers))
 
 (local json
-  (require :src.json))
+  (require :http.json))
 
 (local utils
-  (require :src.utils))
+  (require :http.utils))
 
 (fn parse-header [line]
   "Parse a single header from a `line`."
@@ -237,7 +237,7 @@ its headers, and a body stream."
       (tset :body
             (case as
               :raw (stream:read (or parsed-headers.Content-Length :*a))
-              :json (json.parse stream)
+              :json (json.decode stream)
               :stream stream
               _ (error (string.format "unsupported coersion method '%s'" as)))))))
 
