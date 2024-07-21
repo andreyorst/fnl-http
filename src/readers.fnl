@@ -49,16 +49,22 @@ each is `nil`."
 Accepts a file handle or a path string which is opened automatically."
   (let [file (case (type file)
                :string (io.open file :r)
-               _ file)]
+               _ file)
+        open? #(pick-values 1 (pcall #(: $ :read 0) $))]
       (make-reader file
-                   {:close #(: $ :close)
-                    :read-bytes (fn [f pattern] (f:read pattern))
-                    :read-line (file:lines)
+                   {:close #(when (open? $) (: $ :close))
+                    :read-bytes (fn [f pattern]
+                                  (when (open? f)
+                                    (f:read pattern)))
+                    :read-line (fn [f]
+                                 (let [next-line (when (open? f) (file:lines))]
+                                   (when (open? f) (next-line))))
                     :peek (fn [f pattern]
                             (assert (= :number (type pattern)) "expected number of bytes to peek")
-                            (let [res (f:read pattern)]
-                              (f:seek :cur (- pattern))
-                              res))})))
+                            (when (open? f)
+                              (let [res (f:read pattern)]
+                                (f:seek :cur (- pattern))
+                                res)))})))
 
 (fn string-reader [string]
   "Creates a `Reader` from the given `string`."
@@ -109,55 +115,60 @@ required.  If no `step` provided, the default `ltn12.pump.step` is
 used."
   (let [step (or step ltn12.pump.step)]
     (var buffer "")
+    (var closed? false)
     (fn read [_ pattern]
-      (let [rdr (string-reader buffer)
-            content (rdr:read pattern)
-            len (length (or content ""))
-            data []]
-        (case pattern
-          (where bytes (= :number (type bytes)))
-          (do (set buffer (buffer:sub (+ 1 len)))
-              (if (< len pattern)
-                  (if (step source (ltn12.sink.table data))
-                      (do (set buffer (.. buffer (or (. data 1) "")))
-                          (case (read _ (- bytes len))
-                            (where data data) (.. (or content "") data)
-                            _ content))
-                      content)
-                  content))
-          (where (or :*a :a))
-          (do (set buffer (buffer:sub (+ 1 len)))
-              (while (step source (ltn12.sink.table data)) nil)
-              (.. (or content "") (table.concat data)))
-          (where (or :*l :l))
-          (if (buffer:match "\n")
-              (do (set buffer (buffer:sub (+ 2 len)))
-                  content)
-              (if (step source (ltn12.sink.table data))
-                  (do (set buffer (.. buffer (or (. data 1) "")))
-                      (case (read _ pattern)
-                        (where data data) (.. (or content "") data)
-                        _ content))
-                  content)))))
-    (make-reader
-     source
-     {:close (fn [_]
-               (while (step source (ltn12.sink.null)) nil))
-      :read-bytes read
-      :read-line #(read $ :*l)
-      :peek (fn peek [_ bytes]
-              (let [rdr (string-reader buffer)
-                    content (rdr:read bytes)
-                    len (length (or content ""))
-                    data []]
-                (if (< len bytes)
+      (when (not closed?)
+        (let [rdr (string-reader buffer)
+              content (rdr:read pattern)
+              len (length (or content ""))
+              data []]
+          (case pattern
+            (where bytes (= :number (type bytes)))
+            (do (set buffer (or (rdr:read :*a) ""))
+                (if (< len pattern)
                     (if (step source (ltn12.sink.table data))
                         (do (set buffer (.. buffer (or (. data 1) "")))
-                            (case (peek _ (- bytes len))
-                              (where data data) data
+                            (case (read _ (- bytes len))
+                              (where data data) (.. (or content "") data)
                               _ content))
                         content)
-                    content)))})))
+                    content))
+            (where (or :*a :a))
+            (do (set buffer (or (rdr:read :*a) ""))
+                (while (step source (ltn12.sink.table data)) nil)
+                (.. (or content "") (table.concat data)))
+            (where (or :*l :l))
+            (if (buffer:match "\n")
+                (do (set buffer (or (rdr:read :*a) ""))
+                    content)
+                (if (step source (ltn12.sink.table data))
+                    (do (set buffer (.. buffer (or (. data 1) "")))
+                        (case (read _ pattern)
+                          data (.. (or content "") data)
+                          _ content))
+                    (do (set buffer (or (rdr:read :*a) ""))
+                        content)))))))
+    (make-reader
+     source
+     {:close (fn []
+               (while (step source (ltn12.sink.null)) nil)
+               (set closed? true))
+      :read-bytes read
+      :read-line #(when (not closed?) (read $ :*l))
+      :peek (fn peek [_ bytes]
+              (when (not closed?)
+                (let [rdr (string-reader buffer)
+                      content (rdr:peek bytes)
+                      len (length (or content ""))
+                      data []]
+                  (if (< len bytes)
+                      (if (step source (ltn12.sink.table data))
+                          (do (set buffer (.. buffer (or (. data 1) "")))
+                              (case (peek _ (- bytes len))
+                                (where data data) data
+                                _ content))
+                          content)
+                      content))))})))
 
 (fn reader? [obj]
   "Check if `obj` is an instance of `Reader`."

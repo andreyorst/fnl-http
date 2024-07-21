@@ -4,6 +4,7 @@
   (require :lib.fennel-test))
 
 (local tests
-  [:test.json-test])
+  [:test.json-test
+   :test.readers-test])
 
 (run-tests tests)

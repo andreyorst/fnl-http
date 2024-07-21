@@ -118,7 +118,7 @@ number of bytes to read."
       (error (.. "unsupported body type: " (tostring body)))))
 
 (fn send-amount [dst send-fn data read-fn amount]
-  (let [len (if (< 4 amount) 4 amount)
+  (let [len (if (< 1024 amount) 1024 amount)
         data (prepare-amount data read-fn len)
         remaining (- amount len)]
     (send-fn dst data)
