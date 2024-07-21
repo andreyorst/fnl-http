@@ -5,6 +5,7 @@
 
 (local tests
   [:test.json-test
-   :test.readers-test])
+   :test.readers-test
+   :test.http-parser-test])
 
 (run-tests tests)

@@ -28,37 +28,32 @@ SOFTWARE.
 (local {: <! : >! : <!! : >!! : close!
         : chan : chan? : promise-chan
         : tcp}
-  (include :lib.async))
+  (require :lib.async))
 
 (import-macros
  {: go}
  (doto :lib.async require))
 
 (local http-parser
-  (include :src.http-parser))
+  (require :src.http-parser))
 
 (local utils
-  (include :src.utils))
+  (require :src.utils))
 
 (local tcp
-  (include :src.tcp))
+  (require :src.tcp))
 
 (local {: reader?}
   (require :src.readers))
 
+(local {: build-http-response
+        : encode-chunk
+        : prepare-chunk
+        : prepare-amount
+        : build-http-request}
+  (require :src.http-encoding))
+
 ;;; Helper functions
-
-(fn header->string [header value]
-  "Converts `header` and `value` arguments into a valid HTTP header
-string."
-  (.. (utils.capitalize-header header) ": " (tostring value) "\r\n"))
-
-(fn headers->string [headers]
-  "Converts a `headers` table into a multiline string of HTTP headers."
-  (when (and headers (next headers))
-    (-> (icollect [header value (pairs headers)]
-          (header->string header value))
-        table.concat)))
 
 (fn make-read-fn [receive]
   "Returns a function that receives data from a socket by a given
@@ -68,54 +63,10 @@ number of bytes to read."
     (src:set-chunk-size pattern)
     (receive src)))
 
-(local HTTP-VERSION "HTTP/1.1")
-
-(fn build-http-request [method request-target ?headers ?content]
-  "Formaths the HTTP request string as per the HTTP/1.1 spec."
-  (string.format
-   "%s %s %s\r\n%s\r\n%s"
-   (string.upper method)
-   request-target
-   HTTP-VERSION
-   (or (headers->string ?headers) "")
-   (or ?content "")))
-
-(fn build-http-response [status reason ?headers ?content]
-  "Formats the HTTP response string as per the HTTP/1.1 spec."
-  (string.format
-   "%s %s %s\r\n%s\r\n%s"
-   HTTP-VERSION
-   (tostring status)
-   reason
-   (or (headers->string ?headers) "")
-   (or ?content "")))
-
-(fn encode-chunk [data]
-  (let [len (length data)]
-    (if (> len 0)
-        (string.format "%x\r\n%s\r\n" len data)
-        (string.format "%x\r\n\r\n" len))))
-
-(fn prepare-chunk [body read-fn]
-  (if (chan? body)
-      (case (read-fn body)
-        data (values true (encode-chunk data))
-        nil (values false (encode-chunk "")))
-      (reader? body)
-      (case (body:read 1024)
-        data (values true (encode-chunk data))
-        nil (values false (encode-chunk "")))
-      (error (.. "unsupported body type: " (tostring body)))))
-
 (fn send-chunk [dst send-fn data read-fn]
   (let [(more? data) (prepare-chunk data read-fn)]
     (send-fn dst data)
     more?))
-
-(fn prepare-amount [body read-fn amount]
-  (if (reader? body)
-      (body:read amount)
-      (error (.. "unsupported body type: " (tostring body)))))
 
 (fn send-amount [dst send-fn data read-fn amount]
   (let [len (if (< 1024 amount) 1024 amount)

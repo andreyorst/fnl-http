@@ -1,12 +1,12 @@
 (local {: make-reader
         : string-reader}
-  (include :src.readers))
+  (require :src.readers))
 
 (local json
-  (include :src.json))
+  (require :src.json))
 
 (local utils
-  (include :src.utils))
+  (require :src.utils))
 
 (fn parse-header [line]
   "Parse a single header from a `line`."
@@ -241,14 +241,6 @@ its headers, and a body stream."
               :stream stream
               _ (error (string.format "unsupported coersion method '%s'" as)))))))
 
-(comment
- (let [req (build-http-response 200 "OK" {:connection :close} "vaiv\ndaun\n")
-       rdr (string-reader req)
-       {: body : headers : reason-phrase : status}
-       (parse-http-response rdr (fn [src pattern] (src:read pattern)) {:as :raw})]
-   (= req (build-http-response status reason-phrase headers body)))
- )
-
 ;;; HTTP Request
 
 (fn parse-request-status-line [status]
@@ -275,14 +267,6 @@ its headers, and a body stream."
     (doto status
       (tset :headers headers)
       (tset :content (src:read :*a)))))
-
-(comment
- (let [req (build-http-request :get "/" {:connection :close} "vaiv\ndaun\n")
-       rdr (string-reader req)
-       {: headers : method : path : content}
-       (parse-http-request rdr (fn [src pattern] (src:read pattern)) rdr)]
-   (= req (build-http-request method path headers content)))
- )
 
 ;;; URL
 
