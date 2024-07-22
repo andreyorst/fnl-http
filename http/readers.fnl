@@ -50,9 +50,9 @@ Accepts a file handle or a path string which is opened automatically."
   (let [file (case (type file)
                :string (io.open file :r)
                _ file)
-        open? #(pick-values 1 (pcall #(: $ :read 0) $))]
+        open? #(pick-values 1 (pcall #($:read 0) $))]
       (make-reader file
-                   {:close #(when (open? $) (: $ :close))
+                   {:close #(when (open? $) ($:close))
                     :read-bytes (fn [f pattern]
                                   (when (open? f)
                                     (f:read pattern)))
@@ -72,7 +72,7 @@ Accepts a file handle or a path string which is opened automatically."
   (let [len (length string)
         try-read-line (fn [s pattern]
                         (case (s:find pattern i)
-                          (start end s)
+                          (_ end s)
                           (do (set i (+ end 1)) s)))
         read-line (fn [s]
                     (when (<= i len)

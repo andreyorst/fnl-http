@@ -8,6 +8,7 @@
   (case (xpcall #(fennel.compile-string
                   (http:read :*a)
                   {:requireAsInclude true
+                   :metadata true
                    :skipInclude [:socket :ltn12]})
                 fennel.traceback)
     (true lua-src) (out:write lua-src)

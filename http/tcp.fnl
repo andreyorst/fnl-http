@@ -9,12 +9,12 @@
 (local socket
   (require :socket))
 
-(fn set-chunk-size [self pattern-or-size]
+(fn -set-chunk-size [self pattern-or-size]
   ;; Sets the chunk-size property of a socket channel in order to
   ;; dynamically adjust during reads.
   (set self.chunk-size pattern-or-size))
 
-(fn socket-channel [client xform err-handler]
+(fn -socket-channel [client xform err-handler]
   ;; returns a combo channel, where puts and takes are handled by
   ;; different channels which are used as buffers for two async
   ;; processes that interact with the socket
@@ -34,7 +34,7 @@
                :close! close
                :close close
                :chunk-size 1024
-               :set-chunk-size set-chunk-size}
+               :set-chunk-size -set-chunk-size}
               (setmetatable
                {:__index (. (getmetatable ready) :__index)
                 :__name "SocketChannel"
@@ -101,7 +101,7 @@ The read pattern f a socket can be controlled with the
   (let [host (or host :localhost)]
     (match-try (socket.connect host port)
       client (client:settimeout 0)
-      _ (socket-channel client xform err-handler)
+      _ (-socket-channel client xform err-handler)
       (catch (nil err) (error err)))))
 
 {: chan}

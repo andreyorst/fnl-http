@@ -1,9 +1,6 @@
 (require-macros (doto :lib.fennel-test require))
 
 (local {: build-http-response
-        : encode-chunk
-        : prepare-chunk
-        : prepare-amount
         : build-http-request}
   (require :http.encoder))
 

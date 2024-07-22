@@ -1,9 +1,8 @@
 (local socket
   (require :socket))
 
-(local {: <! : >! : <!! : >!! : close!
-        : chan : chan? : promise-chan
-        : tcp}
+(local {: <! : >! : <!! : >!!
+        : chan? : promise-chan}
   (require :lib.async))
 
 (import-macros
@@ -22,12 +21,8 @@
 (local {: reader? : file-reader}
   (require :http.readers))
 
-(local {: build-http-response
-        : encode-chunk
-        : prepare-chunk
-        : prepare-amount
-        : build-http-request}
-  (require :http.encoder))
+(local {: build-http-request}
+  (require :http.builder))
 
 ;;; Helper functions
 
@@ -39,29 +34,50 @@ number of bytes to read."
     (src:set-chunk-size pattern)
     (receive src)))
 
-(fn send-chunk [dst send-fn data read-fn]
-  (let [(more? data) (prepare-chunk data read-fn)]
-    (send-fn dst data)
-    more?))
+(fn format-chunk [body read-fn]
+  (let [data? (if (chan? body)
+                  (read-fn body)
+                  (reader? body)
+                  (body:read 1024)
+                  (error (.. "unsupported body type: " (type body))))
+        data (or data? "")]
+    (values (not data?)
+            (string.format "%x\r\n%s\r\n" (length data) data))))
 
-(fn send-amount [dst send-fn data read-fn amount]
-  (let [len (if (< 1024 amount) 1024 amount)
-        data (prepare-amount data read-fn len)
-        remaining (- amount len)]
-    (send-fn dst data)
+(fn stream-chunks [dst body send receive]
+  "Sends chunks to `dst` obtained from the `body`.
+Only used when the size of the individual chunks or a total content
+lenght of the reader are not known.  The `body` can be a Channel or a
+Reader.  If the `body` is a Channel, `receive` is used to get the
+data.  In case of the `Reader`, it's being read in chunks of 1024
+bytes.  The resulting data is then `send` to `dst`."
+  (let [(last-chunk? data) (format-chunk body receive)]
+    (send dst data)
+    (when (not last-chunk?)
+      (stream-chunks dst body send receive))))
+
+(fn stream-reader [dst body send remaining]
+  "Sends chunks read from `body` to `dst` until `remaining` reaches 0.
+Used in cases when the reader was passed as the `body`, and the
+Content-Length header was provided. Uses the `send` function to send
+chunks to the `dst`."
+  (let [data (body:read (if (< 1024 remaining) 1024 remaining))]
+    (send dst data)
     (when (> remaining 0)
-      remaining)))
+      (stream-reader
+       dst body send
+       (- remaining (length data))))))
 
 (fn stream-body [dst body send receive
-                 {: transfer-encoding : content-length}]
+                 {: transfer-encoding
+                  : content-length}]
+  "Stream the given `body` to `dst` using `send`.
+Depending on values of the headers and the type of the `body`, decides
+how to stream the data."
   (if (= transfer-encoding "chunked")
-      (while (send-chunk dst send body receive) nil)
-      (and content-length
-           (reader? body))
-      ((fn loop [remaining]
-         (case (send-amount dst send body receive remaining)
-           remaining (loop remaining)))
-       content-length)))
+      (stream-chunks dst body send receive)
+      (and content-length (reader? body))
+      (stream-reader dst body send content-length)))
 
 (local http (setmetatable {} {:__index {:version "0.0.1"}}))
 
@@ -133,7 +149,7 @@ are made and the body is sent using chunked transfer encoding."
              (utils.format-path parsed)
              headers
              (if (and body (= headers.transfer-encoding "chunked"))
-                 (let [(_ data) (prepare-chunk body (if opts.async? <! <!!))]
+                 (let [(_ data) (format-chunk body (if opts.async? <! <!!))]
                    data)
                  (= :string (type body))
                  body))

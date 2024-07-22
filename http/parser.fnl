@@ -2,11 +2,11 @@
         : string-reader}
   (require :http.readers))
 
-(local json
+(local {: decode}
   (require :http.json))
 
-(local utils
-  (require :http.utils))
+(local {: as-data : capitalize-header}
+    (require :http.utils))
 
 (fn parse-header [line]
   "Parse a single header from a `line`."
@@ -44,7 +44,7 @@ append or override existing headers."
                    (doto res
                      (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
                  _ (doto res
-                     (tset field (utils.as-data part))))
+                     (tset field (as-data part))))
                ))
        _
        (let [reason (-> "%s/%s.%s +%s +"
@@ -148,7 +148,7 @@ chunk, once the buffer is empty."
     (values (> chunk-size 0) (string-reader buffer)))
   (make-reader
    src
-   {:read-bytes (fn [src pattern]
+   {:read-bytes (fn [_ pattern]
                   (let [rdr (string-reader buffer)]
                     (case pattern
                       (where n (= :number (type n)))
@@ -196,14 +196,14 @@ chunk, once the buffer is empty."
                            (src:read :*l))
                        buffer-content)))
     :close (fn [src] (src:close))
-    :peek (fn [src bytes]
+    :peek (fn [_ bytes]
             (assert (= :number (type bytes)) "expected number of bytes to peek")
             (let [rdr (string-reader buffer)
                   content (or (rdr:read bytes) "")
                   len (length content)]
               (if (= bytes len)
                   content
-                  (let [(last? rdr) (read-more)]
+                  (let [(_ rdr) (read-more)]
                     (let [data (rdr:read (- bytes len))]
                       (set buffer (.. buffer (or data "")))
                       buffer)))))}))
@@ -219,7 +219,7 @@ its headers, and a body stream."
   (let [status (read-response-status-line src)
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
-                         (utils.capitalize-header k) (utils.as-data v))
+                         (capitalize-header k) (as-data v))
         chunk-size (case (string.lower (or parsed-headers.Transfer-Encoding ""))
                      "chunked" (read-chunk-size src))
         stream (if chunk-size
@@ -237,7 +237,7 @@ its headers, and a body stream."
       (tset :body
             (case as
               :raw (stream:read (or parsed-headers.Content-Length :*a))
-              :json (json.decode stream)
+              :json (decode stream)
               :stream stream
               _ (error (string.format "unsupported coersion method '%s'" as)))))))
 
@@ -251,7 +251,7 @@ its headers, and a body stream."
        (let [part (reader)]
          (loop reader fields
                (doto res
-                 (tset field (utils.as-data part)))))
+                 (tset field (as-data part)))))
        _ res))
    (status:gmatch "([^ ]+)")
    [:method :path :http-version]
