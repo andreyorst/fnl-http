@@ -22,14 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ")
 
-(local client (require :http.http))
-
-(local json (require :http.json))
-
-(local readers (require :http.readers))
-
 (setmetatable
- {: client
-  : json
-  : readers}
- {:__index client})
+ {:client (require :http.client)
+  :json (require :http.json)
+  :readers (require :http.readers)}
+ {:__index (require :http.client)})

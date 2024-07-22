@@ -20,8 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 " ]]
-local client
-package.preload["http.http"] = package.preload["http.http"] or function(...)
+package.preload["http.client"] = package.preload["http.client"] or function(...)
   local socket = require("socket")
   local _local_485_ = require("lib.async")
   local _3c_21 = _local_485_["<!"]
@@ -4453,7 +4452,4 @@ package.preload["http.encoder"] = package.preload["http.encoder"] or function(..
   end
   return {["build-http-response"] = build_http_response, ["encode-chunk"] = encode_chunk, ["prepare-chunk"] = prepare_chunk, ["prepare-amount"] = prepare_amount, ["build-http-request"] = build_http_request}
 end
-client = require("http.http")
-local json = require("http.json")
-local readers = require("http.readers")
-return setmetatable({client = client, json = json, readers = readers}, {__index = client})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = require("http.client")})
