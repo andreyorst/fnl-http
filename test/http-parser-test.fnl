@@ -2,7 +2,7 @@
 
 (local {: build-http-response
         : build-http-request}
-  (require :http.encoder))
+  (require :http.builder))
 
 (local {: parse-http-response
         : parse-http-request
