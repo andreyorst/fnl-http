@@ -38,18 +38,18 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
   local _local_772_ = require("http.readers")
   local reader_3f = _local_772_["reader?"]
   local file_reader = _local_772_["file-reader"]
-  local _local_785_ = require("http.encoder")
-  local build_http_response = _local_785_["build-http-response"]
-  local encode_chunk = _local_785_["encode-chunk"]
-  local prepare_chunk = _local_785_["prepare-chunk"]
-  local prepare_amount = _local_785_["prepare-amount"]
-  local build_http_request = _local_785_["build-http-request"]
+  local _local_784_ = require("http.encoder")
+  local build_http_response = _local_784_["build-http-response"]
+  local encode_chunk = _local_784_["encode-chunk"]
+  local prepare_chunk = _local_784_["prepare-chunk"]
+  local prepare_amount = _local_784_["prepare-amount"]
+  local build_http_request = _local_784_["build-http-request"]
   local function make_read_fn(receive)
-    local function _786_(src, pattern)
+    local function _785_(src, pattern)
       src["set-chunk-size"](src, pattern)
       return receive(src)
     end
-    return _786_
+    return _785_
   end
   local function send_chunk(dst, send_fn, data, read_fn)
     local more_3f, data0 = prepare_chunk(data, read_fn)
@@ -72,18 +72,18 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       return nil
     end
   end
-  local function stream_body(dst, body, send, receive, _789_)
-    local transfer_encoding = _789_["transfer-encoding"]
-    local content_length = _789_["content-length"]
+  local function stream_body(dst, body, send, receive, _788_)
+    local transfer_encoding = _788_["transfer-encoding"]
+    local content_length = _788_["content-length"]
     if (transfer_encoding == "chunked") then
       while send_chunk(dst, send, body, receive) do
       end
       return nil
     elseif (content_length and reader_3f(body)) then
       local function loop(remaining)
-        local _790_ = send_amount(dst, send, body, receive, remaining)
-        if (nil ~= _790_) then
-          local remaining0 = _790_
+        local _789_ = send_amount(dst, send, body, receive, remaining)
+        if (nil ~= _789_) then
+          local remaining0 = _789_
           return loop(remaining0)
         else
           return nil
@@ -99,32 +99,32 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     local headers
     do
       local tbl_16_auto
-      local _793_
+      local _792_
       if port then
-        _793_ = (":" .. port)
+        _792_ = (":" .. port)
       else
-        _793_ = ""
+        _792_ = ""
       end
-      local _796_
+      local _795_
       do
-        local _795_ = type(_3fbody)
-        if (_795_ == "string") then
-          _796_ = #_3fbody
+        local _794_ = type(_3fbody)
+        if (_794_ == "string") then
+          _795_ = #_3fbody
         else
-          _796_ = nil
+          _795_ = nil
         end
       end
-      local _800_
+      local _799_
       do
-        local _799_ = type(_3fbody)
-        if ((_799_ == "string") or (_799_ == "nil")) then
-          _800_ = nil
+        local _798_ = type(_3fbody)
+        if ((_798_ == "string") or (_798_ == "nil")) then
+          _799_ = nil
         else
-          local _ = _799_
-          _800_ = "chunked"
+          local _ = _798_
+          _799_ = "chunked"
         end
       end
-      tbl_16_auto = {host = (host .. _793_), ["content-length"] = _796_, ["transfer-encoding"] = _800_}
+      tbl_16_auto = {host = (host .. _792_), ["content-length"] = _795_, ["transfer-encoding"] = _799_}
       for k, v in pairs((_3fheaders or {})) do
         local k_17_auto, v_18_auto = k, v
         if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
@@ -145,34 +145,34 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       return headers
     end
   end
-  local function wrap_body(val)
-    local _806_ = type(val)
-    if (_806_ == "table") then
+  local function wrap_body(body)
+    local _805_ = type(body)
+    if (_805_ == "table") then
       if chan_3f(body) then
         return body
       elseif reader_3f(body) then
         return body
       else
-        return val
+        return body
       end
-    elseif (_806_ == "userdata") then
-      local _808_ = getmetatable(val)
-      if ((_G.type(_808_) == "table") and (_808_.__name == "FILE*")) then
-        return file_reader(val)
+    elseif (_805_ == "userdata") then
+      local _807_ = getmetatable(body)
+      if ((_G.type(_807_) == "table") and (_807_.__name == "FILE*")) then
+        return file_reader(body)
       else
-        local _ = _808_
-        return val
+        local _ = _807_
+        return body
       end
     else
-      local _ = _806_
-      return val
+      local _ = _805_
+      return body
     end
   end
   http.request = function(method, url, _3fopts)
-    local _let_811_ = http_parser["parse-url"](url)
-    local host = _let_811_["host"]
-    local port = _let_811_["port"]
-    local parsed = _let_811_
+    local _let_810_ = http_parser["parse-url"](url)
+    local host = _let_810_["host"]
+    local port = _let_810_["port"]
+    local parsed = _let_810_
     local opts
     do
       local tbl_16_auto = {as = "raw", time = socket.gettime, ["async?"] = false}
@@ -188,17 +188,17 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     local body = wrap_body(opts.body)
     local headers = prepare_headers(opts.headers, body, host, port)
     local req
-    local function _814_()
+    local function _813_()
       if (body and (headers["transfer-encoding"] == "chunked")) then
         local _, data = nil, nil
-        local function _813_()
+        local function _812_()
           if opts["async?"] then
             return _3c_21
           else
             return _3c_21_21
           end
         end
-        _, data = prepare_chunk(body, _813_())
+        _, data = prepare_chunk(body, _812_())
         return data
       elseif ("string" == type(body)) then
         return body
@@ -206,28 +206,28 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
         return nil
       end
     end
-    req = build_http_request(method, utils["format-path"](parsed), headers, _814_())
+    req = build_http_request(method, utils["format-path"](parsed), headers, _813_())
     local chan0 = tcp0.chan(parsed)
     if opts["async?"] then
       local res = promise_chan()
       opts.start = socket.gettime()
       do
-        local _let_815_ = require("lib.async")
-        local go_1_auto = _let_815_["go"]
-        local function _816_()
+        local _let_814_ = require("lib.async")
+        local go_1_auto = _let_814_["go"]
+        local function _815_()
           _3e_21(chan0, req)
           if body then
             stream_body(chan0, body, _3e_21, _3c_21, headers)
           else
           end
-          local _818_
+          local _817_
           do
             chan0["read"] = make_read_fn(_3c_21)
-            _818_ = chan0
+            _817_ = chan0
           end
-          return _3e_21(res, http_parser["parse-http-response"](_818_, opts))
+          return _3e_21(res, http_parser["parse-http-response"](_817_, opts))
         end
-        go_1_auto(_816_)
+        go_1_auto(_815_)
       end
       return res
     else
@@ -237,12 +237,12 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
         stream_body(chan0, body, _3e_21_21, _3c_21_21, headers)
       else
       end
-      local _820_
+      local _819_
       do
         chan0["read"] = make_read_fn(_3c_21_21)
-        _820_ = chan0
+        _819_ = chan0
       end
-      return http_parser["parse-http-response"](_820_, opts)
+      return http_parser["parse-http-response"](_819_, opts)
     end
   end
   http.get = function(url_2_auto, opts_3_auto)
@@ -4411,30 +4411,25 @@ package.preload["http.encoder"] = package.preload["http.encoder"] or function(..
     return string.format("%s %s %s\13\n%s\13\n%s", HTTP_VERSION, tostring(status), reason, (headers__3estring(_3fheaders) or ""), (_3fcontent or ""))
   end
   local function encode_chunk(data)
-    local len = #data
-    if (len > 0) then
-      return string.format("%x\13\n%s\13\n", len, data)
-    else
-      return string.format("%x\13\n\13\n", len)
-    end
+    return string.format("%x\13\n%s\13\n", #data, data)
   end
   local function prepare_chunk(body, read_fn)
     if chan_3f(body) then
-      local _779_ = read_fn(body)
-      if (nil ~= _779_) then
-        local data = _779_
+      local _778_ = read_fn(body)
+      if (nil ~= _778_) then
+        local data = _778_
         return true, encode_chunk(data)
-      elseif (_779_ == nil) then
+      elseif (_778_ == nil) then
         return false, encode_chunk("")
       else
         return nil
       end
     elseif reader_3f(body) then
-      local _781_ = body:read(1024)
-      if (nil ~= _781_) then
-        local data = _781_
+      local _780_ = body:read(1024)
+      if (nil ~= _780_) then
+        local data = _780_
         return true, encode_chunk(data)
-      elseif (_781_ == nil) then
+      elseif (_780_ == nil) then
         return false, encode_chunk("")
       else
         return nil

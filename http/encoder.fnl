@@ -42,10 +42,7 @@ string."
    (or ?content "")))
 
 (fn encode-chunk [data]
-  (let [len (length data)]
-    (if (> len 0)
-        (string.format "%x\r\n%s\r\n" len data)
-        (string.format "%x\r\n\r\n" len))))
+  (string.format "%x\r\n%s\r\n" (length data) data))
 
 (fn prepare-chunk [body read-fn]
   (if (chan? body)

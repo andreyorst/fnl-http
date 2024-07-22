@@ -83,16 +83,16 @@ number of bytes to read."
           (tset :transfer-encoding nil))
         headers)))
 
-(fn wrap-body [val]
-  (case (type val)
+(fn wrap-body [body]
+  (case (type body)
     :table (if (chan? body) body
                (reader? body) body
-               val)
-    :userdata (case (getmetatable val)
+               body)
+    :userdata (case (getmetatable body)
                 {:__name "FILE*"}
-                (file-reader val)
-                _ val)
-    _ val))
+                (file-reader body)
+                _ body)
+    _ body))
 
 (fn http.request [method url ?opts]
   "Makes a `method` request to the `url`, returns the parsed response,
