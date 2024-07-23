@@ -31,8 +31,10 @@ A generic function `client.request` accepts method name as a string.
 All functions accepts the `opts` table, that contains the following keys:
 
 - `:async?` - a boolean, whether the request should be asynchronous.
-  The result is an instance of a `promise-chan`, and the body must
-  be read inside of a `go` block.
+  The result is a channel, that can be avaited.  The successful
+  response of a server is then passed to the `on-response` callback.
+  In case of any error during request, the `on-raise` callback is
+  called with the error message.
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional string body.
 - `:as` - how to coerce the body of the response.
@@ -114,31 +116,48 @@ Beware, that before closing the `client`, you must consume the body of the respo
 By supplying an options table with the `async?` key set to `true`, the request will be processed asynchronously.
 
 ```fennel
-(http.get "http://lua-users.org/" {:async? true})
+(http.get "http://lua-users.org/" {:async? true} on-response on-raise)
 ```
 
-The result will be a promise channel, which can be awaited using the `async` library:
+The result will be a channel, which can be awaited using the `async` library:
 
 ```fennel
 #<ManyToManyChannel: 0x55c221b267c0>
 ```
 
-If the body is requested to be a `stream`, the body must be read in asynchronous context, for example in a `go` block:
+The channel itself won't contain the response.
+Instead, it has to be interacted with the `on-response` and `on-raise` callbacks.
+
+If the body is requested to be a `stream`, the body must be read in asynchronous context.
+By default the `on-response` and `on-raise` callback run in the asynchronous context, but if the response is passed elsewhere it still has to be read in asynchronous context.
 
 ```fennel
-(go
- (let [resp (<! (http.get "http://lua-users.org/"
-                          {:async? true
-                           :as :stream}))]
-   (resp.body:read :*l)))
+(<!! (http.get "http://lua-users.org/"
+               {:async? true
+                :as :stream}
+               (fn on-response [resp]
+                 (print (resp.body:read resp.length)))
+               (fn on-raise [err]
+                 (io.stderr:write err))))
+
 ```
 
 By using the `async.fnl` library, multiple requests can be issued, selecting the fastest:
 
 ```fennel
 (go
-  (async.alts! [(http.get "http://lua-users.org/" {:async? true})
-                (http.get "http://lua-users.org/wiki/" {:async? true})]))
+  (let [on-response (fn [resp]
+                      (print (resp.body:read :*a)))
+        on-raise (fn [err]
+                   (io.stderr:write err))]
+    (async.alts! [(http.get "http://lua-users.org/"
+                            {:async? true
+                             :headers {:connection :close}}
+                            on-response on-raise)
+                  (http.get "http://lua-users.org/wiki/"
+                            {:async? true
+                             :headers {:connection :close}}
+                            on-response on-raise)])))
 ```
 
 Refer to the `async.fnl` documentation for more.

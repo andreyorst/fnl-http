@@ -28,7 +28,6 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
   local _3c_21_21 = _local_485_["<!!"]
   local _3e_21_21 = _local_485_[">!!"]
   local chan_3f = _local_485_["chan?"]
-  local promise_chan = _local_485_["promise-chan"]
   local http_parser = require("http.parser")
   local tcp = require("http.tcp")
   local _local_771_ = require("http.readers")
@@ -184,7 +183,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     end
     return ((path or "/") .. _803_ .. _805_)
   end
-  http.request = function(method, url, _3fopts)
+  http.request = function(method, url, _3fopts, on_response, on_raise)
     local _let_807_ = http_parser["parse-url"](url)
     local host = _let_807_["host"]
     local port = _let_807_["port"]
@@ -223,29 +222,46 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       end
     end
     req = build_http_request(method, format_path(parsed), headers, _810_())
-    local chan = tcp.chan(parsed)
-    if opts["async?"] then
-      local res = promise_chan()
-      opts.start = socket.gettime()
-      do
-        local _let_811_ = require("lib.async")
-        local go_1_auto = _let_811_["go"]
-        local function _812_()
-          _3e_21(chan, req)
-          if body then
-            stream_body(chan, body, _3e_21, _3c_21, headers)
-          else
-          end
-          local _814_
-          do
-            chan["read"] = make_read_fn(_3c_21)
-            _814_ = chan
-          end
-          return _3e_21(res, http_parser["parse-http-response"](_814_, opts))
+    local chan
+    do
+      local tmp_9_auto = tcp.chan(parsed)
+      local function _811_()
+        if opts["async?"] then
+          return _3c_21
+        else
+          return _3c_21_21
         end
-        go_1_auto(_812_)
       end
-      return res
+      tmp_9_auto["read"] = make_read_fn(_811_())
+      chan = tmp_9_auto
+    end
+    if opts["async?"] then
+      assert((on_response and on_raise), "If :async? is true, you must pass on-response and on-raise callbacks")
+    else
+    end
+    if opts["async?"] then
+      local _let_813_ = require("lib.async")
+      local go_1_auto = _let_813_["go"]
+      local function _814_()
+        opts.start = socket.gettime()
+        _3e_21(chan, req)
+        if body then
+          stream_body(chan, body, _3e_21, _3c_21, headers)
+        else
+        end
+        local _816_, _817_ = pcall(http_parser["parse-http-response"], chan, opts)
+        if ((_816_ == true) and (nil ~= _817_)) then
+          local resp = _817_
+          return on_response(resp)
+        elseif (true and (nil ~= _817_)) then
+          local _ = _816_
+          local err = _817_
+          return on_raise(err)
+        else
+          return nil
+        end
+      end
+      return go_1_auto(_814_)
     else
       opts.start = socket.gettime()
       _3e_21_21(chan, req)
@@ -253,40 +269,35 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
         stream_body(chan, body, _3e_21_21, _3c_21_21, headers)
       else
       end
-      local _816_
-      do
-        chan["read"] = make_read_fn(_3c_21_21)
-        _816_ = chan
-      end
-      return http_parser["parse-http-response"](_816_, opts)
+      return http_parser["parse-http-response"](chan, opts)
     end
   end
-  http.get = function(url_2_auto, opts_3_auto)
-    return http.request("get", url_2_auto, opts_3_auto)
+  http.get = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("get", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.post = function(url_2_auto, opts_3_auto)
-    return http.request("post", url_2_auto, opts_3_auto)
+  http.post = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("post", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.put = function(url_2_auto, opts_3_auto)
-    return http.request("put", url_2_auto, opts_3_auto)
+  http.put = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("put", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.patch = function(url_2_auto, opts_3_auto)
-    return http.request("patch", url_2_auto, opts_3_auto)
+  http.patch = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("patch", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.options = function(url_2_auto, opts_3_auto)
-    return http.request("options", url_2_auto, opts_3_auto)
+  http.options = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("options", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.trace = function(url_2_auto, opts_3_auto)
-    return http.request("trace", url_2_auto, opts_3_auto)
+  http.trace = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("trace", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.head = function(url_2_auto, opts_3_auto)
-    return http.request("head", url_2_auto, opts_3_auto)
+  http.head = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("head", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.delete = function(url_2_auto, opts_3_auto)
-    return http.request("delete", url_2_auto, opts_3_auto)
+  http.delete = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("delete", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
-  http.connect = function(url_2_auto, opts_3_auto)
-    return http.request("connect", url_2_auto, opts_3_auto)
+  http.connect = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
+    return http.request("connect", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
   end
   return http
 end

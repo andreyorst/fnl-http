@@ -1,13 +1,12 @@
 (local socket
   (require :socket))
 
-(local {: <! : >! : <!! : >!!
-        : chan? : promise-chan}
+(local {: <! : >! : <!! : >!! : chan?}
   (require :lib.async))
 
 (import-macros
  {: go}
- (doto :lib.async require))
+ :lib.async)
 
 (local http-parser
   (require :http.parser))
@@ -112,15 +111,17 @@ how to stream the data."
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
   (.. (or path "/") (if query (.. "?" query) "") (if fragment (.. "?" fragment) "")))
 
-(fn http.request [method url ?opts]
+(fn http.request [method url ?opts on-response on-raise]
   "Makes a `method` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
 
 - `:async?` - a boolean, whether the request should be asynchronous.
-  The result is an instance of a `promise-chan`, and the body must
-  be read inside of a `go` block.
+  The result is a channel, that can be avaited.  The successful
+  response of a server is then passed to the `on-response` callback.
+  In case of any error during request, the `on-raise` callback is
+  called with the error message.
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
@@ -155,32 +156,35 @@ are made and the body is sent using chunked transfer encoding."
                    data)
                  (= :string (type body))
                  body))
-        chan (tcp.chan parsed)]
+        chan (doto (tcp.chan parsed)
+               (tset :read
+                     (make-read-fn
+                      (if opts.async? <! <!!))))]
+    (when opts.async?
+      (assert
+       (and on-response on-raise)
+       "If :async? is true, you must pass on-response and on-raise callbacks"))
     (if opts.async?
-        (let [res (promise-chan)]
-          (set opts.start (socket.gettime))
-          (go (>! chan req)
-              (when body
-                (stream-body chan body >! <! headers))
-              (>! res (http-parser.parse-http-response
-                       (doto chan
-                         (tset :read (make-read-fn <!)))
-                       opts)))
-          res)
+        (go (set opts.start (socket.gettime))
+            (>! chan req)
+            (when body
+              (stream-body chan body >! <! headers))
+            (case (pcall http-parser.parse-http-response chan opts)
+              (true resp) (on-response resp)
+              (_ err) (on-raise err)))
         (do (set opts.start (socket.gettime))
             (>!! chan req)
             (when body
               (stream-body chan body >!! <!! headers))
             (http-parser.parse-http-response
-             (doto chan
-               (tset :read (make-read-fn <!!)))
+             chan
              opts)))))
 
 (macro define-http-method [method]
   "Defines an HTTP method for the given `method`."
   `(fn ,(sym (.. :http. (tostring method)))
-     [url# opts#]
-     {:fnl/arglist [url opts]
+     [url# opts# on-response# on-raise#]
+     {:fnl/arglist [url opts on-response on-raise]
       :fnl/docstring ,(.. "Makes a `" (string.upper (tostring method))
                           "` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
@@ -188,8 +192,10 @@ describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
 
 - `:async?` - a boolean, whether the request should be asynchronous.
-  The result is an instance of a `promise-chan`, and the body must
-  be read inside of a `go` block.
+  The result is a channel, that can be avaited.  The successful
+  response of a server is then passed to the `on-response` callback.
+  In case of any error during request, the `on-raise` callback is
+  called with the error message.
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
@@ -207,7 +213,7 @@ supplying a non-string body, headers should contain a
 header is missing it is automatically determined by calling the
 `length` function, ohterwise no attempts at detecting content-length
 are made and the body is sent using chunked transfer encoding.")}
-     (http.request ,(tostring method) url# opts#)))
+     (http.request ,(tostring method) url# opts# on-response# on-raise#)))
 
 (define-http-method get)
 (define-http-method post)
