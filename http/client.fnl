@@ -110,7 +110,7 @@ how to stream the data."
 (fn format-path [{: path : query : fragment}]
   "Formats the PATH component of a HTTP `Path` header.
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
-  (.. "/" (or path "") (if query (.. "?" query) "") (if fragment (.. "?" fragment) "")))
+  (.. (or path "/") (if query (.. "?" query) "") (if fragment (.. "?" fragment) "")))
 
 (fn http.request [method url ?opts]
   "Makes a `method` request to the `url`, returns the parsed response,

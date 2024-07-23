@@ -7,6 +7,7 @@
   [:test.json-test
    :test.readers-test
    :test.http-parser-test
-   :test.headers-test])
+   :test.headers-test
+   :test.url-test])
 
 (run-tests tests)

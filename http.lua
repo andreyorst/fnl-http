@@ -182,7 +182,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     else
       _805_ = ""
     end
-    return ("/" .. (path or "") .. _803_ .. _805_)
+    return ((path or "/") .. _803_ .. _805_)
   end
   http.request = function(method, url, _3fopts)
     local _let_807_ = http_parser["parse-url"](url)
@@ -3410,9 +3410,9 @@ package.preload["http.parser"] = package.preload["http.parser"] or function(...)
     local scheme = url:match("^([^:]+)://")
     local function _723_()
       if scheme then
-        return url:match("//([^/]+)/")
+        return url:match("//([^/]+)/?")
       else
-        return url:match("^([^/]+)/")
+        return url:match("^([^/]+)/?")
       end
     end
     local _let_724_ = parse_authority(_723_())
@@ -3432,7 +3432,7 @@ package.preload["http.parser"] = package.preload["http.parser"] or function(...)
       end
     end
     port0 = or_725_
-    local path = url:match("//[^/]+/([^?#]+)")
+    local path = url:match("//[^/]+(/[^?#]*)")
     local query = url:match("%?([^#]+)#?")
     local fragment = url:match("#([^?]+)%??")
     return {scheme = scheme0, host = host, port = port0, userinfo = userinfo, path = path, query = query, fragment = fragment}

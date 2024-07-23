@@ -293,11 +293,11 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
         {: host : port : userinfo}
         (parse-authority
          (if scheme
-             (url:match "//([^/]+)/")
-             (url:match "^([^/]+)/")))
+             (url:match "//([^/]+)/?")
+             (url:match "^([^/]+)/?")))
         scheme (or scheme "http")
         port (or port (case scheme :https 443 :http 80))
-        path (url:match "//[^/]+/([^?#]+)")
+        path (url:match "//[^/]+(/[^?#]*)")
         query (url:match "%?([^#]+)#?")
         fragment (url:match "#([^?]+)%??")]
     {: scheme : host : port : userinfo : path : query : fragment}))
