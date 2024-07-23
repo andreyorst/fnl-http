@@ -1,7 +1,7 @@
 (local HTTP-VERSION "HTTP/1.1")
 
 (local {: capitalize-header}
-    (require :http.utils))
+  (require :http.headers))
 
 (fn -header->string [header value]
   "Converts `header` and `value` arguments into a valid HTTP header

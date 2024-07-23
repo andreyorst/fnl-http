@@ -12,9 +12,6 @@
 (local http-parser
   (require :http.parser))
 
-(local utils
-  (require :http.utils))
-
 (local tcp
   (require :http.tcp))
 
@@ -110,6 +107,11 @@ how to stream the data."
                 _ body)
     _ body))
 
+(fn format-path [{: path : query : fragment}]
+  "Formats the PATH component of a HTTP `Path` header.
+Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
+  (.. "/" (or path "") (if query (.. "?" query) "") (if fragment (.. "?" fragment) "")))
+
 (fn http.request [method url ?opts]
   "Makes a `method` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
@@ -146,7 +148,7 @@ are made and the body is sent using chunked transfer encoding."
         headers (prepare-headers opts.headers body host port)
         req (build-http-request
              method
-             (utils.format-path parsed)
+             (format-path parsed)
              headers
              (if (and body (= headers.transfer-encoding "chunked"))
                  (let [(_ data) (format-chunk body (if opts.async? <! <!!))]

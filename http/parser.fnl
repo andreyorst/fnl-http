@@ -5,8 +5,9 @@
 (local {: decode}
   (require :http.json))
 
-(local {: as-data : capitalize-header}
-    (require :http.utils))
+(local {: decode-value
+        : capitalize-header}
+    (require :http.headers))
 
 (fn parse-header [line]
   "Parse a single header from a `line`."
@@ -44,7 +45,7 @@ append or override existing headers."
                    (doto res
                      (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
                  _ (doto res
-                     (tset field (as-data part))))
+                     (tset field (decode-value part))))
                ))
        _
        (let [reason (-> "%s/%s.%s +%s +"
@@ -219,9 +220,11 @@ its headers, and a body stream."
   (let [status (read-response-status-line src)
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
-                         (capitalize-header k) (as-data v))
+                         (capitalize-header k) (decode-value v))
         chunk-size (case (string.lower (or parsed-headers.Transfer-Encoding ""))
-                     "chunked" (read-chunk-size src))
+                     (where header (or (header:match "chunked[, ]")
+                                       (header:match "chunked$")))
+                     (read-chunk-size src))
         stream (if chunk-size
                    (chunked-body-reader src chunk-size)
                    (body-reader src))]
@@ -251,7 +254,7 @@ its headers, and a body stream."
        (let [part (reader)]
          (loop reader fields
                (doto res
-                 (tset field (as-data part)))))
+                 (tset field (decode-value part)))))
        _ res))
    (status:gmatch "([^ ]+)")
    [:method :path :http-version]
