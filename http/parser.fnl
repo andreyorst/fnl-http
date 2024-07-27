@@ -209,7 +209,23 @@ chunk, once the buffer is empty."
                       (set buffer (.. buffer (or data "")))
                       buffer)))))}))
 
-(fn parse-http-response [src {: as : parse-headers? : start : time}]
+(local non-error-statuses
+  {200 true
+   201 true
+   202 true
+   203 true
+   204 true
+   205 true
+   206 true
+   207 true
+   300 true
+   301 true
+   302 true
+   303 true
+   304 true
+   307 true})
+
+(fn parse-http-response [src {: as : parse-headers? : start : time : throw-errors?}]
   "Parse the beginning of the HTTP response.
 Accepts `src` that is a source, that can be read with the `read`
 method.  The `read` is a special storage to alter how `receive`
@@ -227,22 +243,26 @@ its headers, and a body stream."
                      (read-chunk-size src))
         stream (if chunk-size
                    (chunked-body-reader src chunk-size)
-                   (body-reader src))]
-    (doto status
-      (tset :headers (if parse-headers?
-                         parsed-headers
-                         headers))
-      (tset :length (tonumber parsed-headers.Content-Length))
-      (tset :client src)
-      (tset :request-time
-            (when (and start time)
-              (math.ceil (* 1000 (- (time) start)))))
-      (tset :body
-            (case as
-              :raw (stream:read (or parsed-headers.Content-Length :*a))
-              :json (decode stream)
-              :stream stream
-              _ (error (string.format "unsupported coersion method '%s'" as)))))))
+                   (body-reader src))
+        response (doto status
+                   (tset :headers (if parse-headers?
+                                      parsed-headers
+                                      headers))
+                   (tset :length (tonumber parsed-headers.Content-Length))
+                   (tset :client src)
+                   (tset :request-time
+                         (when (and start time)
+                           (math.ceil (* 1000 (- (time) start)))))
+                   (tset :body
+                         (case as
+                           :raw (stream:read (or parsed-headers.Content-Length :*a))
+                           :json (decode stream)
+                           :stream stream
+                           _ (error (string.format "unsupported coersion method '%s'" as)))))]
+    (if (and throw-errors?
+             (not (. non-error-statuses response.status)))
+        (error response)
+        response)))
 
 ;;; HTTP Request
 

@@ -33,6 +33,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -68,6 +71,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -103,6 +109,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -138,6 +147,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -173,6 +185,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -208,6 +223,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -243,6 +261,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -278,6 +299,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -313,6 +337,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -348,6 +375,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 

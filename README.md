@@ -38,6 +38,8 @@ All functions accepts the `opts` table, that contains the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional string body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302, 303, 304, 307.
+  Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -135,8 +137,8 @@ The `on-response` and `on-raise` callback run in the asynchronous context, thus 
                 :as :stream}
                (fn on-response [resp]
                  (print (resp.body:read resp.length)))
-               (fn on-raise [err]
-                 (io.stderr:write err))))
+               (fn on-raise [err-resp]
+                 (io.stderr:write (err-resp.body:read resp.length)))))
 
 ```
 
@@ -146,8 +148,8 @@ By using the `async.fnl` library, multiple requests can be issued, selecting the
 (go
   (let [on-response (fn [resp]
                       (print (resp.body:read :*a)))
-        on-raise (fn [err]
-                   (io.stderr:write err))]
+        on-raise (fn [err-resp]
+                   (io.stderr:write err-resp.status))]
     (async.alts! [(http.get "http://lua-users.org/"
                             {:async? true
                              :headers {:connection :close}}

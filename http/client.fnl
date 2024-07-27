@@ -143,6 +143,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
@@ -161,7 +164,8 @@ are made and the body is sent using chunked transfer encoding."}
         opts (collect [k v (pairs (or ?opts {}))
                        :into {:as :raw
                               :async? false
-                              :time socket.gettime}]
+                              :time socket.gettime
+                              :throw-errors? true}]
                k v)
         body (wrap-body opts.body)
         headers (prepare-headers opts.headers body host port)
@@ -215,6 +219,9 @@ table containing the following keys:
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional body.
 - `:as` - how to coerce the body of the response.
+- `:throw-errors?` - whether to throw errors on response statuses
+  other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
+  303, 304, 307. Defaults to `true`.
 
 Several options available for the `as` key:
 
