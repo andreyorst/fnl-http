@@ -1,12 +1,29 @@
 (local socket
   (require :socket))
 
-(local {: <! : >! : <!! : >!! : chan?}
+(local {: >! : <! : >!! : <!!
+        : chan? : main-thread?}
   (require :lib.async))
 
+(fn <!? [port]
+  "Takes a value from `port`.  Will return `nil` if closed.  Will block
+if nothing is available and used on the main thread.  Will park if
+nothing is available and used in the `go` block."
+  (if (main-thread?)
+      (<!! port)
+      (<! port)))
+
+(fn >!? [port val]
+  "Puts a `val` into `port`.  `nil` values are not allowed.  Must be
+called inside a `(go ...)` block.  Will park if no buffer space is
+available.  Returns `true` unless `port` is already closed."
+  (if (main-thread?)
+      (>!! port val)
+      (>! port val)))
+
 (import-macros
- {: go}
- :lib.async)
+    {: go}
+  (doto :lib.async require))
 
 (local http-parser
   (require :http.parser))
@@ -111,14 +128,15 @@ how to stream the data."
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
   (.. (or path "/") (if query (.. "?" query) "") (if fragment (.. "?" fragment) "")))
 
-(fn http.request [method url ?opts on-response on-raise]
-  "Makes a `method` request to the `url`, returns the parsed response,
+(fn http.request [method url ?opts ?on-response ?on-raise]
+  {:fnl/arglist [method url opts on-response on-raise]
+   :fnl/docstring "Makes a `method` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
 
 - `:async?` - a boolean, whether the request should be asynchronous.
-  The result is a channel, that can be avaited.  The successful
+  The result is a channel, that can be awaited.  The successful
   response of a server is then passed to the `on-response` callback.
   In case of any error during request, the `on-raise` callback is
   called with the error message.
@@ -138,7 +156,7 @@ supplying a non-string body, headers should contain a
 \"content-length\" key. For a string body, if the \"content-length\"
 header is missing it is automatically determined by calling the
 `length` function, ohterwise no attempts at detecting content-length
-are made and the body is sent using chunked transfer encoding."
+are made and the body is sent using chunked transfer encoding."}
   (let [{: host : port &as parsed} (http-parser.parse-url url)
         opts (collect [k v (pairs (or ?opts {}))
                        :into {:as :raw
@@ -152,17 +170,15 @@ are made and the body is sent using chunked transfer encoding."
              (format-path parsed)
              headers
              (if (and body (= headers.transfer-encoding "chunked"))
-                 (let [(_ data) (format-chunk body (if opts.async? <! <!!))]
+                 (let [(_ data) (format-chunk body <!?)]
                    data)
                  (= :string (type body))
                  body))
         chan (doto (tcp.chan parsed)
-               (tset :read
-                     (make-read-fn
-                      (if opts.async? <! <!!))))]
+               (tset :read (make-read-fn <!?)))]
     (when opts.async?
       (assert
-       (and on-response on-raise)
+       (and ?on-response ?on-raise)
        "If :async? is true, you must pass on-response and on-raise callbacks"))
     (if opts.async?
         (go (set opts.start (socket.gettime))
@@ -170,8 +186,8 @@ are made and the body is sent using chunked transfer encoding."
             (when body
               (stream-body chan body >! <! headers))
             (case (pcall http-parser.parse-http-response chan opts)
-              (true resp) (on-response resp)
-              (_ err) (on-raise err)))
+              (true resp) (?on-response resp)
+              (_ err) (?on-raise err)))
         (do (set opts.start (socket.gettime))
             (>!! chan req)
             (when body
@@ -192,7 +208,7 @@ describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
 
 - `:async?` - a boolean, whether the request should be asynchronous.
-  The result is a channel, that can be avaited.  The successful
+  The result is a channel, that can be awaited.  The successful
   response of a server is then passed to the `on-response` callback.
   In case of any error during request, the `on-raise` callback is
   called with the error message.

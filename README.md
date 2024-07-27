@@ -1,6 +1,7 @@
-# http.fnl (WIP)
+# http.fnl
 
-A [clj-http][1]-inspired library for making asynchronous HTTP/1.1 requests written in Fennel using [async.fnl][3] and [luasocket][3]
+A [clj-http][1]-inspired library for making HTTP/1.1 requests written in Fennel.
+This library utilizes [async.fnl][3] for asynchronous request processing and [luasocket][3] for an actual implementation of sockets.
 
 # Building
 
@@ -26,15 +27,14 @@ The `http.client` module provides the following functions:
 
 Each invokes a specified HTTP method.
 
-A generic function `client.request` accepts method name as a string.
+A generic function `client.request` accepts method name as a string and is a base for all other functions internally.
 
 All functions accepts the `opts` table, that contains the following keys:
 
 - `:async?` - a boolean, whether the request should be asynchronous.
-  The result is a channel, that can be avaited.  The successful
-  response of a server is then passed to the `on-response` callback.
-  In case of any error during request, the `on-raise` callback is
-  called with the error message.
+  The result is a channel, that can be awaited.
+  The successful response of a server is then passed to the `on-response` callback.
+  In case of any error during request, the `on-raise` callback is called with the error message.
 - `:headers` - a table with the HTTP headers for the request
 - `:body` - an optional string body.
 - `:as` - how to coerce the body of the response.
@@ -127,9 +127,7 @@ The result will be a channel, which can be awaited using the `async` library:
 
 The channel itself won't contain the response.
 Instead, it has to be interacted with the `on-response` and `on-raise` callbacks.
-
-If the body is requested to be a `stream`, the body must be read in asynchronous context.
-By default the `on-response` and `on-raise` callback run in the asynchronous context, but if the response is passed elsewhere it still has to be read in asynchronous context.
+The `on-response` and `on-raise` callback run in the asynchronous context, thus blocking operations should be avoided.
 
 ```fennel
 (<!! (http.get "http://lua-users.org/"

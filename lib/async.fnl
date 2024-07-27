@@ -72,7 +72,6 @@ of termination."
 
 (fn main-thread? []
   "Check if current thread is a main one and not a coroutine."
-  {:private true}
   (case (c/running)
     nil true
     (_ true) true
@@ -965,6 +964,8 @@ available.  Returns `true` unless `port` is already closed."
   (case (port:put! val fhnop)
     retb (unbox retb)))
 
+
+
 (fn close! [port]
   "Close `port`."
   (assert (chan? port) "expected a channel")
@@ -1659,6 +1660,7 @@ default, unless `buf-or-n` is given."
  : sliding-buffer
  : promise-buffer
  : unblocking-buffer?
+ : main-thread?
  : chan
  : chan?
  : promise-chan
