@@ -185,7 +185,7 @@ are made and the body is sent using chunked transfer encoding."}
                (tset :read (make-read-fn <!?))
                (tset :receive (fn [pattern prefix]
                                 (src:set-chunk-size pattern)
-                                (.. (or prefix "") (receive src))))
+                                (.. (or prefix "") (<!? src))))
                (tset :send (fn [ch data ...]
                              (->> (case (values (select :# ...) ...)
                                     0 data
