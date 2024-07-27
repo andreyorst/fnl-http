@@ -178,7 +178,10 @@ are made and the body is sent using chunked transfer encoding."}
                    data)
                  (= :string (type body))
                  body))
-        chan (doto (tcp.chan parsed)
+        chan (doto (tcp.chan parsed nil (when (and opts.async?)
+                                          (fn [err]
+                                            (?on-raise err)
+                                            nil)))
                (tset :read (make-read-fn <!?))
                (tset :receive (fn [pattern prefix]
                                 (src:set-chunk-size pattern)
