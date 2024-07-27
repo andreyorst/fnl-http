@@ -1,9 +1,37 @@
 (local socket
   (require :socket))
 
+(import-macros
+    {: go}
+  (doto :lib.async require))
+
 (local {: >! : <! : >!! : <!!
         : chan? : main-thread?}
   (require :lib.async))
+
+(local http-parser
+  (require :http.parser))
+
+(local tcp
+  (require :http.tcp))
+
+(local {: reader? : file-reader}
+  (require :http.readers))
+
+(local {: build-http-request}
+  (require :http.builder))
+
+(local {: stream-body
+        : format-chunk
+        : format-multipart}
+  (require :http.body))
+
+(local {: random-uuid}
+  (require :http.uuid))
+
+(local client {})
+
+;;; Helper functions
 
 (fn <!? [port]
   "Takes a value from `port`.  Will return `nil` if closed.  Will block
@@ -21,92 +49,23 @@ available.  Returns `true` unless `port` is already closed."
       (>!! port val)
       (>! port val)))
 
-(import-macros
-    {: go}
-  (doto :lib.async require))
-
-(local http-parser
-  (require :http.parser))
-
-(local tcp
-  (require :http.tcp))
-
-(local {: reader? : file-reader}
-  (require :http.readers))
-
-(local {: build-http-request}
-  (require :http.builder))
-
-;;; Helper functions
-
-(fn make-read-fn [receive]
-  "Returns a function that receives data from a socket by a given
-`pattern`.  The `pattern` can be either `\"*l\"`, `\"*a\"`, or a
-number of bytes to read."
-  (fn [src pattern]
-    (src:set-chunk-size pattern)
-    (receive src)))
-
-(fn format-chunk [body read-fn]
-  (let [data? (if (chan? body)
-                  (read-fn body)
-                  (reader? body)
-                  (body:read 1024)
-                  (error (.. "unsupported body type: " (type body))))
-        data (or data? "")]
-    (values (not data?)
-            (string.format "%x\r\n%s\r\n" (length data) data))))
-
-(fn stream-chunks [dst body send receive]
-  "Sends chunks to `dst` obtained from the `body`.
-Only used when the size of the individual chunks or a total content
-lenght of the reader are not known.  The `body` can be a Channel or a
-Reader.  If the `body` is a Channel, `receive` is used to get the
-data.  In case of the `Reader`, it's being read in chunks of 1024
-bytes.  The resulting data is then `send` to `dst`."
-  (let [(last-chunk? data) (format-chunk body receive)]
-    (send dst data)
-    (when (not last-chunk?)
-      (stream-chunks dst body send receive))))
-
-(fn stream-reader [dst body send remaining]
-  "Sends chunks read from `body` to `dst` until `remaining` reaches 0.
-Used in cases when the reader was passed as the `body`, and the
-Content-Length header was provided. Uses the `send` function to send
-chunks to the `dst`."
-  (let [data (body:read (if (< 1024 remaining) 1024 remaining))]
-    (send dst data)
-    (when (> remaining 0)
-      (stream-reader
-       dst body send
-       (- remaining (length data))))))
-
-(fn stream-body [dst body send receive
-                 {: transfer-encoding
-                  : content-length}]
-  "Stream the given `body` to `dst` using `send`.
-Depending on values of the headers and the type of the `body`, decides
-how to stream the data."
-  (if (= transfer-encoding "chunked")
-      (stream-chunks dst body send receive)
-      (and content-length (reader? body))
-      (stream-reader dst body send content-length)))
-
-(local http (setmetatable {} {:__index {:version "0.0.1"}}))
-
-(fn prepare-headers [?headers ?body host port]
-  (let [headers (collect [k v (pairs (or ?headers {}))
+(fn prepare-headers [host port {: multipart : body : headers : mime-subtype}]
+  "Consttruct headers with some default ones inferred from `?body`,
+`?headers`, `host`, `port`, and `?multipart` body."
+  (let [headers (collect [k v (pairs (or headers {}))
                           :into {:host (.. host (if port (.. ":" port) ""))
-                                 :content-length (case (type ?body) :string (length ?body))
-                                 :transfer-encoding (case (type ?body) (where (or :string :nil)) nil _ "chunked")}]
+                                 :content-length (case (type body) :string (length body))
+                                 :transfer-encoding (case (type body) (where (or :string :nil)) nil _ "chunked")
+                                 :content-type (when multipart
+                                                 (.. "multipart/" (or mime-subtype "form-data") "; boundary=" (random-uuid)))}]
                   k v)]
-    (if (chan? ?body)
+    (if (chan? body)
         ;; force chunked encoding for channels supplied as a body
         (doto headers
           (tset :content-length nil)
           (tset :transfer-encoding "chunked"))
         ;; force streaming for readers if content-length was supplied
-        (and (reader? ?body)
+        (and (reader? body)
              headers.content-length)
         (doto headers
           (tset :transfer-encoding nil))
@@ -126,9 +85,35 @@ how to stream the data."
 (fn format-path [{: path : query : fragment}]
   "Formats the PATH component of a HTTP `Path` header.
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
-  (.. (or path "/") (if query (.. "?" query) "") (if fragment (.. "?" fragment) "")))
+  (.. (or path "/")
+      (if query (.. "?" query) "")
+      (if fragment (.. "?" fragment) "")))
 
-(fn http.request [method url ?opts ?on-response ?on-raise]
+(fn wrap-client [chan]
+  "Adds a bunch of methods to the socket-channel to act like Luasocket
+client object."
+  (doto chan
+    (tset :read (fn [src pattern]
+                  (src:set-chunk-size pattern)
+                  (<!? src)))
+    (tset :receive (fn [src pattern prefix]
+                     (src:set-chunk-size pattern)
+                     (.. (or prefix "") (<!? src))))
+    (tset :send (fn [ch data ...]
+                  (->> (case (values (select :# ...) ...)
+                         0 data
+                         (1 i) (string.sub data i (length data))
+                         _ (string.sub data ...))
+                       (>!? ch))))))
+
+(fn get-boundary [headers]
+  (accumulate [boundary nil
+               header value (pairs headers)
+               :until boundary]
+    (when (= "content-type" (string.lower header))
+      (string.match value "boundary=([^;]+)"))))
+
+(fn client.request [method url ?opts ?on-response ?on-raise]
   {:fnl/arglist [method url opts on-response on-raise]
    :fnl/docstring "Makes a `method` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
@@ -146,6 +131,7 @@ table containing the following keys:
 - `:throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `:multipart` - a sequential table of parts.
 
 Several options available for the `as` key:
 
@@ -168,53 +154,49 @@ are made and the body is sent using chunked transfer encoding."}
                               :throw-errors? true}]
                k v)
         body (wrap-body opts.body)
-        headers (prepare-headers opts.headers body host port)
+        headers (prepare-headers host port opts)
+        multipart-body (when opts.multipart
+                         (let [body (format-multipart opts.multipart (get-boundary headers) <!?)]
+                           (tset headers :content-length (length body))
+                           body))
         req (build-http-request
              method
              (format-path parsed)
              headers
-             (if (and body (= headers.transfer-encoding "chunked"))
+             (if opts.multipart
+                 multipart-body
+                 (and body (= headers.transfer-encoding "chunked"))
                  (let [(_ data) (format-chunk body <!?)]
                    data)
                  (= :string (type body))
                  body))
-        chan (doto (tcp.chan parsed nil (when (and opts.async?)
-                                          (fn [err]
-                                            (?on-raise err)
-                                            nil)))
-               (tset :read (make-read-fn <!?))
-               (tset :receive (fn [pattern prefix]
-                                (src:set-chunk-size pattern)
-                                (.. (or prefix "") (<!? src))))
-               (tset :send (fn [ch data ...]
-                             (->> (case (values (select :# ...) ...)
-                                    0 data
-                                    (1 i) (string.sub data i (length data))
-                                    _ (string.sub data ...))
-                                  (>!? ch )))))]
+        client (->> (when (and opts.async?)
+                      (fn [err]
+                        (?on-raise err)
+                        nil))
+                    (tcp.chan parsed nil)
+                    wrap-client)]
     (when opts.async?
       (assert
        (and ?on-response ?on-raise)
        "If :async? is true, you must pass on-response and on-raise callbacks"))
     (if opts.async?
         (go (set opts.start (socket.gettime))
-            (>! chan req)
-            (when body
-              (stream-body chan body >! <! headers))
-            (case (pcall http-parser.parse-http-response chan opts)
+            (>! client req)
+            (stream-body client body >! <! headers)
+            (case (pcall http-parser.parse-http-response client opts)
               (true resp) (?on-response resp)
               (_ err) (?on-raise err)))
         (do (set opts.start (socket.gettime))
-            (>!! chan req)
-            (when body
-              (stream-body chan body >!! <!! headers))
+            (>!! client req)
+            (stream-body client body >!! <!! headers)
             (http-parser.parse-http-response
-             chan
+             client
              opts)))))
 
 (macro define-http-method [method]
   "Defines an HTTP method for the given `method`."
-  `(fn ,(sym (.. :http. (tostring method)))
+  `(fn ,(sym (.. :client. (tostring method)))
      [url# opts# on-response# on-raise#]
      {:fnl/arglist [url opts on-response on-raise]
       :fnl/docstring ,(.. "Makes a `" (string.upper (tostring method))
@@ -248,7 +230,7 @@ supplying a non-string body, headers should contain a
 header is missing it is automatically determined by calling the
 `length` function, ohterwise no attempts at detecting content-length
 are made and the body is sent using chunked transfer encoding.")}
-     (http.request ,(tostring method) url# opts# on-response# on-raise#)))
+     (client.request ,(tostring method) url# opts# on-response# on-raise#)))
 
 (define-http-method get)
 (define-http-method post)
@@ -260,4 +242,4 @@ are made and the body is sent using chunked transfer encoding.")}
 (define-http-method delete)
 (define-http-method connect)
 
-http
+client

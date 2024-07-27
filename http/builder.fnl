@@ -8,7 +8,7 @@
 string."
   (.. (capitalize-header header) ": " (tostring value) "\r\n"))
 
-(fn -headers->string [headers]
+(fn headers->string [headers]
   "Converts a `headers` table into a multiline string of HTTP headers."
   (when (and headers (next headers))
     (-> (icollect [header value (pairs headers)]
@@ -22,7 +22,7 @@ string."
    (string.upper method)
    request-target
    HTTP-VERSION
-   (or (-headers->string ?headers) "")
+   (or (headers->string ?headers) "")
    (or ?content "")))
 
 (fn build-http-response [status reason ?headers ?content]
@@ -32,8 +32,9 @@ string."
    HTTP-VERSION
    (tostring status)
    reason
-   (or (-headers->string ?headers) "")
+   (or (headers->string ?headers) "")
    (or ?content "")))
 
 {: build-http-response
- : build-http-request}
+ : build-http-request
+ : headers->string}
