@@ -5,9 +5,11 @@
     {: go}
   (doto :lib.async require))
 
-(local {: >! : <! : >!! : <!!
-        : chan? : main-thread?}
+(local {: >! : <! : >!! : <!! : chan?}
   (require :lib.async))
+
+(local {: >!? : <!?}
+  (require :http.async-extras))
 
 (local http-parser
   (require :http.parser))
@@ -34,22 +36,6 @@
 
 ;;; Helper functions
 
-(fn <!? [port]
-  "Takes a value from `port`.  Will return `nil` if closed.  Will block
-if nothing is available and used on the main thread.  Will park if
-nothing is available and used in the `go` block."
-  (if (main-thread?)
-      (<!! port)
-      (<! port)))
-
-(fn >!? [port val]
-  "Puts a `val` into `port`.  `nil` values are not allowed.  Must be
-called inside a `(go ...)` block.  Will park if no buffer space is
-available.  Returns `true` unless `port` is already closed."
-  (if (main-thread?)
-      (>!! port val)
-      (>! port val)))
-
 (fn get-boundary [headers]
   (accumulate [boundary nil
                header value (pairs headers)
@@ -57,9 +43,10 @@ available.  Returns `true` unless `port` is already closed."
     (when (= "content-type" (string.lower header))
       (string.match value "boundary=([^;]+)"))))
 
-(fn prepare-headers [host port {: multipart : body : headers : mime-subtype}]
-  "Consttruct headers with some default ones inferred from `?body`,
-`?headers`, `host`, `port`, and `?multipart` body."
+(fn prepare-headers [host port {: body : headers : multipart : mime-subtype}]
+  "Consttruct headers with some default ones inferred from `body`,
+`headers`, `host`, `port`, and `multipart` body.  `mime-subtype` is
+used to indicate `multipart` subtype, the default is `form-data`."
   (let [headers (collect [k v (pairs (or headers {}))
                           :into {:host (.. host (if port (.. ":" port) ""))
                                  :content-length (if (= (type body) :string)
@@ -123,7 +110,8 @@ client object."
                          0 data
                          (1 i) (string.sub data i (length data))
                          _ (string.sub data ...))
-                       (>!? ch))))))
+                       (>!? ch))))
+    (tset :write >!?)))
 
 (fn client.request [method url ?opts ?on-response ?on-raise]
   {:fnl/arglist [method url opts on-response on-raise]
@@ -174,7 +162,7 @@ are made and the body is sent using chunked transfer encoding."}
              (if opts.multipart
                  nil
                  (and body (= headers.transfer-encoding "chunked"))
-                 (let [(_ data) (format-chunk body <!?)]
+                 (let [(_ data) (format-chunk body)]
                    data)
                  (= :string (type body))
                  body))
@@ -190,18 +178,18 @@ are made and the body is sent using chunked transfer encoding."}
        "If :async? is true, you must pass on-response and on-raise callbacks"))
     (if opts.async?
         (go (set opts.start (socket.gettime))
-            (>! client req)
+            (client:write req)
             (case opts.multipart
-              multipart (stream-multipart client multipart (get-boundary headers) >! <!)
-              _ (stream-body client body >! <! headers))
+              multipart (stream-multipart client multipart (get-boundary headers))
+              _ (stream-body client body headers))
             (case (pcall http-parser.parse-http-response client opts)
               (true resp) (?on-response resp)
               (_ err) (?on-raise err)))
         (do (set opts.start (socket.gettime))
-            (>!! client req)
+            (client:write req)
             (case opts.multipart
-              multipart (stream-multipart client multipart (get-boundary headers) >!! <!!)
-              _ (stream-body client body >!! <!! headers))
+              multipart (stream-multipart client multipart (get-boundary headers))
+              _ (stream-body client body headers))
             (http-parser.parse-http-response
              client
              opts)))))
