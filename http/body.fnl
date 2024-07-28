@@ -7,12 +7,15 @@
 (local {: chan?}
   (require :lib.async))
 
+(fn get-chunk-data [body read-fn]
+  (if (chan? body)
+      (read-fn body)
+      (reader? body)
+      (body:read 1024)
+      (error (.. "unsupported body type: " (type body)))))
+
 (fn format-chunk [body read-fn]
-  (let [data? (if (chan? body)
-                  (read-fn body)
-                  (reader? body)
-                  (body:read 1024)
-                  (error (.. "unsupported body type: " (type body))))
+  (let [data? (get-chunk-data body read-fn)
         data (or data? "")]
     (values (not data?)
             (string.format "%x\r\n%s\r\n" (length data) data))))
@@ -34,27 +37,26 @@ bytes.  The resulting data is then `send` to `dst`."
 Used in cases when the reader was passed as the `body`, and the
 Content-Length header was provided. Uses the `send` function to send
 chunks to the `dst`."
-  (let [data (body:read (if (< 1024 remaining) 1024 remaining))]
-    (when data
-      (send dst data)
-      (when (> remaining 0)
-        (stream-reader
-         dst body send
-         (- remaining (length data)))))))
+  (case (body:read (if (< 1024 remaining) 1024 remaining))
+    data (do (send dst data)
+             (when (> remaining 0)
+               (stream-reader
+                dst body send
+                (- remaining (length data)))))))
 
 (fn stream-channel [dst body send receive remaining]
   "Sends chunks read from `body` to `dst` until `remaining` reaches 0.
 Used in cases when the channel was passed as the multipart `body`, and the
 Content-Length header was provided. Uses the `send` function to send
 chunks to the `dst`."
-  (let [data (receive body)
-        data (if (< (length data) remaining) data (string.sub data 1 remaining))
-        remaining (- remaining (length data))]
-    (send dst data)
-    (when (> remaining 0)
-      (stream-channel
-       dst body send receive
-       remaining))))
+  (case (receive body)
+    data (let [data (if (< (length data) remaining) data (string.sub data 1 remaining))
+               remaining (- remaining (length data))]
+           (send dst data)
+           (when (> remaining 0)
+             (stream-channel
+              dst body send receive
+              remaining)))))
 
 (fn stream-body [dst body send receive
                  {: transfer-encoding
@@ -86,35 +88,83 @@ how to stream the data."
       "binary"
       (error (.. "Unsupported body type" (type body)) 2)))
 
-(fn format-multipart [bodies boundary receive]
-  (-> (icollect [_ {: name : part-name : content
-                    : mime-type :length content-length
-                    : filename}
-                 (ipairs bodies)]
-        (do (assert (not= nil content) "Multipart content cannot be nil")
-            (assert (or part-name name) "Multipart body must contain at least content and name or part-name")
-            (string.format
-             "--%s\r\n%s\r\n%s"
-             boundary
-             (headers->string {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
-                                                                   (if filename
-                                                                       (string.format "; filename=%q" filename)
-                                                                       ""))
-                               :content-type (or mime-type (guess-content-type content))
-                               :content-transfer-encoding (guess-transfer-encoding content)})
-             (if (= :string (type content))
-                 content
-                 (reader? content)
-                 (content:read :*a)
-                 (chan? content)
-                 ((fn loop [res data]
-                    (if data
-                        (loop (.. res (receive content)))
-                        res))
-                  "" (receive content))))))
-      (table.concat "\r\n")
-      (.. (string.format "\r\n--%s--\r\n" boundary))))
+(fn format-multipart-part [{: name : part-name : filename
+                            : content :length content-length
+                            : mime-type} boundary]
+  (string.format
+   "--%s\r\n%s\r\n"
+   boundary
+   (headers->string
+    {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
+                                         (if filename
+                                             (string.format "; filename=%q" filename)
+                                             ""))
+     :content-type (or mime-type (guess-content-type content))
+     :content-transfer-encoding (guess-transfer-encoding content)})))
+
+(fn multipart-content-length [bodies boundary]
+  (+ (accumulate [total 0
+                  _ {:length content-length
+                     : name : part-name
+                     : content
+                     &as part}
+                  (ipairs bodies)]
+       (+ total
+          (length (format-multipart-part part boundary))
+          (if (= :string (type content)) (+ (length content) 2)
+              (not= nil content-length)
+              (+ content-length 2)
+              (error (string.format "missing length field on non-string multipart content %q" (or name part-name)) 2))))
+     (length (string.format "--%s--\r\n" boundary))))
+
+(fn stream-multipart [dst bodies boundary send receive]
+  (each [_ {: name : part-name : filename
+            : content :length content-length
+            : mime-type
+            &as part}
+         (ipairs bodies)]
+    (assert (not= nil content) "Multipart content cannot be nil")
+    (assert (or part-name name) "Multipart body must contain at least content and name or part-name")
+    (->> (if (= :string (type content))
+             content
+             (or (get-chunk-data content receive) ""))
+         (.. (format-multipart-part part boundary))
+         (send dst))
+    (when (not= :string (type content))
+      (stream-body dst content send receive {: content-length}))
+    (send dst "\r\n"))
+  (send dst (string.format "--%s--\r\n" boundary)))
+
+;; (fn format-multipart [bodies boundary receive]
+;;   (-> (icollect [_ {: name : part-name : content
+;;                     : mime-type :length content-length
+;;                     : filename}
+;;                  (ipairs bodies)]
+;;         (do (assert (not= nil content) "Multipart content cannot be nil")
+;;             (assert (or part-name name) "Multipart body must contain at least content and name or part-name")
+;;             (string.format
+;;              "--%s\r\n%s\r\n%s"
+;;              boundary
+;;              (headers->string {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
+;;                                                                    (if filename
+;;                                                                        (string.format "; filename=%q" filename)
+;;                                                                        ""))
+;;                                :content-type (or mime-type (guess-content-type content))
+;;                                :content-transfer-encoding (guess-transfer-encoding content)})
+;;              (if (= :string (type content))
+;;                  content
+;;                  (reader? content)
+;;                  (content:read :*a)
+;;                  (chan? content)
+;;                  ((fn loop [res data]
+;;                     (if data
+;;                         (loop (.. res (receive content)))
+;;                         res))
+;;                   "" (receive content))))))
+;;       (table.concat "\r\n")
+;;       (.. (string.format "\r\n--%s--\r\n" boundary))))
 
 {: stream-body
  : format-chunk
- : format-multipart}
+ : stream-multipart
+ : multipart-content-length}

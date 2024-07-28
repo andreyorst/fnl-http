@@ -23,7 +23,8 @@
 
 (local {: stream-body
         : format-chunk
-        : format-multipart}
+        : multipart-content-length
+        : stream-multipart}
   (require :http.body))
 
 (local {: random-uuid}
@@ -49,6 +50,13 @@ available.  Returns `true` unless `port` is already closed."
       (>!! port val)
       (>! port val)))
 
+(fn get-boundary [headers]
+  (accumulate [boundary nil
+               header value (pairs headers)
+               :until boundary]
+    (when (= "content-type" (string.lower header))
+      (string.match value "boundary=([^;]+)"))))
+
 (fn prepare-headers [host port {: multipart : body : headers : mime-subtype}]
   "Consttruct headers with some default ones inferred from `?body`,
 `?headers`, `host`, `port`, and `?multipart` body."
@@ -58,14 +66,22 @@ available.  Returns `true` unless `port` is already closed."
                                  :transfer-encoding (case (type body) (where (or :string :nil)) nil _ "chunked")
                                  :content-type (when multipart
                                                  (.. "multipart/" (or mime-subtype "form-data") "; boundary=" (random-uuid)))}]
-                  k v)]
-    (if (chan? body)
+                  k v)
+        headers (if multipart
+                    (doto headers
+                      (->> (get-boundary headers)
+                           (multipart-content-length multipart)
+                           (tset headers :content-length)))
+                    headers)]
+    (if (and (not multipart)
+             (chan? body))
         ;; force chunked encoding for channels supplied as a body
         (doto headers
           (tset :content-length nil)
           (tset :transfer-encoding "chunked"))
         ;; force streaming for readers if content-length was supplied
-        (and (reader? body)
+        (and (not multipart)
+             (reader? body)
              headers.content-length)
         (doto headers
           (tset :transfer-encoding nil))
@@ -105,13 +121,6 @@ client object."
                          (1 i) (string.sub data i (length data))
                          _ (string.sub data ...))
                        (>!? ch))))))
-
-(fn get-boundary [headers]
-  (accumulate [boundary nil
-               header value (pairs headers)
-               :until boundary]
-    (when (= "content-type" (string.lower header))
-      (string.match value "boundary=([^;]+)"))))
 
 (fn client.request [method url ?opts ?on-response ?on-raise]
   {:fnl/arglist [method url opts on-response on-raise]
@@ -155,16 +164,12 @@ are made and the body is sent using chunked transfer encoding."}
                k v)
         body (wrap-body opts.body)
         headers (prepare-headers host port opts)
-        multipart-body (when opts.multipart
-                         (let [body (format-multipart opts.multipart (get-boundary headers) <!?)]
-                           (tset headers :content-length (length body))
-                           body))
         req (build-http-request
              method
              (format-path parsed)
              headers
              (if opts.multipart
-                 multipart-body
+                 nil
                  (and body (= headers.transfer-encoding "chunked"))
                  (let [(_ data) (format-chunk body <!?)]
                    data)
@@ -183,13 +188,17 @@ are made and the body is sent using chunked transfer encoding."}
     (if opts.async?
         (go (set opts.start (socket.gettime))
             (>! client req)
-            (stream-body client body >! <! headers)
+            (case opts.multipart
+              multipart (stream-multipart client multipart (get-boundary headers) >! <!)
+              _ (stream-body client body >! <! headers))
             (case (pcall http-parser.parse-http-response client opts)
               (true resp) (?on-response resp)
               (_ err) (?on-raise err)))
         (do (set opts.start (socket.gettime))
             (>!! client req)
-            (stream-body client body >!! <!! headers)
+            (case opts.multipart
+              multipart (stream-multipart client multipart (get-boundary headers) >!! <!!)
+              _ (stream-body client body >!! <!! headers))
             (http-parser.parse-http-response
              client
              opts)))))

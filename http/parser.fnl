@@ -34,28 +34,30 @@ append or override existing headers."
 
 (fn parse-response-status-line [status]
   "Parse HTTP response status line."
-  ((fn loop [reader fields res]
-     (case fields
-       [field & fields]
-       (let [part (reader)]
-         (loop reader fields
-               (case field
-                 :protocol-version
-                 (let [(name major minor) (part:match "([^/]+)/(%d).(%d)")]
-                   (doto res
-                     (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
-                 _ (doto res
-                     (tset field (decode-value part))))
-               ))
-       _
-       (let [reason (-> "%s/%s.%s +%s +"
-                        (string.format res.protocol-version.name res.protocol-version.major res.protocol-version.minor res.status)
-                        (status:gsub ""))]
-         (doto res
-           (tset :reason-phrase reason)))))
-   (status:gmatch "([^ ]+)")
-   [:protocol-version :status]
-   {}))
+  (if status
+      ((fn loop [reader fields res]
+         (case fields
+           [field & fields]
+           (let [part (reader)]
+             (loop reader fields
+                   (case field
+                     :protocol-version
+                     (let [(name major minor) (part:match "([^/]+)/(%d).(%d)")]
+                       (doto res
+                         (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
+                     _ (doto res
+                         (tset field (decode-value part))))
+                   ))
+           _
+           (let [reason (-> "%s/%s.%s +%s +"
+                            (string.format res.protocol-version.name res.protocol-version.major res.protocol-version.minor res.status)
+                            (status:gsub ""))]
+             (doto res
+               (tset :reason-phrase reason)))))
+       (status:gmatch "([^ ]+)")
+       [:protocol-version :status]
+       {})
+      (error "status line was not received from server")))
 
 (fn read-response-status-line [src]
   "Read the first line from the HTTP response and parse it."
@@ -249,7 +251,7 @@ its headers, and a body stream."
                                       parsed-headers
                                       headers))
                    (tset :length (tonumber parsed-headers.Content-Length))
-                   (tset :client src)
+                   (tset :http-client src)
                    (tset :request-time
                          (when (and start time)
                            (math.ceil (* 1000 (- (time) start)))))
