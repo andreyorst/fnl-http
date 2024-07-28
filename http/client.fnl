@@ -25,6 +25,7 @@
 
 (local {: stream-body
         : format-chunk
+        : wrap-body
         : multipart-content-length
         : stream-multipart}
   (require :http.body))
@@ -76,17 +77,6 @@ used to indicate `multipart` subtype, the default is `form-data`."
         (doto headers
           (tset :transfer-encoding nil))
         headers)))
-
-(fn wrap-body [body]
-  (case (type body)
-    :table (if (chan? body) body
-               (reader? body) body
-               body)
-    :userdata (case (getmetatable body)
-                {:__name "FILE*"}
-                (file-reader body)
-                _ body)
-    _ body))
 
 (fn format-path [{: path : query : fragment}]
   "Formats the PATH component of a HTTP `Path` header.
