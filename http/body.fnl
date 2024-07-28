@@ -63,7 +63,9 @@ Content-Length header was provided."
 Depending on values of the headers and the type of the `body`, decides
 how to stream the data."
   (when body
-    (if (= transfer-encoding "chunked")
+    (if (and (= :string (type transfer-encoding))
+             (or (transfer-encoding:match "chunked[, ]")
+                 (transfer-encoding:match "chunked$")))
         (stream-chunks dst body)
         (and content-length (reader? body))
         (stream-reader dst body content-length)

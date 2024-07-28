@@ -1,0 +1,176 @@
+2
+[
+
+1f
+    "JSON Test Pattern pass1",
+
+37
+    {"object with 1 member":["array with 1 element"]},
+
+8
+    {},
+
+8
+    [],
+
+9
+    -42,
+
+a
+    true,
+
+b
+    false,
+
+a
+    null,
+
+6
+    {
+
+1f
+        "integer": 1234567890,
+
+1e
+        "real": -9876.543210,
+
+1e
+        "e": 0.123456789e-12,
+
+1e
+        "E": 1.234567890E+34,
+
+1d
+        "":  23456789012E66,
+
+13
+        "zero": 0,
+
+12
+        "one": 1,
+
+16
+        "space": " ",
+
+17
+        "quote": "\"",
+
+1b
+        "backslash": "\\",
+
+22
+        "controls": "\b\f\n\r\t",
+
+1a
+        "slash": "/ & /",
+
+2e
+        "alpha": "abcdefghijklmnopqrstuvwyz",
+
+2e
+        "ALPHA": "ABCDEFGHIJKLMNOPQRSTUVWYZ",
+
+1f
+        "digit": "0123456789",
+
+1f
+        "0123456789": "digit",
+
+36
+        "special": "`1~!@#$%^&*()_+-={':[,]}|;.</>?",
+
+37
+        "hex": "\u0123\u4567\u89AB\uCDEF\uabcd\uef4A",
+
+16
+        "true": true,
+
+18
+        "false": false,
+
+16
+        "null": null,
+
+16
+        "array":[  ],
+
+17
+        "object":{  },
+
+2a
+        "address": "50 St. James Street",
+
+27
+        "url": "http://www.JSON.org/",
+
+24
+        "comment": "// /* <!-- --",
+
+1c
+        "# -- --> */": " ",
+
+22
+        " s p a c e d " :[1,2 , 3
+
+1
+
+
+2
+,
+
+1
+
+
+49
+4 , 5	   ,  		        6           ,7        ],"compact":[1,2,3,4,5,6,7],
+
+4d
+        "jsontext": "{\"object with 1 member\":[\"array with 1 element\"]}",
+
+36
+        "quotes": "&#34; \u0022 %22 0x22 034 &#x22;",
+
+5d
+        "/\\\"\uCAFE\uBABE\uAB98\uFCDE\ubcda\uef4A\b\f\n\r\t`1~!@#$%^&*()_+-=[]{}|;:',./<>?"
+
+1c
+: "A key can be any string"
+
+7
+    },
+
+e
+    0.5 ,98.6
+
+2
+,
+
+6
+99.44
+
+2
+,
+
+1
+
+
+6
+1066,
+
+5
+1e1,
+
+7
+0.1e1,
+
+6
+1e-1,
+
+11
+1e00,2e+00,2e-00
+
+c
+,"rosebud"]
+
+0
+

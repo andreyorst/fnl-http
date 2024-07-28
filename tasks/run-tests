@@ -8,6 +8,7 @@
    :test.readers-test
    :test.http-parser-test
    :test.headers-test
-   :test.url-test])
+   :test.url-test
+   :test.body-test])
 
 (run-tests tests)
