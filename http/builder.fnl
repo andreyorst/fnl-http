@@ -8,11 +8,15 @@
 string."
   (.. (capitalize-header header) ": " (tostring value) "\r\n"))
 
+(fn sort-headers [h1 h2]
+  (< (h1:match "^[^:]+") (h2:match "^[^:]+")))
+
 (fn headers->string [headers]
   "Converts a `headers` table into a multiline string of HTTP headers."
   (when (and headers (next headers))
     (-> (icollect [header value (pairs headers)]
           (-header->string header value))
+        (doto (table.sort sort-headers))
         table.concat)))
 
 (fn build-http-request [method request-target ?headers ?content]
