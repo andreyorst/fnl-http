@@ -31,22 +31,24 @@ A generic function `client.request` accepts method name as a string and is a bas
 
 All functions accepts the `opts` table, that contains the following keys:
 
-- `:async?` - a boolean, whether the request should be asynchronous.
+- `async?` - a boolean, whether the request should be asynchronous.
   The result is a channel, that can be awaited.
   The successful response of a server is then passed to the `on-response` callback.
   In case of any error during request, the `on-raise` callback is called with the error message.
-- `:headers` - a table with the HTTP headers for the request
-- `:body` - an optional string body.
-- `:as` - how to coerce the body of the response.
-- `:throw-errors?` - whether to throw errors on response statuses other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302, 303, 304, 307.
+- `headers` - a table with the HTTP headers for the request
+- `body` - an optional string body.
+- `as` - how to coerce the body of the response.
+- `throw-errors?` - whether to throw errors on response statuses other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302, 303, 304, 307.
   Defaults to `true`.
+- `multipart` - a list of multipart parts.
+  See [multipart examples](#multipart) below.
 
 Several options available for the `as` key:
 
-- `:stream` - the body will be a stream object with a `read` method.
-- `:raw` - the body will be a string.
+- `stream` - the body will be a stream object with a `read` method.
+- `raw` - the body will be a string.
   This is the default value for `as`.
-- `:json` - the body will be parsed as JSON into a Lua table.
+- `json` - the body will be parsed as JSON into a Lua table.
   Note, `null` values are omitted from the resulting table.
 
 ## Examples
@@ -161,6 +163,23 @@ By using the `async.fnl` library, multiple requests can be issued, selecting the
 ```
 
 Refer to the `async.fnl` documentation for more.
+
+### Multipart
+
+You can send multipart requests with the `multipart` field in the `opts` table:
+
+```fennel
+(http.post "http://example.com"
+           {:multipart
+            [{:name "text" :content "text data"}
+             {:name "channel" :content some-channel}
+             {:name "text-stream"
+              :content (http.readers.string-reader "some text")}
+             {:name "file"
+              :content (http.readers.file-reader "pic.png")
+              :filename "pic.png"
+              :mime-subtype "image/png"}]})
+```
 
 ## Extra modules
 
