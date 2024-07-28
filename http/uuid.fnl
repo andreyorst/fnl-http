@@ -10,6 +10,7 @@
   string)
 
 (fn num->bs [num]
+  {:private true}
   (var (result num) (values "" num))
   (if (= num 0) 0
       (do (while (> num 0)
@@ -18,6 +19,7 @@
           result)))
 
 (fn bs->num [num]
+  {:private true}
   (if (= num :0) 0
       (do (var (index result) (values 0 0))
           (for [p (length (tostring num)) 1 -1]
@@ -28,6 +30,7 @@
           result)))
 
 (fn padbits [num bits]
+  {:private true}
   (if (= (length (tostring num)) bits)
       num
       (do (var num num)

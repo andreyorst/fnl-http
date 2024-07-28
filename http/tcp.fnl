@@ -6,10 +6,13 @@
         : close!}
   (require :lib.async))
 
-(local socket
-  (require :socket))
+(local {:select s/select
+        :connect s/connect
+        &as socket}
+    (require :socket))
 
 (fn set-chunk-size [self pattern-or-size]
+  {:private true}
   ;; Sets the chunk-size property of a socket channel in order to
   ;; dynamically adjust during reads.
   (set self.chunk-size pattern-or-size))
@@ -42,7 +45,7 @@
                 #(.. "#<" (: (tostring $) :gsub "table:" "SocketChannel:") ">")}))]
     (go-loop [data (<! recv) i 0]
       (when (not= nil data)
-        (case (socket.select nil [client] 0)
+        (case (s/select nil [client] 0)
           (_ [s])
           (case (s:send data i)
             (nil :timeout j)
@@ -99,7 +102,7 @@ The read pattern f a socket can be controlled with the
 `set-chunk-size` method."
   (assert socket "tcp module requires luasocket")
   (let [host (or host :localhost)]
-    (match-try (socket.connect host port)
+    (match-try (s/connect host port)
       client (client:settimeout 0)
       _ (socket-channel client xform err-handler)
       (catch (nil err) (error err)))))

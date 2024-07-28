@@ -7,10 +7,15 @@
 
 (local {: decode-value
         : capitalize-header}
-    (require :http.headers))
+  (require :http.headers))
+
+(local {: format : lower} string)
+
+(local {: ceil} math)
 
 (fn parse-header [line]
   "Parse a single header from a `line`."
+  {:private true}
   (case (line:match " *([^:]+) *: *(.*)")
     (header value) (values header value)))
 
@@ -19,6 +24,7 @@
 The optional parameter `?headers` is used for tail recursion, and
 should not be provided by the caller, unless the intention is to
 append or override existing headers."
+  {:private true}
   (let [headers (or ?headers {})
         line (src:read :*l)]
     (case line
@@ -34,6 +40,7 @@ append or override existing headers."
 
 (fn parse-response-status-line [status]
   "Parse HTTP response status line."
+  {:private true}
   (if status
       ((fn loop [reader fields res]
          (case fields
@@ -50,7 +57,7 @@ append or override existing headers."
                    ))
            _
            (let [reason (-> "%s/%s.%s +%s +"
-                            (string.format res.protocol-version.name res.protocol-version.major res.protocol-version.minor res.status)
+                            (format res.protocol-version.name res.protocol-version.major res.protocol-version.minor res.status)
                             (status:gsub ""))]
              (doto res
                (tset :reason-phrase reason)))))
@@ -61,11 +68,13 @@ append or override existing headers."
 
 (fn read-response-status-line [src]
   "Read the first line from the HTTP response and parse it."
+  {:private true}
   (parse-response-status-line (src:read :*l)))
 
 (fn body-reader [src]
   "Read the body of the request, with possible buffering via the `peek`
 method."
+  {:private true}
   (var buffer "")
   (make-reader
    src
@@ -76,7 +85,7 @@ method."
                       (where n (= :number (type n)))
                       (let [len (if buffer-content (length buffer-content) 0)
                             read-more? (< len n)]
-                        (set buffer (string.sub buffer (+ len 1)))
+                        (set buffer (buffer:sub (+ len 1)))
                         (if read-more?
                             (if buffer-content
                                 (.. buffer-content (or (src:read (- n len)) ""))
@@ -85,7 +94,7 @@ method."
                       (where (or :*l :l))
                       (let [read-more? (not (buffer:find "\n"))]
                         (when buffer-content
-                          (set buffer (string.sub buffer (+ (length buffer-content) 2))))
+                          (set buffer (buffer:sub (+ (length buffer-content) 2))))
                         (if read-more?
                             (if buffer-content
                                 (.. buffer-content (or (src:read pattern) ""))
@@ -103,7 +112,7 @@ method."
                        buffer-content (rdr:read :*l)
                        read-more? (not (buffer:find "\n"))]
                    (when buffer-content
-                     (set buffer (string.sub buffer (+ (length buffer-content) 2))))
+                     (set buffer (buffer:sub (+ (length buffer-content) 2))))
                    (if read-more?
                        (if buffer-content
                            (.. buffer-content (or (src:read :*l) ""))
@@ -122,17 +131,19 @@ method."
                     buffer))))}))
 
 (fn read-chunk-size [src]
+  {:private true}
   ;; TODO: needs to process chunk extensions
   (case (src:read :*l)
     "" (read-chunk-size src)
     line
     (case (line:match "%s*([0-9a-fA-F]+)")
       size (tonumber (.. "0x" size))
-      _ (error (string.format "line missing chunk size: %q" line)))))
+      _ (error (format "line missing chunk size: %q" line)))))
 
 (fn chunked-body-reader [src initial-chunk]
   "Reads body in chunks, buffering each fully, and requesting the next
 chunk, once the buffer is empty."
+  {:private true}
   ;; TODO: think about rewriting it so the chunk is not required to be
   ;;       read in full.  The main problem with this approach is the
   ;;       possible chunk size - if the server sends a chunk large
@@ -158,7 +169,7 @@ chunk, once the buffer is empty."
                       (let [buffer-content (rdr:read pattern)
                             len (if buffer-content (length buffer-content) 0)
                             read-more? (< len n)]
-                        (set buffer (string.sub buffer (+ len 1)))
+                        (set buffer (buffer:sub (+ len 1)))
                         (if read-more?
                             (let [(_ rdr) (read-more)]
                               (if buffer-content
@@ -169,7 +180,7 @@ chunk, once the buffer is empty."
                       (let [buffer-content (rdr:read :*l)
                             (_ read-more?) (not (buffer:find "\n"))]
                         (when buffer-content
-                          (set buffer (string.sub buffer (+ (length buffer-content) 2))))
+                          (set buffer (buffer:sub (+ (length buffer-content) 2))))
                         (if read-more?
                             (let [rdr (read-more)]
                               (if buffer-content
@@ -192,7 +203,7 @@ chunk, once the buffer is empty."
                        buffer-content (rdr:read :*l)
                        read-more? (not (buffer:find "\n"))]
                    (when buffer-content
-                     (set buffer (string.sub buffer (+ (length buffer-content) 2))))
+                     (set buffer (buffer:sub (+ (length buffer-content) 2))))
                    (if read-more?
                        (if buffer-content
                            (.. buffer-content (or (src:read :*l) ""))
@@ -253,7 +264,7 @@ its headers, and a body stream."
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
                          (capitalize-header k) (decode-value v))
-        chunk-size (case (string.lower (or parsed-headers.Transfer-Encoding ""))
+        chunk-size (case (lower (or parsed-headers.Transfer-Encoding ""))
                      (where header (or (header:match "chunked[, ]")
                                        (header:match "chunked$")))
                      (read-chunk-size src))
@@ -268,13 +279,13 @@ its headers, and a body stream."
                    (tset :http-client src)
                    (tset :request-time
                          (when (and start time)
-                           (math.ceil (* 1000 (- (time) start)))))
+                           (ceil (* 1000 (- (time) start)))))
                    (tset :body
                          (case as
                            :raw (stream:read (or parsed-headers.Content-Length :*a))
                            :json (decode stream)
                            :stream stream
-                           _ (error (string.format "unsupported coersion method '%s'" as)))))]
+                           _ (error (format "unsupported coersion method '%s'" as)))))]
     (if (and throw-errors?
              (not (. non-error-statuses response.status)))
         (error response)
@@ -284,6 +295,7 @@ its headers, and a body stream."
 
 (fn parse-request-status-line [status]
   "Parse HTTP request status line."
+  {:private true}
   ((fn loop [reader fields res]
      (case fields
        [field & fields]
@@ -298,6 +310,7 @@ its headers, and a body stream."
 
 (fn read-request-status-line [src]
   "Read the first line from the HTTP response and parse it."
+  {:private true}
   (parse-request-status-line (src:read :*l)))
 
 (fn parse-http-request [src]
@@ -312,6 +325,7 @@ its headers, and a body stream."
 
 (fn parse-authority [authority]
   "Parse the `authority` part of a URL."
+  {:private true}
   (let [userinfo (authority:match "([^@]+)@")
         port (authority:match ":(%d+)")
         host (if userinfo

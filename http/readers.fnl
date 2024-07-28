@@ -51,33 +51,37 @@ each is `nil`."
           :__name "Reader"
           :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")}))))
 
+(local {: open} io)
+
 (fn file-reader [file]
   "Creates a `Reader` from the given `file`.
 Accepts a file handle or a path string which is opened automatically."
   (let [file (case (type file)
-               :string (io.open file :r)
+               :string (open file :r)
                _ file)
         open? #(pick-values 1 (pcall #($:read 0) $))]
-      (make-reader file
-                   {:close #(when (open? $) ($:close))
-                    :read-bytes (fn [f pattern]
-                                  (when (open? f)
-                                    (f:read pattern)))
-                    :read-line (fn [f]
-                                 (let [next-line (when (open? f) (file:lines))]
-                                   (when (open? f) (next-line))))
-                    :peek (fn [f pattern]
-                            (assert (= :number (type pattern)) "expected number of bytes to peek")
+    (make-reader file
+                 {:close #(when (open? $) ($:close))
+                  :read-bytes (fn [f pattern]
+                                (when (open? f)
+                                  (f:read pattern)))
+                  :read-line (fn [f]
+                               (let [next-line (when (open? f) (file:lines))]
+                                 (when (open? f) (next-line))))
+                  :peek (fn [f pattern]
+                          (assert (= :number (type pattern)) "expected number of bytes to peek")
+                          (when (open? f)
+                            (let [res (f:read pattern)]
+                              (f:seek :cur (- pattern))
+                              res)))
+                  :length (fn [f]
                             (when (open? f)
-                              (let [res (f:read pattern)]
-                                (f:seek :cur (- pattern))
-                                res)))
-                    :length (fn [f]
-                              (when (open? f)
-                                (let [current (f:seek :cur)
-                                      len (- (f:seek :end) current)]
-                                  (f:seek :cur (- len))
-                                  len)))})))
+                              (let [current (f:seek :cur)
+                                    len (- (f:seek :end) current)]
+                                (f:seek :cur (- len))
+                                len)))})))
+
+(local {: max} math)
 
 (fn string-reader [string]
   "Creates a `Reader` from the given `string`."
@@ -119,10 +123,15 @@ Accepts a file handle or a path string which is opened automatically."
                   _ (error "expected number of bytes to peek"))))
       :length (fn [s]
                 (when (not closed?)
-                  (math.max 0 (- (length s) (- i 1)))))})))
+                  (max 0 (- (length s) (- i 1)))))})))
 
 (local (ltn? ltn12)
   (pcall require :ltn12))
+
+(local {:table sink/table
+        :null sink/null} ltn12.sink)
+
+(local {: concat} table)
 
 (fn ltn12-reader [source step]
   "Creates a `Reader` from LTN12 `source`.
@@ -142,7 +151,7 @@ used."
             (where bytes (= :number (type bytes)))
             (do (set buffer (or (rdr:read :*a) ""))
                 (if (< len pattern)
-                    (if (step source (ltn12.sink.table data))
+                    (if (step source (sink/table data))
                         (do (set buffer (.. buffer (or (. data 1) "")))
                             (case (read _ (- bytes len))
                               (where data data) (.. (or content "") data)
@@ -151,13 +160,13 @@ used."
                     content))
             (where (or :*a :a))
             (do (set buffer (or (rdr:read :*a) ""))
-                (while (step source (ltn12.sink.table data)) nil)
-                (.. (or content "") (table.concat data)))
+                (while (step source (sink/table data)) nil)
+                (.. (or content "") (concat data)))
             (where (or :*l :l))
             (if (buffer:match "\n")
                 (do (set buffer (or (rdr:read :*a) ""))
                     content)
-                (if (step source (ltn12.sink.table data))
+                (if (step source (sink/table data))
                     (do (set buffer (.. buffer (or (. data 1) "")))
                         (case (read _ pattern)
                           data (.. (or content "") data)
@@ -167,7 +176,7 @@ used."
     (make-reader
      source
      {:close (fn []
-               (while (step source (ltn12.sink.null)) nil)
+               (while (step source (sink/null)) nil)
                (set closed? true))
       :read-bytes read
       :read-line #(when (not closed?) (read $ :*l))
@@ -178,7 +187,7 @@ used."
                       len (length (or content ""))
                       data []]
                   (if (< len bytes)
-                      (if (step source (ltn12.sink.table data))
+                      (if (step source (sink/table data))
                           (do (set buffer (.. buffer (or (. data 1) "")))
                               (case (peek _ (- bytes len))
                                 (where data data) data

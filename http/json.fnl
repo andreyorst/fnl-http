@@ -2,19 +2,27 @@
         : string-reader}
   (require :http.readers))
 
+(local {: concat} table)
+
+(local {: gsub : format} string)
+
 (fn string? [val]
+  {:private true}
   (and (= :string (type val))
        {:string val}))
 
 (fn number? [val]
+  {:private true}
   (and (= :number (type val))
        {:number val}))
 
 (fn object? [val]
+  {:private true}
   (and (= :table (type val))
        {:object val}))
 
 (fn array? [val ?max]
+  {:private true}
   (and (object? val)
        (case (length val)
          0 false
@@ -26,10 +34,12 @@
                  _ false)))))
 
 (fn function? [val]
+  {:private true}
   (and (= :function (type val))
        {:function val}))
 
 (fn guess [val]
+  {:private true}
   (or (array? val)
       (object? val)
       (string? val)
@@ -38,6 +48,7 @@
       val))
 
 (fn escape-string [str]
+  {:private true}
   (let [escs (-> {"\a" "\\a"
                   "\b" "\\b"
                   "\f" "\\f"
@@ -57,15 +68,15 @@
     {:array array :n n}
     (.. "[" (-> (fcollect [i 1 n]
                   (encode (. array i)))
-                (table.concat ", ")) "]")
+                (concat ", ")) "]")
     {:object object}
     (.. "{" (-> (icollect [k v (pairs object)]
                   (.. (encode k) ": " (encode v)))
-                (table.concat ", ")) "}")
+                (concat ", ")) "}")
     {:string s}
     (escape-string s)
     {:number n}
-    (string.gsub (tostring n) "," ".")
+    (gsub (tostring n) "," ".")
     {:function f} (error (.. "JSON encoding error: don't know how to encode function value: " (tostring f)))
     true "true"
     false "false"
@@ -73,12 +84,14 @@
     _ (escape-string (tostring val))))
 
 (fn skip-space [rdr]
+  {:private true}
   ((fn loop []
      (case (rdr:peek 1)
        (where c (c:match "[ \t\n]"))
        (loop (rdr:read 1))))))
 
 (fn parse-num [rdr]
+  {:private true}
   ((fn loop [numbers]
      (case (rdr:peek 1)
        (where n (n:match "[-0-9.eE+]"))
@@ -97,6 +110,7 @@
    "t"  "\t"})
 
 (fn parse-string [rdr]
+  {:private true}
   (rdr:read 1)
   ((fn loop [chars escaped?]
      (let [ch (rdr:read 1)]
@@ -120,6 +134,7 @@
    "" false))
 
 (fn parse-obj [rdr parse]
+  {:private true}
   (rdr:read 1)
   ((fn loop [obj]
      (skip-space rdr)
@@ -140,6 +155,7 @@
    {}))
 
 (fn parse-arr [rdr parse]
+  {:private true}
   (rdr:read 1)
   (var len 0)
   ((fn loop [arr]
@@ -174,7 +190,7 @@ and `read` methods or a string.  Parses the contents to a Lua table."
          (where c (c:match "[ \t\n]")) (loop (skip-space rdr))
          (where n (n:match "[-0-9]")) (parse-num rdr)
          nil (error "JSON parse error: end of stream")
-         c (error (string.format
+         c (error (format
                    "JSON parse error: unexpected token ('%s' (code %d))"
                    c (c:byte))))))))
 

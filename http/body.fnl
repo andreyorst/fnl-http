@@ -10,54 +10,61 @@
 (local {: <!?}
   (require :http.async-extras))
 
-(fn get-chunk-data [body]
-  (if (chan? body)
-      (<!? body)
-      (reader? body)
-      (body:read 1024)
-      (error (.. "unsupported body type: " (type body)))))
+(local format string.format)
 
-(fn format-chunk [body]
-  "Formats part of the `body` as a chunk with a calculated size."
-  (let [data? (get-chunk-data body)
+(fn get-chunk-data [src]
+  "Obtain a single chunk from `src`."
+  {:private true}
+  (if (chan? src)
+      (<!? src)
+      (reader? src)
+      (src:read 1024)
+      (error (.. "unsupported source type: " (type src)))))
+
+(fn format-chunk [src]
+  "Formats a part of the `src` as a chunk with a calculated size."
+  (let [data? (get-chunk-data src)
         data (or data? "")]
     (values (not data?)
-            (string.format "%x\r\n%s\r\n" (length data) data))))
+            (format "%x\r\n%s\r\n" (length data) data))))
 
-(fn stream-chunks [dst body]
-  "Writes chunks to `dst` obtained from the `body`.
+(fn stream-chunks [dst src]
+  "Writes chunks to `dst` obtained from the `src`.
 Only used when the size of the individual chunks or a total content
-lenght of the reader are not known.  The `body` can be a Channel or a
+lenght of the reader are not known.  The `src` can be a Channel or a
 Reader.  In case of the `Reader`, it's being read in chunks of 1024
 bytes."
-  (let [(last-chunk? data) (format-chunk body)]
+  {:private true}
+  (let [(last-chunk? data) (format-chunk src)]
     (dst:write data)
     (when (not last-chunk?)
-      (stream-chunks dst body))))
+      (stream-chunks dst src))))
 
-(fn stream-reader [dst body remaining]
-  "Writes chunks read from `body` to `dst` until `remaining` reaches 0.
-Used in cases when the reader was passed as the `body`, and the
+(fn stream-reader [dst src remaining]
+  "Writes chunks read from `src` to `dst` until `remaining` reaches 0.
+Used in cases when the reader was passed as the `src`, and the
 Content-Length header was provided."
-  (case (body:read (if (< 1024 remaining) 1024 remaining))
+  {:private true}
+  (case (src:read (if (< 1024 remaining) 1024 remaining))
     data
     (do (dst:write data)
         (when (> remaining 0)
           (stream-reader
-           dst body
+           dst src
            (- remaining (length data)))))))
 
-(fn stream-channel [dst body remaining]
-  "Writes chunks read from `body` to `dst` until `remaining` reaches 0.
-Used in cases when the channel was passed as the multipart `body`, and the
-Content-Length header was provided."
-  (case (<!? body)
+(fn stream-channel [dst src remaining]
+  "Writes chunks read from `src` to `dst` until `remaining` reaches 0.
+Used in cases when the channel was passed as the multipart `src`, and
+the Content-Length header was provided."
+  {:private true}
+  (case (<!? src)
     data
-    (let [data (if (< (length data) remaining) data (string.sub data 1 remaining))
+    (let [data (if (< (length data) remaining) data (data:sub 1 remaining))
           remaining (- remaining (length data))]
       (dst:write data)
       (when (> remaining 0)
-        (stream-channel dst body remaining)))))
+        (stream-channel dst src remaining)))))
 
 (fn stream-body [dst body {: transfer-encoding : content-length}]
   "Stream the given `body` to `dst`.
@@ -79,22 +86,24 @@ field specifies a chunked encoding, the body is streamed in chunks."
   "Guess the content type of the `body`.
 By default, string bodies are transferred with text/plain;
 charset=UTF-8.  Readers and channels use application/octet-stream."
-(if (= (type body) :string)
-    "text/plain; charset=UTF-8"
+  {:private true}
+  (if (= (type body) :string)
+      "text/plain; charset=UTF-8"
       (or (chan? body)
           (reader? body))
-      "application/octet-stream"
+      :application/octet-stream
       (error (.. "Unsupported body type" (type body)) 2)))
 
 (fn guess-transfer-encoding [body]
   "Guess the content transfer encoding for the `body`.
 Strings are trasferred using the 8bit encoding, readers and channels
 use binary encoding."
+  {:private true}
   (if (= (type body) :string)
-      "8bit"
+      :8bit
       (or (chan? body)
           (reader? body))
-      "binary"
+      :binary
       (error (.. "Unsupported body type" (type body)) 2)))
 
 (fn wrap-body [body]
@@ -104,12 +113,13 @@ use binary encoding."
                (reader? body) body
                body)
     :userdata (case (getmetatable body)
-                {:__name "FILE*"}
+                {:__name :FILE*}
                 (file-reader body)
                 _ body)
     _ body))
 
 (fn urlencode-string [str]
+  {:private true}
   (pick-values 1
     (str:gsub "[^%w]" #(: "%%%X" :format ($:byte)))))
 
@@ -126,19 +136,20 @@ explicitly.
 Default headers include `content-disposition`, `content-length`,
 `content-type`, and `content-transfer-encoding`. Provide `headers` for
 additional or to change the default ones."
+  {:private true}
   (let [content (wrap-body content)]
-    (string.format
+    (format
      "--%s\r\n%s\r\n"
      boundary
      (headers->string
       (collect [k v (pairs (or headers {}))
-                :into {:content-disposition (string.format "form-data; name=%q%s%s" name
-                                                           (if filename
-                                                               (string.format "; filename=%q" filename)
-                                                               "")
-                                                           (if filename*
-                                                               (string.format "; filename*=%s" (urlencode-string filename*))
-                                                               ""))
+                :into {:content-disposition (format "form-data; name=%q%s%s" name
+                                                    (if filename
+                                                        (format "; filename=%q" filename)
+                                                        "")
+                                                    (if filename*
+                                                        (format "; filename*=%s" (urlencode-string filename*))
+                                                        ""))
                        :content-length (if (= :string (type content))
                                            (length content)
                                            (or content-length (content:length)))
@@ -162,14 +173,14 @@ Needs to know the `boundary`."
                 (reader? content)
                 (+ 2 (or content-length
                          (content:length)
-                         (error (string.format "can't determine length for multipart content %q" name) 2)))
+                         (error (format "can't determine length for multipart content %q" name) 2)))
                 (not= nil content-length)
                 (+ content-length 2)
-                (error (string.format "missing length field on non-string multipart content %q" name) 2)))))
-     (length (string.format "--%s--\r\n" boundary))))
+                (error (format "missing length field on non-string multipart content %q" name) 2)))))
+     (length (format "--%s--\r\n" boundary))))
 
 (fn stream-multipart [dst multipart boundary]
-  "Write `multipart` entries to `dst` separated with `boundary`."
+  "Write `multipart` entries to `dst` separated with the `boundary`."
   (each [_ {: name : filename
             : content :length content-length
             : mime-type
@@ -184,7 +195,7 @@ Needs to know the `boundary`."
       (when (not= :string (type content))
         (stream-body dst content {:content-length (or content-length (content:length))})))
     (dst:write "\r\n"))
-  (dst:write (string.format "--%s--\r\n" boundary)))
+  (dst:write (format "--%s--\r\n" boundary)))
 
 {: stream-body
  : format-chunk

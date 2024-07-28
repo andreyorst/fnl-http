@@ -1,4 +1,4 @@
-(local socket
+(local {: gettime}
   (require :socket))
 
 (import-macros
@@ -14,7 +14,7 @@
 (local http-parser
   (require :http.parser))
 
-(local tcp
+(local {: chan}
   (require :http.tcp))
 
 (local {: reader? : file-reader}
@@ -33,21 +33,27 @@
 (local {: random-uuid}
   (require :http.uuid))
 
+(local {: format
+        : lower}
+  string)
+
 (local client {})
 
 ;;; Helper functions
 
 (fn get-boundary [headers]
+  {:private true}
   (accumulate [boundary nil
                header value (pairs headers)
                :until boundary]
-    (when (= "content-type" (string.lower header))
-      (string.match value "boundary=([^;]+)"))))
+    (when (= "content-type" (lower header))
+      (value:match "boundary=([^;]+)"))))
 
 (fn prepare-headers [host port {: body : headers : multipart : mime-subtype}]
   "Consttruct headers with some default ones inferred from `body`,
 `headers`, `host`, `port`, and `multipart` body.  `mime-subtype` is
 used to indicate `multipart` subtype, the default is `form-data`."
+  {:private true}
   (let [headers (collect [k v (pairs (or headers {}))
                           :into {:host (.. host (if port (.. ":" port) ""))
                                  :content-length (if (= (type body) :string)
@@ -81,6 +87,7 @@ used to indicate `multipart` subtype, the default is `form-data`."
 (fn format-path [{: path : query : fragment}]
   "Formats the PATH component of a HTTP `Path` header.
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
+  {:private true}
   (.. (or path "/")
       (if query (.. "?" query) "")
       (if fragment (.. "?" fragment) "")))
@@ -88,6 +95,7 @@ Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
 (fn wrap-client [chan]
   "Adds a bunch of methods to the socket-channel to act like Luasocket
 client object."
+  {:private true}
   (doto chan
     (tset :read (fn [src pattern]
                   (src:set-chunk-size pattern)
@@ -98,8 +106,8 @@ client object."
     (tset :send (fn [ch data ...]
                   (->> (case (values (select :# ...) ...)
                          0 data
-                         (1 i) (string.sub data i (length data))
-                         _ (string.sub data ...))
+                         (1 i) (data:sub i (length data))
+                         _ (data:sub ...))
                        (>!? ch))))
     (tset :write >!?)))
 
@@ -140,7 +148,7 @@ are made and the body is sent using chunked transfer encoding."}
         opts (collect [k v (pairs (or ?opts {}))
                        :into {:as :raw
                               :async? false
-                              :time socket.gettime
+                              :time gettime
                               :throw-errors? true}]
                k v)
         body (wrap-body opts.body)
@@ -160,14 +168,14 @@ are made and the body is sent using chunked transfer encoding."}
                       (fn [err]
                         (?on-raise err)
                         nil))
-                    (tcp.chan parsed nil)
+                    (chan parsed nil)
                     wrap-client)]
     (when opts.async?
       (assert
        (and ?on-response ?on-raise)
        "If :async? is true, you must pass on-response and on-raise callbacks"))
     (if opts.async?
-        (go (set opts.start (socket.gettime))
+        (go (set opts.start (gettime))
             (client:write req)
             (case opts.multipart
               multipart (stream-multipart client multipart (get-boundary headers))
@@ -175,7 +183,7 @@ are made and the body is sent using chunked transfer encoding."}
             (case (pcall http-parser.parse-http-response client opts)
               (true resp) (?on-response resp)
               (_ err) (?on-raise err)))
-        (do (set opts.start (socket.gettime))
+        (do (set opts.start (gettime))
             (client:write req)
             (case opts.multipart
               multipart (stream-multipart client multipart (get-boundary headers))
@@ -189,7 +197,7 @@ are made and the body is sent using chunked transfer encoding."}
   `(fn ,(sym (.. :client. method))
      [url# opts# on-response# on-raise#]
      {:fnl/arglist [url opts on-response on-raise]
-      :fnl/docstring ,(.. "Makes a `" (string.upper method)
+      :fnl/docstring ,(.. "Makes a `" (method:upper)
                           "` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
