@@ -109,15 +109,19 @@ use binary encoding."
                 _ body)
     _ body))
 
-(fn format-multipart-part [{: name : part-name : filename
+(fn urlencode-string [str]
+  (pick-values 1
+    (str:gsub "[^%w]" #(: "%%%X" :format ($:byte)))))
+
+(fn format-multipart-part [{: name : filename : filename*
                             : content :length content-length
                             : headers
                             : mime-type} boundary]
   "Format a single multipart entry.
 The part starts with the `boundary`, followed by headers, created from
-`part-name` (if none given the `name` is used), optional `filename`
-for files, `mime-type`, and `content-length` which is either
-calculated from `content` or provided explicitly.
+`name`, optional `filename` or `filename*` for files, `mime-type`, and
+`content-length` which is either calculated from `content` or provided
+explicitly.
 
 Default headers include `content-disposition`, `content-length`,
 `content-type`, and `content-transfer-encoding`. Provide `headers` for
@@ -128,9 +132,12 @@ additional or to change the default ones."
      boundary
      (headers->string
       (collect [k v (pairs (or headers {}))
-                :into {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
+                :into {:content-disposition (string.format "form-data; name=%q%s%s" name
                                                            (if filename
                                                                (string.format "; filename=%q" filename)
+                                                               "")
+                                                           (if filename*
+                                                               (string.format "; filename*=%s" (urlencode-string filename*))
                                                                ""))
                        :content-length (if (= :string (type content))
                                            (length content)
@@ -144,7 +151,7 @@ additional or to change the default ones."
 Needs to know the `boundary`."
   (+ (accumulate [total 0
                   _ {:length content-length
-                     : name : part-name
+                     : name
                      : content
                      &as part}
                   (ipairs multipart)]
@@ -153,23 +160,23 @@ Needs to know the `boundary`."
             (length (format-multipart-part part boundary))
             (if (= :string (type content)) (+ (length content) 2)
                 (reader? content)
-                (+ 2 (or (content:length)
-                         content-length
-                         (error (string.format "can't determine length for multipart content %q" (or name part-name)) 2)))
+                (+ 2 (or content-length
+                         (content:length)
+                         (error (string.format "can't determine length for multipart content %q" name) 2)))
                 (not= nil content-length)
                 (+ content-length 2)
-                (error (string.format "missing length field on non-string multipart content %q" (or name part-name)) 2)))))
+                (error (string.format "missing length field on non-string multipart content %q" name) 2)))))
      (length (string.format "--%s--\r\n" boundary))))
 
 (fn stream-multipart [dst multipart boundary]
   "Write `multipart` entries to `dst` separated with `boundary`."
-  (each [_ {: name : part-name : filename
+  (each [_ {: name : filename
             : content :length content-length
             : mime-type
             &as part}
          (ipairs multipart)]
     (assert (not= nil content) "Multipart content cannot be nil")
-    (assert (or part-name name) "Multipart body must contain at least content and name or part-name")
+    (assert name "Multipart body must contain at least content and name")
     (let [content (wrap-body content)]
       (->> (if (= :string (type content)) content "")
            (.. (format-multipart-part part boundary))

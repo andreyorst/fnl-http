@@ -38,14 +38,14 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
   local file_reader = _local_785_["file-reader"]
   local _local_790_ = require("http.builder")
   local build_http_request = _local_790_["build-http-request"]
-  local _local_827_ = require("http.body")
-  local stream_body = _local_827_["stream-body"]
-  local format_chunk = _local_827_["format-chunk"]
-  local wrap_body = _local_827_["wrap-body"]
-  local multipart_content_length = _local_827_["multipart-content-length"]
-  local stream_multipart = _local_827_["stream-multipart"]
-  local _local_832_ = require("http.uuid")
-  local random_uuid = _local_832_["random-uuid"]
+  local _local_832_ = require("http.body")
+  local stream_body = _local_832_["stream-body"]
+  local format_chunk = _local_832_["format-chunk"]
+  local wrap_body = _local_832_["wrap-body"]
+  local multipart_content_length = _local_832_["multipart-content-length"]
+  local stream_multipart = _local_832_["stream-multipart"]
+  local _local_837_ = require("http.uuid")
+  local random_uuid = _local_837_["random-uuid"]
   local client = {}
   local function get_boundary(headers)
     local boundary = nil
@@ -59,45 +59,45 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     end
     return boundary
   end
-  local function prepare_headers(host, port, _834_)
-    local body = _834_["body"]
-    local headers = _834_["headers"]
-    local multipart = _834_["multipart"]
-    local mime_subtype = _834_["mime-subtype"]
+  local function prepare_headers(host, port, _839_)
+    local body = _839_["body"]
+    local headers = _839_["headers"]
+    local multipart = _839_["multipart"]
+    local mime_subtype = _839_["mime-subtype"]
     local headers0
     do
       local tbl_16_auto
-      local _835_
-      if port then
-        _835_ = (":" .. port)
-      else
-        _835_ = ""
-      end
-      local _837_
-      if (type(body) == "string") then
-        _837_ = #body
-      elseif reader_3f(body) then
-        _837_ = body:length()
-      else
-        _837_ = nil
-      end
       local _840_
+      if port then
+        _840_ = (":" .. port)
+      else
+        _840_ = ""
+      end
+      local _842_
+      if (type(body) == "string") then
+        _842_ = #body
+      elseif reader_3f(body) then
+        _842_ = body:length()
+      else
+        _842_ = nil
+      end
+      local _845_
       do
-        local _839_ = type(body)
-        if ((_839_ == "string") or (_839_ == "nil")) then
-          _840_ = nil
+        local _844_ = type(body)
+        if ((_844_ == "string") or (_844_ == "nil")) then
+          _845_ = nil
         else
-          local _ = _839_
-          _840_ = "chunked"
+          local _ = _844_
+          _845_ = "chunked"
         end
       end
-      local _844_
+      local _849_
       if multipart then
-        _844_ = ("multipart/" .. (mime_subtype or "form-data") .. "; boundary=------------" .. random_uuid())
+        _849_ = ("multipart/" .. (mime_subtype or "form-data") .. "; boundary=------------" .. random_uuid())
       else
-        _844_ = nil
+        _849_ = nil
       end
-      tbl_16_auto = {host = (host .. _835_), ["content-length"] = _837_, ["transfer-encoding"] = _840_, ["content-type"] = _844_}
+      tbl_16_auto = {host = (host .. _840_), ["content-length"] = _842_, ["transfer-encoding"] = _845_, ["content-type"] = _849_}
       for k, v in pairs((headers or {})) do
         local k_17_auto, v_18_auto = k, v
         if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
@@ -125,59 +125,59 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       return headers1
     end
   end
-  local function format_path(_849_)
-    local path = _849_["path"]
-    local query = _849_["query"]
-    local fragment = _849_["fragment"]
-    local _850_
+  local function format_path(_854_)
+    local path = _854_["path"]
+    local query = _854_["query"]
+    local fragment = _854_["fragment"]
+    local _855_
     if query then
-      _850_ = ("?" .. query)
+      _855_ = ("?" .. query)
     else
-      _850_ = ""
+      _855_ = ""
     end
-    local _852_
+    local _857_
     if fragment then
-      _852_ = ("?" .. fragment)
+      _857_ = ("?" .. fragment)
     else
-      _852_ = ""
+      _857_ = ""
     end
-    return ((path or "/") .. _850_ .. _852_)
+    return ((path or "/") .. _855_ .. _857_)
   end
   local function wrap_client(chan)
-    local function _854_(src, pattern)
+    local function _859_(src, pattern)
       src["set-chunk-size"](src, pattern)
       return _3c_21_3f(src)
     end
-    chan["read"] = _854_
-    local function _855_(src, pattern, prefix)
+    chan["read"] = _859_
+    local function _860_(src, pattern, prefix)
       src["set-chunk-size"](src, pattern)
       return ((prefix or "") .. _3c_21_3f(src))
     end
-    chan["receive"] = _855_
-    local function _856_(ch, data, ...)
-      local function _859_(...)
-        local _857_, _858_ = select("#", ...), ...
-        if (_857_ == 0) then
+    chan["receive"] = _860_
+    local function _861_(ch, data, ...)
+      local function _864_(...)
+        local _862_, _863_ = select("#", ...), ...
+        if (_862_ == 0) then
           return data
-        elseif ((_857_ == 1) and (nil ~= _858_)) then
-          local i = _858_
+        elseif ((_862_ == 1) and (nil ~= _863_)) then
+          local i = _863_
           return string.sub(data, i, #data)
         else
-          local _ = _857_
+          local _ = _862_
           return string.sub(data, ...)
         end
       end
-      return _3e_21_3f(ch, _859_(...))
+      return _3e_21_3f(ch, _864_(...))
     end
-    chan["send"] = _856_
+    chan["send"] = _861_
     chan["write"] = _3e_21_3f
     return chan
   end
   client.request = function(method, url, _3fopts, _3fon_response, _3fon_raise)
-    local _let_861_ = http_parser["parse-url"](url)
-    local host = _let_861_["host"]
-    local port = _let_861_["port"]
-    local parsed = _let_861_
+    local _let_866_ = http_parser["parse-url"](url)
+    local host = _let_866_["host"]
+    local port = _let_866_["port"]
+    local parsed = _let_866_
     local opts
     do
       local tbl_16_auto = {as = "raw", time = socket.gettime, ["throw-errors?"] = true, ["async?"] = false}
@@ -193,7 +193,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     local body = wrap_body(opts.body)
     local headers = prepare_headers(host, port, opts)
     local req
-    local function _863_()
+    local function _868_()
       if opts.multipart then
         return nil
       elseif (body and (headers["transfer-encoding"] == "chunked")) then
@@ -205,63 +205,63 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
         return nil
       end
     end
-    req = build_http_request(method, format_path(parsed), headers, _863_())
+    req = build_http_request(method, format_path(parsed), headers, _868_())
     local client0
-    local function _865_()
+    local function _870_()
       if opts["async?"] then
-        local function _864_(err)
+        local function _869_(err)
           _3fon_raise(err)
           return nil
         end
-        return _864_
+        return _869_
       else
         return nil
       end
     end
-    client0 = wrap_client(tcp.chan(parsed, nil, _865_()))
+    client0 = wrap_client(tcp.chan(parsed, nil, _870_()))
     if opts["async?"] then
       assert((_3fon_response and _3fon_raise), "If :async? is true, you must pass on-response and on-raise callbacks")
     else
     end
     if opts["async?"] then
-      local _let_867_ = require("lib.async")
-      local go_1_auto = _let_867_["go"]
-      local function _868_()
+      local _let_872_ = require("lib.async")
+      local go_1_auto = _let_872_["go"]
+      local function _873_()
         opts.start = socket.gettime()
         client0:write(req)
         do
-          local _869_ = opts.multipart
-          if (nil ~= _869_) then
-            local multipart = _869_
+          local _874_ = opts.multipart
+          if (nil ~= _874_) then
+            local multipart = _874_
             stream_multipart(client0, multipart, get_boundary(headers))
           else
-            local _ = _869_
+            local _ = _874_
             stream_body(client0, body, headers)
           end
         end
-        local _871_, _872_ = pcall(http_parser["parse-http-response"], client0, opts)
-        if ((_871_ == true) and (nil ~= _872_)) then
-          local resp = _872_
+        local _876_, _877_ = pcall(http_parser["parse-http-response"], client0, opts)
+        if ((_876_ == true) and (nil ~= _877_)) then
+          local resp = _877_
           return _3fon_response(resp)
-        elseif (true and (nil ~= _872_)) then
-          local _ = _871_
-          local err = _872_
+        elseif (true and (nil ~= _877_)) then
+          local _ = _876_
+          local err = _877_
           return _3fon_raise(err)
         else
           return nil
         end
       end
-      return go_1_auto(_868_)
+      return go_1_auto(_873_)
     else
       opts.start = socket.gettime()
       client0:write(req)
       do
-        local _874_ = opts.multipart
-        if (nil ~= _874_) then
-          local multipart = _874_
+        local _879_ = opts.multipart
+        if (nil ~= _879_) then
+          local multipart = _879_
           stream_multipart(client0, multipart, get_boundary(headers))
         else
-          local _ = _874_
+          local _ = _879_
           stream_body(client0, body, headers)
         end
       end
@@ -4635,76 +4635,99 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
       return body
     end
   end
-  local function format_multipart_part(_815_, boundary)
-    local name = _815_["name"]
-    local part_name = _815_["part-name"]
-    local filename = _815_["filename"]
-    local content = _815_["content"]
-    local content_length = _815_["length"]
-    local mime_type = _815_["mime-type"]
+  local function urlencode_string(str)
+    local function _815_(_241)
+      return ("%%%X"):format(_241:byte())
+    end
+    return (str:gsub("[^%w]", _815_))
+  end
+  local function format_multipart_part(_816_, boundary)
+    local name = _816_["name"]
+    local filename = _816_["filename"]
+    local filename_2a = _816_["filename*"]
+    local content = _816_["content"]
+    local content_length = _816_["length"]
+    local headers = _816_["headers"]
+    local mime_type = _816_["mime-type"]
     local content0 = wrap_body(content)
-    local function _816_()
+    local function _822_()
+      local tbl_16_auto
+      local _817_
       if filename then
-        return string.format("; filename=%q", filename)
+        _817_ = string.format("; filename=%q", filename)
       else
-        return ""
+        _817_ = ""
       end
+      local function _819_()
+        if filename_2a then
+          return string.format("; filename*=%s", urlencode_string(filename_2a))
+        else
+          return ""
+        end
+      end
+      local _820_
+      if ("string" == type(content0)) then
+        _820_ = #content0
+      else
+        _820_ = (content_length or content0:length())
+      end
+      tbl_16_auto = {["content-disposition"] = string.format("form-data; name=%q%s%s", name, _817_, _819_()), ["content-length"] = _820_, ["content-type"] = (mime_type or guess_content_type(content0)), ["content-transfer-encoding"] = guess_transfer_encoding(content0)}
+      for k, v in pairs((headers or {})) do
+        local k_17_auto, v_18_auto = k, v
+        if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
+          tbl_16_auto[k_17_auto] = v_18_auto
+        else
+        end
+      end
+      return tbl_16_auto
     end
-    local _817_
-    if ("string" == type(content0)) then
-      _817_ = #content0
-    else
-      _817_ = (content_length or content0:length())
-    end
-    return string.format("--%s\13\n%s\13\n", boundary, headers__3estring({["content-disposition"] = string.format("form-data; name=%q%s", (part_name or name), _816_()), ["content-length"] = _817_, ["content-type"] = (mime_type or guess_content_type(content0)), ["content-transfer-encoding"] = guess_transfer_encoding(content0)}))
+    return string.format("--%s\13\n%s\13\n", boundary, headers__3estring(_822_()))
   end
   local function multipart_content_length(multipart, boundary)
-    local _819_
+    local _824_
     do
       local total = 0
-      for _, _820_ in ipairs(multipart) do
-        local content_length = _820_["length"]
-        local name = _820_["name"]
-        local part_name = _820_["part-name"]
-        local content = _820_["content"]
-        local part = _820_
+      for _, _825_ in ipairs(multipart) do
+        local content_length = _825_["length"]
+        local name = _825_["name"]
+        local content = _825_["content"]
+        local part = _825_
         local content0 = wrap_body(content)
-        local _821_
+        local _826_
         if ("string" == type(content0)) then
-          _821_ = (#content0 + 2)
+          _826_ = (#content0 + 2)
         elseif reader_3f(content0) then
-          _821_ = (2 + (content0:length() or content_length or error(string.format("can't determine length for multipart content %q", (name or part_name)), 2)))
+          _826_ = (2 + (content_length or content0:length() or error(string.format("can't determine length for multipart content %q", name), 2)))
         elseif (nil ~= content_length) then
-          _821_ = (content_length + 2)
+          _826_ = (content_length + 2)
         else
-          _821_ = error(string.format("missing length field on non-string multipart content %q", (name or part_name)), 2)
+          _826_ = error(string.format("missing length field on non-string multipart content %q", name), 2)
         end
-        total = (total + #format_multipart_part(part, boundary) + _821_)
+        total = (total + #format_multipart_part(part, boundary) + _826_)
       end
-      _819_ = total
+      _824_ = total
     end
-    return (_819_ + #string.format("--%s--\13\n", boundary))
+    return (_824_ + #string.format("--%s--\13\n", boundary))
   end
   local function stream_multipart(dst, multipart, boundary)
-    for _, _823_ in ipairs(multipart) do
-      local name = _823_["name"]
-      local part_name = _823_["part-name"]
-      local filename = _823_["filename"]
-      local content = _823_["content"]
-      local content_length = _823_["length"]
-      local mime_type = _823_["mime-type"]
-      local part = _823_
+    for _, _828_ in ipairs(multipart) do
+      local name = _828_["name"]
+      local filename = _828_["filename"]
+      local content = _828_["content"]
+      local content_length = _828_["length"]
+      local mime_type = _828_["mime-type"]
+      local part = _828_
       assert((nil ~= content), "Multipart content cannot be nil")
-      assert((part_name or name), "Multipart body must contain at least content and name or part-name")
+      assert(name, "Multipart body must contain at least content and name")
       do
         local content0 = wrap_body(content)
-        local _824_
+        local _829_
         if ("string" == type(content0)) then
-          _824_ = content0
+          _829_ = content0
         else
-          _824_ = ""
+          _829_ = ""
         end
-        dst:write((format_multipart_part(part, boundary) .. _824_))
+        dst:write((format_multipart_part(part, boundary) .. _829_))
         if ("string" ~= type(content0)) then
           stream_body(dst, content0, {["content-length"] = (content_length or content0:length())})
         else
@@ -4790,4 +4813,4 @@ package.preload["http.uuid"] = package.preload["http.uuid"] or function(...)
   end
   return {["random-uuid"] = random_uuid}
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.52"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.55"}})})

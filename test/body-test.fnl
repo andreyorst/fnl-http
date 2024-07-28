@@ -115,6 +115,24 @@
         :content (io.open "test/data/valid.fnl")}
        {:name "bar" :filename "valid.fnl"
         :content (io.open "test/data/valid.fnl")}]
+      "foobar"))
+    (assert-eq
+     2362
+     (multipart-content-length
+      [{:name "foo"
+        :content (io.open "test/data/valid.fnl")}
+       {:name "bar" :filename* "valid file.fnl"
+        :content (io.open "test/data/valid.fnl")}]
+      "foobar"))
+    (assert-eq
+     2389
+     (multipart-content-length
+      [{:name "foo"
+        :content (io.open "test/data/valid.fnl")}
+       {:name "bar"
+        :filename "valid file.fnl"
+        :filename* "valid file.fnl"
+        :content (io.open "test/data/valid.fnl")}]
       "foobar")))
   (testing "multipart with channel data"
     (let [make-chan #(doto (chan 3)
