@@ -36,6 +36,7 @@
           num)))
 
 (fn random-uuid []
+  "Generates a random UUIDv4 value."
   (m/random)
   (let [time-low-a (m/random 0 65535)
         time-low-b (m/random 0 65535)

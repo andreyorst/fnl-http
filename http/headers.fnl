@@ -12,7 +12,7 @@
     res))
 
 (fn capitalize-header [header]
-  "Capitalizes the header string."
+  "Capitalizes the `header` string."
   (let [header (->kebab-case header)]
     (-> (icollect [word (header:gmatch "[^-]+")]
           (-> word

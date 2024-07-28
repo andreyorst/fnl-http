@@ -4,8 +4,7 @@
   (require :http.headers))
 
 (fn -header->string [header value]
-  "Converts `header` and `value` arguments into a valid HTTP header
-string."
+  "Converts `header` and `value` arguments into a valid HTTP header string."
   (.. (capitalize-header header) ": " (tostring value) "\r\n"))
 
 (fn sort-headers [h1 h2]
@@ -20,7 +19,10 @@ string."
         table.concat)))
 
 (fn build-http-request [method request-target ?headers ?content]
-  "Formaths the HTTP request string as per the HTTP/1.1 spec."
+  "Formaths the HTTP request string as per the HTTP/1.1 spec.
+`method` is a string, specifying the HTTP method.  `request-target` is
+a path taken from the URL.  Optional `?headers` and `?content` provide
+a headers table and a content string respectively."
   (string.format
    "%s %s %s\r\n%s\r\n%s"
    (string.upper method)
@@ -30,7 +32,10 @@ string."
    (or ?content "")))
 
 (fn build-http-response [status reason ?headers ?content]
-  "Formats the HTTP response string as per the HTTP/1.1 spec."
+  "Formats the HTTP response string as per the HTTP/1.1 spec.
+`status` is a numeric code of the response.  `reason` is a string,
+describing the response.  Optional `?headers` and `?content` provide a
+headers table and a content string respectively."
   (string.format
    "%s %s %s\r\n%s\r\n%s"
    HTTP-VERSION

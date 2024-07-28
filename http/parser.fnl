@@ -233,6 +233,20 @@ Accepts `src` that is a source, that can be read with the `read`
 method.  The `read` is a special storage to alter how `receive`
 internaly reads the data inside the `read` method of the body.
 
+`as` is a string, describing how to coerse the response body.  It can
+be one of `\"raw\"`, `\"stream\"`, or `\"json\"`.
+
+If `parse-headers?` is true, the response will contain header values
+parsed, and converted to Lua data.
+
+The `throw-errors?` option configures whether non-successful HTTP
+responses should throw an error. Only the 200, 201, 202, 203, 204,
+205, 206, 207, 300, 301, 302, 303, 304, 307 response codes are
+considered successful by default.
+
+`start` is the request start time in milliseconds.  `time` is a
+function to measure machine time.
+
 Returns a map with the information about the HTTP response, including
 its headers, and a body stream."
   (let [status (read-response-status-line src)
@@ -287,6 +301,7 @@ its headers, and a body stream."
   (parse-request-status-line (src:read :*l)))
 
 (fn parse-http-request [src]
+  "Parses the HTTP/1.1 request read from `src`."
   (let [status (read-request-status-line src)
         headers (read-headers src)]
     (doto status

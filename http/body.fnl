@@ -18,6 +18,7 @@
       (error (.. "unsupported body type: " (type body)))))
 
 (fn format-chunk [body]
+  "Formats part of the `body` as a chunk with a calculated size."
   (let [data? (get-chunk-data body)
         data (or data? "")]
     (values (not data?)
@@ -61,7 +62,9 @@ Content-Length header was provided."
 (fn stream-body [dst body {: transfer-encoding : content-length}]
   "Stream the given `body` to `dst`.
 Depending on values of the headers and the type of the `body`, decides
-how to stream the data."
+how to stream the data. Streaming from channels and readers requires
+the `content-length` field to be present. If the `transfer-encoding`
+field specifies a chunked encoding, the body is streamed in chunks."
   (when body
     (if (and (= :string (type transfer-encoding))
              (or (transfer-encoding:match "chunked[, ]")
@@ -95,6 +98,7 @@ use binary encoding."
       (error (.. "Unsupported body type" (type body)) 2)))
 
 (fn wrap-body [body]
+  "Wraps `body` in a streamable object."
   (case (type body)
     :table (if (chan? body) body
                (reader? body) body
@@ -107,6 +111,7 @@ use binary encoding."
 
 (fn format-multipart-part [{: name : part-name : filename
                             : content :length content-length
+                            : headers
                             : mime-type} boundary]
   "Format a single multipart entry.
 The part starts with the `boundary`, followed by headers, created from
@@ -115,21 +120,24 @@ for files, `mime-type`, and `content-length` which is either
 calculated from `content` or provided explicitly.
 
 Default headers include `content-disposition`, `content-length`,
-`content-type`, and `content-transfer-encoding`."
+`content-type`, and `content-transfer-encoding`. Provide `headers` for
+additional or to change the default ones."
   (let [content (wrap-body content)]
     (string.format
      "--%s\r\n%s\r\n"
      boundary
      (headers->string
-      {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
-                                           (if filename
-                                               (string.format "; filename=%q" filename)
-                                               ""))
-       :content-length (if (= :string (type content))
-                           (length content)
-                           (or content-length (content:length)))
-       :content-type (or mime-type (guess-content-type content))
-       :content-transfer-encoding (guess-transfer-encoding content)}))))
+      (collect [k v (pairs (or headers {}))
+                :into {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
+                                                           (if filename
+                                                               (string.format "; filename=%q" filename)
+                                                               ""))
+                       :content-length (if (= :string (type content))
+                                           (length content)
+                                           (or content-length (content:length)))
+                       :content-type (or mime-type (guess-content-type content))
+                       :content-transfer-encoding (guess-transfer-encoding content)}]
+        k v)))))
 
 (fn multipart-content-length [multipart boundary]
   "Calculate the total length of `multipart` body.
