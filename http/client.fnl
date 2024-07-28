@@ -65,7 +65,7 @@ available.  Returns `true` unless `port` is already closed."
                                  :content-length (case (type body) :string (length body))
                                  :transfer-encoding (case (type body) (where (or :string :nil)) nil _ "chunked")
                                  :content-type (when multipart
-                                                 (.. "multipart/" (or mime-subtype "form-data") "; boundary=" (random-uuid)))}]
+                                                 (.. "multipart/" (or mime-subtype "form-data") "; boundary=------------" (random-uuid)))}]
                   k v)
         headers (if multipart
                     (doto headers
@@ -205,10 +205,10 @@ are made and the body is sent using chunked transfer encoding."}
 
 (macro define-http-method [method]
   "Defines an HTTP method for the given `method`."
-  `(fn ,(sym (.. :client. (tostring method)))
+  `(fn ,(sym (.. :client. method))
      [url# opts# on-response# on-raise#]
      {:fnl/arglist [url opts on-response on-raise]
-      :fnl/docstring ,(.. "Makes a `" (string.upper (tostring method))
+      :fnl/docstring ,(.. "Makes a `" (string.upper method)
                           "` request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
@@ -239,16 +239,16 @@ supplying a non-string body, headers should contain a
 header is missing it is automatically determined by calling the
 `length` function, ohterwise no attempts at detecting content-length
 are made and the body is sent using chunked transfer encoding.")}
-     (client.request ,(tostring method) url# opts# on-response# on-raise#)))
+     (client.request ,method url# opts# on-response# on-raise#)))
 
-(define-http-method get)
-(define-http-method post)
-(define-http-method put)
-(define-http-method patch)
-(define-http-method options)
-(define-http-method trace)
-(define-http-method head)
-(define-http-method delete)
-(define-http-method connect)
+(define-http-method :get)
+(define-http-method :post)
+(define-http-method :put)
+(define-http-method :patch)
+(define-http-method :options)
+(define-http-method :trace)
+(define-http-method :head)
+(define-http-method :delete)
+(define-http-method :connect)
 
 client

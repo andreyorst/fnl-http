@@ -105,7 +105,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       end
       local _828_
       if multipart then
-        _828_ = ("multipart/" .. (mime_subtype or "form-data") .. "; boundary=" .. random_uuid())
+        _828_ = ("multipart/" .. (mime_subtype or "form-data") .. "; boundary=------------" .. random_uuid())
       else
         _828_ = nil
       end
@@ -4710,17 +4710,17 @@ package.preload["http.uuid"] = package.preload["http.uuid"] or function(...)
     end
     local guid = ""
     do
-      guid = (guid .. padbits(s_2fformat("%X", time_low_a), 4))
-      guid = (guid .. padbits(s_2fformat("%X", time_low_b), 4) .. "-")
-      guid = (guid .. padbits(s_2fformat("%X", time_mid), 4) .. "-")
-      guid = (guid .. padbits(s_2fformat("%X", time_hi_and_version), 4) .. "-")
-      guid = (guid .. padbits(s_2fformat("%X", clock_seq), 4) .. "-")
+      guid = (guid .. padbits(s_2fformat("%x", time_low_a), 4))
+      guid = (guid .. padbits(s_2fformat("%x", time_low_b), 4) .. "-")
+      guid = (guid .. padbits(s_2fformat("%x", time_mid), 4) .. "-")
+      guid = (guid .. padbits(s_2fformat("%x", time_hi_and_version), 4) .. "-")
+      guid = (guid .. padbits(s_2fformat("%x", clock_seq), 4) .. "-")
     end
     for i = 1, 6 do
-      guid = (guid .. padbits(s_2fformat("%X", node[i]), 2))
+      guid = (guid .. padbits(s_2fformat("%x", node[i]), 2))
     end
     return guid
   end
   return {["random-uuid"] = random_uuid}
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.46"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.47"}})})

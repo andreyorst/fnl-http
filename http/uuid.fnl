@@ -50,13 +50,13 @@
       (tset node i (m/random 0 255)))
     (var guid "")
     (doto guid
-      (set (.. guid (padbits (s/format "%X" time-low-a) 4)))
-      (set (.. guid (padbits (s/format "%X" time-low-b) 4) "-"))
-      (set (.. guid (padbits (s/format "%X" time-mid) 4) "-"))
-      (set (.. guid (padbits (s/format "%X" time-hi-and-version) 4) "-"))
-      (set (.. guid (padbits (s/format "%X" clock-seq) 4) "-")))
+      (set (.. guid (padbits (s/format "%x" time-low-a) 4)))
+      (set (.. guid (padbits (s/format "%x" time-low-b) 4) "-"))
+      (set (.. guid (padbits (s/format "%x" time-mid) 4) "-"))
+      (set (.. guid (padbits (s/format "%x" time-hi-and-version) 4) "-"))
+      (set (.. guid (padbits (s/format "%x" clock-seq) 4) "-")))
     (for [i 1 6]
-      (set guid (.. guid (padbits (s/format "%X" (. node i)) 2))))
+      (set guid (.. guid (padbits (s/format "%x" (. node i)) 2))))
     guid))
 
 {: random-uuid}
