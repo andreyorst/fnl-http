@@ -3861,17 +3861,17 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
   local _local_577_ = require("http.readers")
   local reader_3f = _local_577_["reader?"]
   local string_reader = _local_577_["string-reader"]
-  local function _string_3f(val)
+  local function string_3f(val)
     return (("string" == type(val)) and {string = val})
   end
-  local function _number_3f(val)
+  local function number_3f(val)
     return (("number" == type(val)) and {number = val})
   end
-  local function _object_3f(val)
+  local function object_3f(val)
     return (("table" == type(val)) and {object = val})
   end
-  local function _array_3f(val, _3fmax)
-    local and_578_ = _object_3f(val)
+  local function array_3f(val, _3fmax)
+    local and_578_ = object_3f(val)
     if and_578_ then
       local _579_ = #val
       if (_579_ == 0) then
@@ -3887,7 +3887,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
         end
         if and_586_ then
           local k = _584_
-          and_578_ = _array_3f(val, k)
+          and_578_ = array_3f(val, k)
         elseif (_584_ == nil) then
           and_578_ = {n = max, array = val}
         else
@@ -3900,13 +3900,13 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     end
     return and_578_
   end
-  local function _function_3f(val)
+  local function function_3f(val)
     return (("function" == type(val)) and {["function"] = val})
   end
-  local function _guess(val)
-    return (_array_3f(val) or _object_3f(val) or _string_3f(val) or _number_3f(val) or _function_3f(val) or val)
+  local function guess(val)
+    return (array_3f(val) or object_3f(val) or string_3f(val) or number_3f(val) or function_3f(val) or val)
   end
-  local function _escape_string(str)
+  local function escape_string(str)
     local escs
     local function _593_(_241, _242)
       return ("\\%03d"):format(_242:byte())
@@ -3915,7 +3915,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     return ("\"" .. str:gsub("[%c\\\"]", escs) .. "\"")
   end
   local function encode(val)
-    local _594_ = _guess(val)
+    local _594_ = guess(val)
     if ((_G.type(_594_) == "table") and (nil ~= _594_.array) and (nil ~= _594_.n)) then
       local array = _594_.array
       local n = _594_.n
@@ -3953,7 +3953,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
       return ("{" .. table.concat(_597_, ", ") .. "}")
     elseif ((_G.type(_594_) == "table") and (nil ~= _594_.string)) then
       local s = _594_.string
-      return _escape_string(s)
+      return escape_string(s)
     elseif ((_G.type(_594_) == "table") and (nil ~= _594_.number)) then
       local n = _594_.number
       return string.gsub(tostring(n), ",", ".")
@@ -3968,10 +3968,10 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
       return "null"
     else
       local _ = _594_
-      return _escape_string(tostring(val))
+      return escape_string(tostring(val))
     end
   end
-  local function _skip_space(rdr)
+  local function skip_space(rdr)
     local function loop()
       local _600_ = rdr:peek(1)
       local and_601_ = (nil ~= _600_)
@@ -3988,7 +3988,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     end
     return loop()
   end
-  local function _parse_num(rdr)
+  local function parse_num(rdr)
     local function loop(numbers)
       local _604_ = rdr:peek(1)
       local and_605_ = (nil ~= _604_)
@@ -4008,7 +4008,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     return loop(rdr:read(1))
   end
   local _escapable = {["\""] = "\"", ["'"] = "'", ["\\"] = "\\", b = "\8", f = "\12", n = "\n", r = "\13", t = "\t"}
-  local function _parse_string(rdr)
+  local function parse_string(rdr)
     rdr:read(1)
     local function loop(chars, escaped_3f)
       local ch = rdr:read(1)
@@ -4066,10 +4066,10 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     end
     return loop("", false)
   end
-  local function _parse_obj(rdr, parse)
+  local function parse_obj(rdr, parse)
     rdr:read(1)
     local function loop(obj)
-      _skip_space(rdr)
+      skip_space(rdr)
       local _619_ = rdr:peek(1)
       if (_619_ == "}") then
         rdr:read(1)
@@ -4077,13 +4077,13 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
       else
         local _ = _619_
         local key = parse()
-        _skip_space(rdr)
+        skip_space(rdr)
         local _620_ = rdr:peek(1)
         if (_620_ == ":") then
           local _0 = rdr:read(1)
           local value = parse()
           obj[key] = value
-          _skip_space(rdr)
+          skip_space(rdr)
           local _621_ = rdr:peek(1)
           if (_621_ == ",") then
             rdr:read(1)
@@ -4103,11 +4103,11 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     end
     return loop({})
   end
-  local function _parse_arr(rdr, parse)
+  local function parse_arr(rdr, parse)
     rdr:read(1)
     local len = 0
     local function loop(arr)
-      _skip_space(rdr)
+      skip_space(rdr)
       local _625_ = rdr:peek(1)
       if (_625_ == "]") then
         rdr:read(1)
@@ -4117,7 +4117,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
         local val = parse()
         len = (1 + len)
         arr[len] = val
-        _skip_space(rdr)
+        skip_space(rdr)
         local _626_ = rdr:peek(1)
         if (_626_ == ",") then
           rdr:read(1)
@@ -4137,7 +4137,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     local rdr
     if reader_3f(data) then
       rdr = data
-    elseif _string_3f(data) then
+    elseif string_3f(data) then
       rdr = string_reader(data)
     else
       rdr = error("expected a reader, or a string as input", 2)
@@ -4145,11 +4145,11 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
     local function loop()
       local _630_ = rdr:peek(1)
       if (_630_ == "{") then
-        return _parse_obj(rdr, loop)
+        return parse_obj(rdr, loop)
       elseif (_630_ == "[") then
-        return _parse_arr(rdr, loop)
+        return parse_arr(rdr, loop)
       elseif (_630_ == "\"") then
-        return _parse_string(rdr)
+        return parse_string(rdr)
       else
         local and_631_ = (_630_ == "t")
         if and_631_ then
@@ -4182,7 +4182,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
               end
               if and_637_ then
                 local c = _630_
-                return loop(_skip_space(rdr))
+                return loop(skip_space(rdr))
               else
                 local and_639_ = (nil ~= _630_)
                 if and_639_ then
@@ -4191,7 +4191,7 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
                 end
                 if and_639_ then
                   local n = _630_
-                  return _parse_num(rdr)
+                  return parse_num(rdr)
                 elseif (_630_ == nil) then
                   return error("JSON parse error: end of stream")
                 elseif (nil ~= _630_) then
@@ -4285,11 +4285,11 @@ package.preload["http.tcp"] = package.preload["http.tcp"] or function(...)
   local timeout = _local_743_["timeout"]
   local close_21 = _local_743_["close!"]
   local socket = require("socket")
-  local function _set_chunk_size(self, pattern_or_size)
+  local function set_chunk_size(self, pattern_or_size)
     self["chunk-size"] = pattern_or_size
     return nil
   end
-  local function _socket_channel(client, xform, err_handler)
+  local function socket_channel(client, xform, err_handler)
     local recv = chan(1024, xform, err_handler)
     local resp = chan(1024, xform, err_handler)
     local ready = chan()
@@ -4312,7 +4312,7 @@ package.preload["http.tcp"] = package.preload["http.tcp"] or function(...)
     local function _747_(_241)
       return ("#<" .. tostring(_241):gsub("table:", "SocketChannel:") .. ">")
     end
-    c = setmetatable({puts = recv.puts, takes = resp.takes, ["put!"] = _745_, ["take!"] = _746_, ["close!"] = close, close = close, ["chunk-size"] = 1024, ["set-chunk-size"] = _set_chunk_size}, {__index = getmetatable(ready).__index, __name = "SocketChannel", __fennelview = _747_})
+    c = setmetatable({puts = recv.puts, takes = resp.takes, ["put!"] = _745_, ["take!"] = _746_, ["close!"] = close, close = close, ["chunk-size"] = 1024, ["set-chunk-size"] = set_chunk_size}, {__index = getmetatable(ready).__index, __name = "SocketChannel", __fennelview = _747_})
     do
       local _let_750_ = require("lib.async")
       local go_1_auto = _let_750_["go"]
@@ -4438,7 +4438,7 @@ package.preload["http.tcp"] = package.preload["http.tcp"] or function(...)
           local _781_, _782_ = ...
           if true then
             local _ = _781_
-            return _socket_channel(client, xform, err_handler)
+            return socket_channel(client, xform, err_handler)
           elseif ((_781_ == nil) and (nil ~= _782_)) then
             local err = _782_
             return error(err)
@@ -4462,7 +4462,7 @@ package.preload["http.builder"] = package.preload["http.builder"] or function(..
   local HTTP_VERSION = "HTTP/1.1"
   local _local_786_ = require("http.headers")
   local capitalize_header = _local_786_["capitalize-header"]
-  local function _header__3estring(header, value)
+  local function header__3estring(header, value)
     return (capitalize_header(header) .. ": " .. tostring(value) .. "\13\n")
   end
   local function sort_headers(h1, h2)
@@ -4476,7 +4476,7 @@ package.preload["http.builder"] = package.preload["http.builder"] or function(..
           local tbl_21_auto = {}
           local i_22_auto = 0
           for header, value in pairs(headers) do
-            local val_23_auto = _header__3estring(header, value)
+            local val_23_auto = header__3estring(header, value)
             if (nil ~= val_23_auto) then
               i_22_auto = (i_22_auto + 1)
               tbl_21_auto[i_22_auto] = val_23_auto
@@ -4813,4 +4813,4 @@ package.preload["http.uuid"] = package.preload["http.uuid"] or function(...)
   end
   return {["random-uuid"] = random_uuid}
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.55"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.56"}})})

@@ -3,7 +3,7 @@
 (local {: capitalize-header}
   (require :http.headers))
 
-(fn -header->string [header value]
+(fn header->string [header value]
   "Converts `header` and `value` arguments into a valid HTTP header string."
   (.. (capitalize-header header) ": " (tostring value) "\r\n"))
 
@@ -14,7 +14,7 @@
   "Converts a `headers` table into a multiline string of HTTP headers."
   (when (and headers (next headers))
     (-> (icollect [header value (pairs headers)]
-          (-header->string header value))
+          (header->string header value))
         (doto (table.sort sort-headers))
         table.concat)))
 
