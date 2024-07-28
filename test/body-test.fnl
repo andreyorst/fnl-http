@@ -88,38 +88,6 @@
         (stream-body sw ch {:transfer-encoding "chunked"})
         (assert-eq (valid:read :*a) (sw:string))))))
 
-(deftest multipart-stream-test
-  (testing "streaming multipart from file and raw data"
-    (with-open [valid (io.open "test/data/multipart" :r)]
-      (let [sw (string-writer)
-            data (valid:read :*a)]
-        (stream-multipart
-         sw
-         [{:name "foo"
-           :content (io.open "test/data/valid.json")}
-          {:name "bar" :content "bar"}]
-         "foobar")
-        (assert-eq (length data) (length (sw:string)))
-        (assert-eq data (sw:string)))))
-  (testing "streaming multipart from channel and raw data"
-    (with-open [valid (io.open "test/data/multipart" :r)]
-      (let [sw (string-writer)
-            data (valid:read :*a)
-            ch (chan)]
-        (go #(with-open [body (io.open "test/data/valid.json" :r)]
-               (each [line (body:lines)]
-                 (>! ch (.. line "\n")))
-               (close! ch)))
-        (stream-multipart
-         sw
-         [{:name "foo"
-           :content ch
-           :length (with-open [body (io.open "test/data/valid.json" :r)] (body:seek :end))}
-          {:name "bar" :content "bar"}]
-         "foobar")
-        (assert-eq (length data) (length (sw:string)))
-        (assert-eq data (sw:string))))))
-
 (deftest multipart-content-length-test
   (testing "multipart with no data"
     (assert-eq 12 (multipart-content-length [] "foobar")))
@@ -178,3 +146,35 @@
         :content (io.open "test/data/valid.json")}
        {:name "bar" :content "bar"}]
       "foobar"))))
+
+(deftest multipart-stream-test
+  (testing "streaming multipart from file and raw data"
+    (with-open [valid (io.open "test/data/multipart" :r)]
+      (let [sw (string-writer)
+            data (valid:read :*a)]
+        (stream-multipart
+         sw
+         [{:name "foo"
+           :content (io.open "test/data/valid.json")}
+          {:name "bar" :content "bar"}]
+         "foobar")
+        (assert-eq (length data) (length (sw:string)))
+        (assert-eq data (sw:string)))))
+  (testing "streaming multipart from channel and raw data"
+    (with-open [valid (io.open "test/data/multipart" :r)]
+      (let [sw (string-writer)
+            data (valid:read :*a)
+            ch (chan)]
+        (go #(with-open [body (io.open "test/data/valid.json" :r)]
+               (each [line (body:lines)]
+                 (>! ch (.. line "\n")))
+               (close! ch)))
+        (stream-multipart
+         sw
+         [{:name "foo"
+           :content ch
+           :length (with-open [body (io.open "test/data/valid.json" :r)] (body:seek :end))}
+          {:name "bar" :content "bar"}]
+         "foobar")
+        (assert-eq (length data) (length (sw:string)))
+        (assert-eq data (sw:string))))))

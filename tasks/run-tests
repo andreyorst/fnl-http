@@ -9,6 +9,7 @@
    :test.http-parser-test
    :test.headers-test
    :test.url-test
-   :test.body-test])
+   :test.body-test
+   :test.client-test])
 
 (run-tests tests)

@@ -4465,22 +4465,30 @@ package.preload["http.builder"] = package.preload["http.builder"] or function(..
   local function _header__3estring(header, value)
     return (capitalize_header(header) .. ": " .. tostring(value) .. "\13\n")
   end
+  local function sort_headers(h1, h2)
+    return (h1:match("^[^:]+") < h2:match("^[^:]+"))
+  end
   local function headers__3estring(headers)
     if (headers and next(headers)) then
-      local function _787_()
-        local tbl_21_auto = {}
-        local i_22_auto = 0
-        for header, value in pairs(headers) do
-          local val_23_auto = _header__3estring(header, value)
-          if (nil ~= val_23_auto) then
-            i_22_auto = (i_22_auto + 1)
-            tbl_21_auto[i_22_auto] = val_23_auto
-          else
+      local function _788_()
+        local tmp_9_auto
+        do
+          local tbl_21_auto = {}
+          local i_22_auto = 0
+          for header, value in pairs(headers) do
+            local val_23_auto = _header__3estring(header, value)
+            if (nil ~= val_23_auto) then
+              i_22_auto = (i_22_auto + 1)
+              tbl_21_auto[i_22_auto] = val_23_auto
+            else
+            end
           end
+          tmp_9_auto = tbl_21_auto
         end
-        return tbl_21_auto
+        table.sort(tmp_9_auto, sort_headers)
+        return tmp_9_auto
       end
-      return table.concat(_787_())
+      return table.concat(_788_())
     else
       return nil
     end
@@ -4573,7 +4581,7 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
     local transfer_encoding = _805_["transfer-encoding"]
     local content_length = _805_["content-length"]
     if body then
-      if (transfer_encoding == "chunked") then
+      if (("string" == type(transfer_encoding)) and (transfer_encoding:match("chunked[, ]") or transfer_encoding:match("chunked$"))) then
         return stream_chunks(dst, body)
       elseif (content_length and reader_3f(body)) then
         return stream_reader(dst, body, content_length)
@@ -4782,4 +4790,4 @@ package.preload["http.uuid"] = package.preload["http.uuid"] or function(...)
   end
   return {["random-uuid"] = random_uuid}
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.50"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.52"}})})
