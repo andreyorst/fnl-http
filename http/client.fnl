@@ -62,7 +62,10 @@ available.  Returns `true` unless `port` is already closed."
 `?headers`, `host`, `port`, and `?multipart` body."
   (let [headers (collect [k v (pairs (or headers {}))
                           :into {:host (.. host (if port (.. ":" port) ""))
-                                 :content-length (case (type body) :string (length body))
+                                 :content-length (if (= (type body) :string)
+                                                     (length body)
+                                                     (reader? body)
+                                                     (body:length))
                                  :transfer-encoding (case (type body) (where (or :string :nil)) nil _ "chunked")
                                  :content-type (when multipart
                                                  (.. "multipart/" (or mime-subtype "form-data") "; boundary=------------" (random-uuid)))}]

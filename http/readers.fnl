@@ -2,8 +2,8 @@
 
 (local Reader {})
 
-(fn make-reader [source {: read-bytes : read-line : close : peek}]
-  "Generic reader generator.
+(fn make-reader [source {: read-bytes : read-line : close : peek :length len}]
+  {:fnl/docstring "Generic reader generator.
 Accepts methods, that the `source` is going to be passed, and produce
 appropriate results.
 
@@ -18,9 +18,12 @@ pattern.
 reader source supports line iteration.
 - `peek` method should read a specified amount of bytes without moving
   the position in the reader.
+- `length` method should return the amount of bytes left in the
+  reader.
 
 All methods are optional, and if not provided, the return value of
 each is `nil`."
+   :fnl/arglist [source {: read-bytes : read-line : close : peek : length}]}
   (let [close (if close
                   (fn [_ ...]
                     (ok? (pcall close source ...)))
@@ -37,7 +40,11 @@ each is `nil`."
          :peek (if peek
                    (fn [_ pattern ...]
                      (peek source pattern ...))
-                   #nil)}
+                   #nil)
+         :length (if len
+                     (fn []
+                       (len source))
+                     #nil)}
         (setmetatable
          {:__index Reader
           :__close close
@@ -64,11 +71,17 @@ Accepts a file handle or a path string which is opened automatically."
                             (when (open? f)
                               (let [res (f:read pattern)]
                                 (f:seek :cur (- pattern))
-                                res)))})))
+                                res)))
+                    :length (fn [f]
+                              (when (open? f)
+                                (let [current (f:seek :cur)
+                                      len (- (f:seek :end) current)]
+                                  (f:seek :cur (- len))
+                                  len)))})))
 
 (fn string-reader [string]
   "Creates a `Reader` from the given `string`."
-  (var (i closed) (values 1 false))
+  (var (i closed?) (values 1 false))
   (let [len (length string)
         try-read-line (fn [s pattern]
                         (case (s:find pattern i)
@@ -81,10 +94,10 @@ Accepts a file handle or a path string which is opened automatically."
     (make-reader
      string
      {:close (fn [_]
-               (when (not closed)
+               (when (not closed?)
                  (set i (+ len 1))
-                 (set closed true)
-                 closed))
+                 (set closed? true)
+                 closed?))
       :read-bytes (fn [s pattern]
                     (when (<= i len)
                       (case pattern
@@ -103,7 +116,10 @@ Accepts a file handle or a path string which is opened automatically."
                   (where bytes (= :number (type bytes)))
                   (let [res (s:sub i (+ i bytes -1))]
                     res)
-                  _ (error "expected number of bytes to peek"))))})))
+                  _ (error "expected number of bytes to peek"))))
+      :length (fn [s]
+                (when (not closed?)
+                  (math.max 0 (- (length s) (- i 1)))))})))
 
 (local (ltn? ltn12)
   (pcall require :ltn12))

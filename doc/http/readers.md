@@ -34,7 +34,7 @@ used.
 Function signature:
 
 ```
-(make-reader source {:close close :peek peek :read-bytes read-bytes :read-line read-line})
+(make-reader source {:close close :length length :peek peek :read-bytes read-bytes :read-line read-line})
 ```
 
 Generic reader generator.
@@ -52,6 +52,8 @@ pattern.
 reader source supports line iteration.
 - `peek` method should read a specified amount of bytes without moving
   the position in the reader.
+- `length` method should return the amount of bytes left in the
+  reader.
 
 All methods are optional, and if not provided, the return value of
 each is `nil`.

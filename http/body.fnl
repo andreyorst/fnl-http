@@ -112,6 +112,10 @@ how to stream the data."
        (+ total
           (length (format-multipart-part part boundary))
           (if (= :string (type content)) (+ (length content) 2)
+              (reader? content)
+              (or (content:length)
+                  content-length
+                  (error (string.format "can't determine length for multipart content %q" (or name part-name)) 2))
               (not= nil content-length)
               (+ content-length 2)
               (error (string.format "missing length field on non-string multipart content %q" (or name part-name)) 2))))
@@ -125,44 +129,13 @@ how to stream the data."
          (ipairs bodies)]
     (assert (not= nil content) "Multipart content cannot be nil")
     (assert (or part-name name) "Multipart body must contain at least content and name or part-name")
-    (->> (if (= :string (type content))
-             content
-             (or (get-chunk-data content receive) ""))
+    (->> (if (= :string (type content)) content "")
          (.. (format-multipart-part part boundary))
          (send dst))
     (when (not= :string (type content))
-      (stream-body dst content send receive {: content-length}))
+      (stream-body dst content send receive {:content-length (or (content:length) content-length)}))
     (send dst "\r\n"))
   (send dst (string.format "--%s--\r\n" boundary)))
-
-;; (fn format-multipart [bodies boundary receive]
-;;   (-> (icollect [_ {: name : part-name : content
-;;                     : mime-type :length content-length
-;;                     : filename}
-;;                  (ipairs bodies)]
-;;         (do (assert (not= nil content) "Multipart content cannot be nil")
-;;             (assert (or part-name name) "Multipart body must contain at least content and name or part-name")
-;;             (string.format
-;;              "--%s\r\n%s\r\n%s"
-;;              boundary
-;;              (headers->string {:content-disposition (string.format "form-data; name=%q%s" (or part-name name)
-;;                                                                    (if filename
-;;                                                                        (string.format "; filename=%q" filename)
-;;                                                                        ""))
-;;                                :content-type (or mime-type (guess-content-type content))
-;;                                :content-transfer-encoding (guess-transfer-encoding content)})
-;;              (if (= :string (type content))
-;;                  content
-;;                  (reader? content)
-;;                  (content:read :*a)
-;;                  (chan? content)
-;;                  ((fn loop [res data]
-;;                     (if data
-;;                         (loop (.. res (receive content)))
-;;                         res))
-;;                   "" (receive content))))))
-;;       (table.concat "\r\n")
-;;       (.. (string.format "\r\n--%s--\r\n" boundary))))
 
 {: stream-body
  : format-chunk
