@@ -2,9 +2,19 @@
 
 **Table of contents**
 
+- [`chunked-encoding?`](#chunked-encoding)
 - [`parse-http-request`](#parse-http-request)
 - [`parse-http-response`](#parse-http-response)
 - [`parse-url`](#parse-url)
+
+## `chunked-encoding?`
+Function signature:
+
+```
+(chunked-encoding? transfer-encoding)
+```
+
+Test if `transfer-encoding` header is chunked.
 
 ## `parse-http-request`
 Function signature:
@@ -19,7 +29,7 @@ Parses the HTTP/1.1 request read from `src`.
 Function signature:
 
 ```
-(parse-http-response src {:as as :parse-headers? parse-headers? :start start :throw-errors? throw-errors? :time time})
+(parse-http-response src {:as as :method method :start start :time time})
 ```
 
 Parse the beginning of the HTTP response.
@@ -30,16 +40,11 @@ internaly reads the data inside the `read` method of the body.
 `as` is a string, describing how to coerse the response body.  It can
 be one of `"raw"`, `"stream"`, or `"json"`.
 
-If `parse-headers?` is true, the response will contain header values
-parsed, and converted to Lua data.
-
-The `throw-errors?` option configures whether non-successful HTTP
-responses should throw an error. Only the 200, 201, 202, 203, 204,
-205, 206, 207, 300, 301, 302, 303, 304, 307 response codes are
-considered successful by default.
-
 `start` is the request start time in milliseconds.  `time` is a
 function to measure machine time.
+
+`method` determines whether the request should try to read the body of
+the response.
 
 Returns a map with the information about the HTTP response, including
 its headers, and a body stream.

@@ -2,14 +2,11 @@
         : string-reader}
   (require :http.readers))
 
-(local {: decode}
-  (require :http.json))
-
 (local {: decode-value
         : capitalize-header}
   (require :http.headers))
 
-(local {: format : lower} string)
+(local {: format : lower : upper} string)
 
 (local {: ceil} math)
 
@@ -222,23 +219,14 @@ chunk, once the buffer is empty."
                       (set buffer (.. buffer (or data "")))
                       buffer)))))}))
 
-(local non-error-statuses
-  {200 true
-   201 true
-   202 true
-   203 true
-   204 true
-   205 true
-   206 true
-   207 true
-   300 true
-   301 true
-   302 true
-   303 true
-   304 true
-   307 true})
+(fn chunked-encoding? [transfer-encoding]
+  "Test if `transfer-encoding` header is chunked."
+  (case (lower (or transfer-encoding ""))
+    (where header (or (header:match "chunked[, ]")
+                      (header:match "chunked$")))
+    true))
 
-(fn parse-http-response [src {: as : parse-headers? : start : time : throw-errors?}]
+(fn parse-http-response [src {: as : start : time : method}]
   "Parse the beginning of the HTTP response.
 Accepts `src` that is a source, that can be read with the `read`
 method.  The `read` is a special storage to alter how `receive`
@@ -247,16 +235,11 @@ internaly reads the data inside the `read` method of the body.
 `as` is a string, describing how to coerse the response body.  It can
 be one of `\"raw\"`, `\"stream\"`, or `\"json\"`.
 
-If `parse-headers?` is true, the response will contain header values
-parsed, and converted to Lua data.
-
-The `throw-errors?` option configures whether non-successful HTTP
-responses should throw an error. Only the 200, 201, 202, 203, 204,
-205, 206, 207, 300, 301, 302, 303, 304, 307 response codes are
-considered successful by default.
-
 `start` is the request start time in milliseconds.  `time` is a
 function to measure machine time.
+
+`method` determines whether the request should try to read the body of
+the response.
 
 Returns a map with the information about the HTTP response, including
 its headers, and a body stream."
@@ -264,32 +247,25 @@ its headers, and a body stream."
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
                          (capitalize-header k) (decode-value v))
-        chunk-size (case (lower (or parsed-headers.Transfer-Encoding ""))
-                     (where header (or (header:match "chunked[, ]")
-                                       (header:match "chunked$")))
+        chunk-size (when (chunked-encoding? parsed-headers.Transfer-Encoding)
                      (read-chunk-size src))
         stream (if chunk-size
                    (chunked-body-reader src chunk-size)
-                   (body-reader src))
-        response (doto status
-                   (tset :headers (if parse-headers?
-                                      parsed-headers
-                                      headers))
-                   (tset :length (tonumber parsed-headers.Content-Length))
-                   (tset :http-client src)
-                   (tset :request-time
-                         (when (and start time)
-                           (ceil (* 1000 (- (time) start)))))
-                   (tset :body
-                         (case as
-                           :raw (stream:read (or parsed-headers.Content-Length :*a))
-                           :json (decode stream)
-                           :stream stream
-                           _ (error (format "unsupported coersion method '%s'" as)))))]
-    (if (and throw-errors?
-             (not (. non-error-statuses response.status)))
-        (error response)
-        response)))
+                   (body-reader src))]
+    (doto status
+      (tset :headers headers)
+      (tset :parsed-headers parsed-headers)
+      (tset :length (tonumber parsed-headers.Content-Length))
+      (tset :http-client src)
+      (tset :request-time
+            (when (and start time)
+              (ceil (* 1000 (- (time) start)))))
+      (tset :body
+            (when (not= (upper (or method "")) :HEAD)
+              (case as
+                :raw (stream:read (or parsed-headers.Content-Length :*a))
+                (where (or :json :stream)) stream
+                _ (error (format "unsupported coersion method '%s'" as))))))))
 
 ;;; HTTP Request
 
@@ -346,7 +322,8 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
          (if scheme
              (url:match "//([^/]+)/?")
              (url:match "^([^/]+)/?")))
-        scheme (or scheme "http")
+        [scheme url] (if scheme [scheme url]
+                         ["http" (.. "http://" url)])
         port (or port (case scheme :https 443 :http 80))
         path (url:match "//[^/]+(/[^?#]*)")
         query (url:match "%?([^#]+)#?")
@@ -355,4 +332,5 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
 
 {: parse-http-response
  : parse-http-request
+ : chunked-encoding?
  : parse-url}

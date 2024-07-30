@@ -4,6 +4,9 @@
 (local {: reader? : file-reader}
   (require :http.readers))
 
+(local {: chunked-encoding?}
+  (require :http.parser))
+
 (local {: chan?}
   (require :lib.async))
 
@@ -74,6 +77,7 @@ the `content-length` field to be present. If the `transfer-encoding`
 field specifies a chunked encoding, the body is streamed in chunks."
   (when body
     (if (and (= :string (type transfer-encoding))
+             (chunked-encoding? transfer-encoding)
              (or (transfer-encoding:match "chunked[, ]")
                  (transfer-encoding:match "chunked$")))
         (stream-chunks dst body)

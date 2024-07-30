@@ -57,10 +57,6 @@
     (let [resp (build-http-response 200 "OK" {} "hello there")
           parsed (parse-http-response (string-reader resp) {:as :raw})]
       (assert-eq "hello there" parsed.body)))
-  (testing "json body"
-    (let [resp (build-http-response 200 "OK" {} "{\"foo\": \"bar\", \"baz\": [1,2,3]}")
-          parsed (parse-http-response (string-reader resp) {:as :json})]
-      (assert-eq {:foo "bar" :baz [1 2 3]} parsed.body)))
   (testing "chunked body"
     (with-open [resp (io.open "test/data/chunked" :r)]
       (let [parsed (parse-http-response (string-reader (resp:read :*a)) {:as :raw})]

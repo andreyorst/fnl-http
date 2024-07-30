@@ -12,10 +12,10 @@
 Function signature:
 
 ```
-(format-chunk body)
+(format-chunk src)
 ```
 
-Formats part of the `body` as a chunk with a calculated size.
+Formats a part of the `src` as a chunk with a calculated size.
 
 ## `multipart-content-length`
 Function signature:
@@ -47,7 +47,7 @@ Function signature:
 (stream-multipart dst multipart boundary)
 ```
 
-Write `multipart` entries to `dst` separated with `boundary`.
+Write `multipart` entries to `dst` separated with the `boundary`.
 
 ## `wrap-body`
 Function signature:
