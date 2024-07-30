@@ -20,7 +20,7 @@ Function signature:
 (connect url opts on-response on-raise)
 ```
 
-Makes a `CONNECT` request to the `url`, returns the parsed response,
+Makes a `CONNECT request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -36,6 +36,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -58,7 +64,7 @@ Function signature:
 (delete url opts on-response on-raise)
 ```
 
-Makes a `DELETE` request to the `url`, returns the parsed response,
+Makes a `DELETE request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -74,6 +80,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -96,7 +108,7 @@ Function signature:
 (get url opts on-response on-raise)
 ```
 
-Makes a `GET` request to the `url`, returns the parsed response,
+Makes a `GET request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -112,6 +124,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -134,7 +152,7 @@ Function signature:
 (head url opts on-response on-raise)
 ```
 
-Makes a `HEAD` request to the `url`, returns the parsed response,
+Makes a `HEAD request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -150,6 +168,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -172,7 +196,7 @@ Function signature:
 (options url opts on-response on-raise)
 ```
 
-Makes a `OPTIONS` request to the `url`, returns the parsed response,
+Makes a `OPTIONS request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -188,6 +212,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -210,7 +240,7 @@ Function signature:
 (patch url opts on-response on-raise)
 ```
 
-Makes a `PATCH` request to the `url`, returns the parsed response,
+Makes a `PATCH request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -226,6 +256,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -248,7 +284,7 @@ Function signature:
 (post url opts on-response on-raise)
 ```
 
-Makes a `POST` request to the `url`, returns the parsed response,
+Makes a `POST request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -264,6 +300,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -286,7 +328,7 @@ Function signature:
 (put url opts on-response on-raise)
 ```
 
-Makes a `PUT` request to the `url`, returns the parsed response,
+Makes a `PUT request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -302,6 +344,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -341,6 +389,11 @@ table containing the following keys:
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
 - `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
@@ -363,7 +416,7 @@ Function signature:
 (trace url opts on-response on-raise)
 ```
 
-Makes a `TRACE` request to the `url`, returns the parsed response,
+Makes a `TRACE request to the `url`, returns the parsed response,
 containing a stream data of the response. The `method` is a string,
 describing the HTTP method per the HTTP/1.1 spec. The `opts` is a
 table containing the following keys:
@@ -379,6 +432,12 @@ table containing the following keys:
 - `throw-errors?` - whether to throw errors on response statuses
   other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302,
   303, 304, 307. Defaults to `true`.
+- `multipart` - a sequential table of parts.
+- `http-client` - a client object from the `http-client` field of the
+  response to use with persistent connections.
+- `follow-redirects?` - whether to follow redirects automaticaally.
+  Defaults to `true`.
+- `max-redirects` - how many redirects to follow.
 
 Several options available for the `as` key:
 
