@@ -125,8 +125,7 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
         query (parse-query-string (url:match "%?([^#]+)#?"))
         fragment (parse-query-string (url:match "#([^?]+)%??"))]
     (setmetatable {: scheme : host : port : userinfo : path : query : fragment}
-                  {:__tostring url->string
-                   :__fennelview (fn [this] (.. "#url:\"" (tostring this) "\""))})))
+                  {:__tostring url->string})))
 
 (fn format-path [{: path : query : fragment} query-params]
   "Formats the PATH component of a HTTP `Path` header.
