@@ -11,8 +11,13 @@
 (local {: >!? : <!?}
   (require :http.async-extras))
 
-(local http-parser
+(local {: chunked-encoding?
+        : parse-http-response}
   (require :http.parser))
+
+(local {: parse-url
+        : format-path}
+  (require :http.url))
 
 (local {: chan}
   (require :http.tcp))
@@ -90,14 +95,6 @@ used to indicate `multipart` subtype, the default is `form-data`."
         (doto headers
           (tset :transfer-encoding nil))
         headers)))
-
-(fn format-path [{: path : query : fragment}]
-  "Formats the PATH component of a HTTP `Path` header.
-Accepts the `path`, `query`, and `fragment` parts from the parsed URL."
-  {:private true}
-  (.. (or path "/")
-      (if query (.. "?" query) "")
-      (if fragment (.. "?" fragment) "")))
 
 (fn make-client [opts]
   "Creates a socket-channel based of `opts`. Adds a bunch of methods to
@@ -195,7 +192,7 @@ Consumes the `body` of the response, if provided."
     ;; consume body
     (if len
         (body:read len)
-        (http-parser.chunked-encoding? headers.Transfer-Encoding)
+        (chunked-encoding? headers.Transfer-Encoding)
         (body:read :*a)))
   (case (lower headers.Connection)
     "keep-alive" http-client
@@ -216,7 +213,8 @@ function to issue a new request."
    (doto (collect [k v (pairs opts)] k v)
      (tset :method (or method opts.method))
      (tset :http-client (reuse-client? response))
-     (tset :url (http-parser.parse-url location))
+     (tset :query-params nil)
+     (tset :url (parse-url location))
      (tset :max-redirects (- opts.max-redirects 1)))))
 
 (fn follow-redirects [{: status : headers &as response}
@@ -265,10 +263,10 @@ request in case of redirection."
   (case opts.multipart
     parts (stream-multipart client parts (get-boundary headers)))
   (if opts.async?
-      (case (pcall http-parser.parse-http-response client opts)
+      (case (pcall parse-http-response client opts)
         (true resp) (follow-redirects resp opts request-fn)
         (_ err) (opts.on-raise err))
-      (-> (http-parser.parse-http-response client opts)
+      (-> (parse-http-response client opts)
           (follow-redirects opts request-fn))))
 
 (fn request* [opts]
@@ -277,7 +275,7 @@ request in case of redirection."
         headers (prepare-headers opts)
         req (build-http-request
              opts.method
-             (format-path opts.url)
+             (format-path opts.url opts.query-params)
              headers
              (if (= headers.transfer-encoding "chunked")
                  nil
@@ -314,6 +312,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -336,7 +335,7 @@ are made and the body is sent using chunked transfer encoding."
                           :throw-errors? true
                           :follow-redirects? true
                           :max-redirects math.huge
-                          :url (http-parser.parse-url url)
+                          :url (parse-url url)
                           :on-response on-response
                           :on-raise on-raise}]
            k v)
@@ -369,6 +368,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 

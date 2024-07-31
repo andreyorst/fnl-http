@@ -42,6 +42,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -86,6 +87,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -130,6 +132,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -174,6 +177,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -218,6 +222,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -262,6 +267,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -306,6 +312,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -350,6 +357,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -394,6 +402,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
@@ -438,6 +447,7 @@ table containing the following keys:
 - `follow-redirects?` - whether to follow redirects automaticaally.
   Defaults to `true`.
 - `max-redirects` - how many redirects to follow.
+- `query-params` - a table of query parameters to append to the `url`.
 
 Several options available for the `as` key:
 
