@@ -4272,7 +4272,7 @@ package.preload["http.url"] = package.preload["http.url"] or function(...)
       else
         _716_ = ""
       end
-      host = authority:match(("@([^:]+)" .. _716_))
+      host = authority:match(("@([^:?#]+)" .. _716_))
     else
       local _718_
       if port then
@@ -4280,7 +4280,7 @@ package.preload["http.url"] = package.preload["http.url"] or function(...)
       else
         _718_ = ""
       end
-      host = authority:match(("([^:]+)" .. _718_))
+      host = authority:match(("([^:?#]+)" .. _718_))
     end
     return {userinfo = userinfo, port = port, host = host}
   end
@@ -5297,4 +5297,4 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
   end
   return setmetatable({encode = encode, decode = decode}, {__call = _914_})
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.59"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.60"}})})

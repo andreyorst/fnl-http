@@ -82,8 +82,8 @@
   (let [userinfo (authority:match "([^@]+)@")
         port (authority:match ":(%d+)")
         host (if userinfo
-                 (authority:match (.. "@([^:]+)" (if port ":" "")))
-                 (authority:match (.. "([^:]+)" (if port ":" ""))))]
+                 (authority:match (.. "@([^:?#]+)" (if port ":" "")))
+                 (authority:match (.. "([^:?#]+)" (if port ":" ""))))]
     {: userinfo : port : host}))
 
 (fn url->string [{: scheme : host : port
