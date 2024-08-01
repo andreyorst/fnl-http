@@ -3,31 +3,32 @@
         : sort}
   table)
 
-(fn urlencode-string [str]
-  "Percent-encode string `str`."
+(fn urlencode [str allowed-char-pattern]
+  "Percent-encode string `str`.
+Accepts optional `allowed-char-pattern` to override default allowed
+characters. The default pattern is `\"[^%w._~-]\"`."
+  (assert (= :string (type str)) "expected string as a first argument")
   (pick-values 1
-    (str:gsub "[^%w]" #(: "%%%X" :format ($:byte)))))
+    (str:gsub (or allowed-char-pattern "[^%w._~-]")
+              #(: "%%%X" :format ($:byte)))))
 
-(fn object? [val]
+(fn sequential? [val ?max]
   {:private true}
-  (= :table (type val)))
-
-(fn array? [val ?max]
-  {:private true}
-  (and (object? val)
+  (and (= :table (type val))
        (case (length val)
          0 false
          len (let [max (or ?max len)]
                (case (next val max)
                  (where k (= :number (type k)))
-                 (array? val k)
+                 (sequential? val k)
                  nil true
                  _ false)))))
 
 (fn multi-param-entries [key vals]
-  (let [key (urlencode-string (tostring key))]
+  {:private true}
+  (let [key (urlencode (tostring key))]
     (icollect [_ v (pairs vals)]
-      (.. key "=" (urlencode-string (tostring v))))))
+      (.. key "=" (urlencode (tostring v))))))
 
 (fn sort-query-params [h1 h2]
   {:private true}
@@ -36,34 +37,36 @@
 (fn generate-query-string [params]
   (when params
     (-> (accumulate [res [] k v (pairs params)]
-          (do (if (array? v)
+          (do (if (sequential? v)
                   (each [_ param (ipairs (multi-param-entries k v))]
                     (insert res param))
-                  (->> (.. (urlencode-string (tostring k))
+                  (->> (.. (urlencode (tostring k))
                            "="
-                           (urlencode-string (tostring v)))
+                           (urlencode (tostring v)))
                        (insert res)))
               res))
         (doto (sort sort-query-params))
         (concat "&"))))
 
 (fn merge-query-params [...]
+  {:private true}
   (case (values (select :# ...) ...)
     0 nil
     1 ...
-    (_ query-a query-b)
+    (_ ?query-a ?query-b)
     (merge-query-params
-     (accumulate [query (collect [k v (pairs query-a)] k v)
-                  k v (pairs query-b)]
-       (case (. query k)
-         [val &as t]
-         (->> (doto query
-                (tset k (if (array? v)
-                            (icollect [_ val (pairs v) :into t]
-                              val)
-                            (doto t (insert v))))))
-         val (doto query (tset k [val v]))
-         nil (doto query (tset k v))))
+     (when (or (not= nil ?query-a) (not= nil ?query-b))
+       (accumulate [query (collect [k v (pairs (or ?query-a {}))] k v)
+                    k v (pairs (or ?query-b {}))]
+         (case (. query k)
+           [val &as t]
+           (->> (doto query
+                  (tset k (if (sequential? v)
+                              (icollect [_ val (pairs v) :into t]
+                                val)
+                              (doto t (insert v))))))
+           val (doto query (tset k [val v]))
+           nil (doto query (tset k v)))))
      (select 3 ...))))
 
 (fn parse-query-string [query]
@@ -101,9 +104,9 @@
       (case (generate-query-string query)
         query (.. "?" query)
         _ "")
-      (case (generate-query-string fragment)
-        fragment (.. "#" fragment)
-        _ "")))
+      (if fragment
+          (.. "#" fragment)
+          "")))
 
 (fn parse-url [url]
   "Parses a `url` string as URL.
@@ -111,7 +114,9 @@ Returns a table with `scheme`, `host`, `port`, `userinfo`, `path`,
 `query`, and `fragment` fields from the URL.  If the `scheme` part of
 the `url` is missing, the default `http` scheme is used.  If the
 `port` part of the `url` is missing, the default port is used based on
-the `scheme` part: `80` for the `http` and `443` for `https`."
+the `scheme` part: `80` for the `http` and `443` for `https`.  Calling
+`tostring` on parsed URL returns a string representation, but doesn't
+guarantee the same order of query parameters."
   (let [scheme (url:match "^([^:]+)://")
         {: host : port : userinfo}
         (parse-authority
@@ -123,7 +128,7 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
         port (or port (case scheme :https 443 :http 80))
         path (url:match "//[^/]+(/[^?#]*)")
         query (parse-query-string (url:match "%?([^#]+)#?"))
-        fragment (parse-query-string (url:match "#([^?]+)%??"))]
+        fragment (url:match "#([^?]+)%??")]
     (setmetatable {: scheme : host : port : userinfo : path : query : fragment}
                   {:__tostring url->string})))
 
@@ -132,10 +137,12 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL, and optional  `query-params` table."
   (.. (or path "/")
       (if (or query query-params)
-          (.. "?" (generate-query-string (merge-query-params (or query {}) (or query-params {}))))
-          "")
-      (if fragment (.. "#" (generate-query-string fragment)) "")))
+          (.. "?" (generate-query-string
+                   (merge-query-params
+                    query
+                    query-params)))
+          "")))
 
-{: urlencode-string
+{: urlencode
  : parse-url
  : format-path}

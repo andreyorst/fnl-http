@@ -7,7 +7,7 @@
 (local {: chunked-encoding?}
   (require :http.parser))
 
-(local {: urlencode-string}
+(local {: urlencode}
   (require :http.url))
 
 (local {: chan?}
@@ -150,7 +150,7 @@ additional or to change the default ones."
                                                         (format "; filename=%q" filename)
                                                         "")
                                                     (if filename*
-                                                        (format "; filename*=%s" (urlencode-string filename*))
+                                                        (format "; filename*=%s" (urlencode filename*))
                                                         ""))
                        :content-length (if (= :string (type content))
                                            (length content)

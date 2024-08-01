@@ -3,6 +3,11 @@
 (local {: run-tests}
   (require :lib.fennel-test))
 
+(fn select-tests [default-tests]
+  (case [(select 1 ((or _G.unpack table.unpack) arg))]
+    (where tests (next tests)) tests
+    _ default-tests))
+
 (local tests
   [:test.json-test
    :test.readers-test
@@ -12,4 +17,4 @@
    :test.body-test
    :test.client-test])
 
-(run-tests tests)
+(run-tests (select-tests tests))

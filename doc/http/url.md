@@ -4,7 +4,7 @@
 
 - [`format-path`](#format-path)
 - [`parse-url`](#parse-url)
-- [`urlencode-string`](#urlencode-string)
+- [`urlencode`](#urlencode)
 
 ## `format-path`
 Function signature:
@@ -28,16 +28,20 @@ Returns a table with `scheme`, `host`, `port`, `userinfo`, `path`,
 `query`, and `fragment` fields from the URL.  If the `scheme` part of
 the `url` is missing, the default `http` scheme is used.  If the
 `port` part of the `url` is missing, the default port is used based on
-the `scheme` part: `80` for the `http` and `443` for `https`.
+the `scheme` part: `80` for the `http` and `443` for `https`.  Calling
+`tostring` on parsed URL returns a string representation, but doesn't
+guarantee the same order of query parameters.
 
-## `urlencode-string`
+## `urlencode`
 Function signature:
 
 ```
-(urlencode-string str)
+(urlencode str allowed-char-pattern)
 ```
 
 Percent-encode string `str`.
+Accepts optional `allowed-char-pattern` to override default allowed
+characters. The default pattern is `"[^%w._~-]"`.
 
 
 <!-- Generated with Fenneldoc v1.0.1

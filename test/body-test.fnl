@@ -117,7 +117,7 @@
         :content (io.open "test/data/valid.fnl")}]
       "foobar"))
     (assert-eq
-     2362
+     2360
      (multipart-content-length
       [{:name "foo"
         :content (io.open "test/data/valid.fnl")}
@@ -125,7 +125,7 @@
         :content (io.open "test/data/valid.fnl")}]
       "foobar"))
     (assert-eq
-     2389
+     2387
      (multipart-content-length
       [{:name "foo"
         :content (io.open "test/data/valid.fnl")}
