@@ -4231,7 +4231,7 @@ package.preload["http.url"] = package.preload["http.url"] or function(...)
     if query then
       local res = {}
       for key_value in query:gmatch("[^&]+") do
-        local k, v = key_value:match("([^=]+)=(.+)")
+        local k, v = key_value:match("([^=]+)=?(.*)")
         local _711_
         do
           local _710_ = res[k]
@@ -5275,4 +5275,4 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
   end
   return setmetatable({encode = encode, decode = decode}, {__call = _909_})
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.63"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.64"}})})

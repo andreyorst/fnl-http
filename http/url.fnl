@@ -72,7 +72,7 @@ characters. The default pattern is `\"[^%w._~-]\"`."
 (fn parse-query-string [query]
   (when query
     (accumulate [res {} key-value (query:gmatch "[^&]+")]
-      (let [(k v) (key-value:match "([^=]+)=(.+)")]
+      (let [(k v) (key-value:match "([^=]+)=?(.*)")]
         (doto res
           (tset k (case (. res k)
                     [val &as t] (doto t (insert v))
