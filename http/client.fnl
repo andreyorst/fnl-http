@@ -141,7 +141,7 @@ act like Luasocket client object."
       (case (values opts.as response.body)
         (:json body) (pcall decode body)
         (_ ?body) (values true ?body))
-      response))
+      (values true response)))
 
 (fn raise* [response opts]
   {:private true}
@@ -162,22 +162,19 @@ act like Luasocket client object."
                        (tset :parsed-headers nil)
                        (tset :body body))
                      body)]
-    (if (or (and opts.throw-errors?
-                 (not (. non-error-statuses response.status)))
-            (not ok?))
+    (if (or (not ok?)
+            (and opts.throw-errors?
+                 (not (. non-error-statuses response.status))))
         (raise* response opts)
         (respond* response opts))))
 
 (fn raise [response opts]
   (let [(ok? body) (try-coerce-body response opts)
-        response (if ok?
+        response (if (and ok? (= :table (type response)))
                      (doto response
                        (tset :parsed-headers nil)
                        (tset :body body))
                      body)]
-    (doto response
-      (tset :parsed-headers nil)
-      (tset :body body))
     (raise* response opts)))
 
 (fn redirect? [status]

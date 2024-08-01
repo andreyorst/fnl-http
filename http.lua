@@ -202,7 +202,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
         return nil
       end
     else
-      return response
+      return true, response
     end
   end
   local function raise_2a(response, opts)
@@ -229,7 +229,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     else
       response0 = body
     end
-    if ((opts["throw-errors?"] and not non_error_statuses[response0.status]) or not ok_3f) then
+    if (not ok_3f or (opts["throw-errors?"] and not non_error_statuses[response0.status])) then
       return raise_2a(response0, opts)
     else
       return respond_2a(response0, opts)
@@ -238,16 +238,12 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
   local function raise(response, opts)
     local ok_3f, body = try_coerce_body(response, opts)
     local response0
-    if ok_3f then
+    if (ok_3f and ("table" == type(response))) then
       response["parsed-headers"] = nil
       response["body"] = body
       response0 = response
     else
       response0 = body
-    end
-    do
-      response0["parsed-headers"] = nil
-      response0["body"] = body
     end
     return raise_2a(response0, opts)
   end
@@ -4628,10 +4624,12 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
   local file_reader = _local_801_["file-reader"]
   local _local_802_ = require("http.parser")
   local chunked_encoding_3f = _local_802_["chunked-encoding?"]
-  local _local_803_ = require("lib.async")
-  local chan_3f = _local_803_["chan?"]
-  local _local_804_ = require("http.async-extras")
-  local _3c_21_3f = _local_804_["<!?"]
+  local _local_803_ = require("http.url")
+  local urlencode_string = _local_803_["urlencode-string"]
+  local _local_804_ = require("lib.async")
+  local chan_3f = _local_804_["chan?"]
+  local _local_805_ = require("http.async-extras")
+  local _3c_21_3f = _local_805_["<!?"]
   local format = string.format
   local function get_chunk_data(src)
     if chan_3f(src) then
@@ -4657,17 +4655,17 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
     end
   end
   local function stream_reader(dst, src, remaining)
-    local _807_
-    local function _808_()
+    local _808_
+    local function _809_()
       if (1024 < remaining) then
         return 1024
       else
         return remaining
       end
     end
-    _807_ = src:read(_808_())
-    if (nil ~= _807_) then
-      local data = _807_
+    _808_ = src:read(_809_())
+    if (nil ~= _808_) then
+      local data = _808_
       dst:write(data)
       if (remaining > 0) then
         return stream_reader(dst, src, (remaining - #data))
@@ -4679,9 +4677,9 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
     end
   end
   local function stream_channel(dst, src, remaining)
-    local _811_ = _3c_21_3f(src)
-    if (nil ~= _811_) then
-      local data = _811_
+    local _812_ = _3c_21_3f(src)
+    if (nil ~= _812_) then
+      local data = _812_
       local data0
       if (#data < remaining) then
         data0 = data
@@ -4699,9 +4697,9 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
       return nil
     end
   end
-  local function stream_body(dst, body, _815_)
-    local transfer_encoding = _815_["transfer-encoding"]
-    local content_length = _815_["content-length"]
+  local function stream_body(dst, body, _816_)
+    local transfer_encoding = _816_["transfer-encoding"]
+    local content_length = _816_["content-length"]
     if body then
       if (("string" == type(transfer_encoding)) and chunked_encoding_3f(transfer_encoding) and (transfer_encoding:match("chunked[, ]") or transfer_encoding:match("chunked$"))) then
         return stream_chunks(dst, body)
@@ -4735,8 +4733,8 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
     end
   end
   local function wrap_body(body)
-    local _820_ = type(body)
-    if (_820_ == "table") then
+    local _821_ = type(body)
+    if (_821_ == "table") then
       if chan_3f(body) then
         return body
       elseif reader_3f(body) then
@@ -4744,24 +4742,18 @@ package.preload["http.body"] = package.preload["http.body"] or function(...)
       else
         return body
       end
-    elseif (_820_ == "userdata") then
-      local _822_ = getmetatable(body)
-      if ((_G.type(_822_) == "table") and (_822_.__name == "FILE*")) then
+    elseif (_821_ == "userdata") then
+      local _823_ = getmetatable(body)
+      if ((_G.type(_823_) == "table") and (_823_.__name == "FILE*")) then
         return file_reader(body)
       else
-        local _ = _822_
+        local _ = _823_
         return body
       end
     else
-      local _ = _820_
+      local _ = _821_
       return body
     end
-  end
-  local function urlencode_string(str)
-    local function _825_(_241)
-      return ("%%%X"):format(_241:byte())
-    end
-    return (str:gsub("[^%w]", _825_))
   end
   local function format_multipart_part(_826_, boundary)
     local name = _826_["name"]

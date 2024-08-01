@@ -7,6 +7,9 @@
 (local {: chunked-encoding?}
   (require :http.parser))
 
+(local {: urlencode-string}
+  (require :http.url))
+
 (local {: chan?}
   (require :lib.async))
 
@@ -121,11 +124,6 @@ use binary encoding."
                 (file-reader body)
                 _ body)
     _ body))
-
-(fn urlencode-string [str]
-  {:private true}
-  (pick-values 1
-    (str:gsub "[^%w]" #(: "%%%X" :format ($:byte)))))
 
 (fn format-multipart-part [{: name : filename : filename*
                             : content :length content-length
