@@ -4406,7 +4406,8 @@ package.preload["http.tcp"] = package.preload["http.tcp"] or function(...)
       return recv["put!"](recv, val, handler, enqueue_3f)
     end
     local function _750_(_, handler, enqueue_3f)
-      offer_21(ready, "ready")
+      while not offer_21(ready, "ready") do
+      end
       return resp["take!"](resp, handler, enqueue_3f)
     end
     local function _751_(_241)
@@ -5275,4 +5276,4 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
   end
   return setmetatable({encode = encode, decode = decode}, {__call = _909_})
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.64"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.65"}})})

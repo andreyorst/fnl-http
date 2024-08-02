@@ -12,15 +12,15 @@
     (require :socket))
 
 (fn set-chunk-size [self pattern-or-size]
+  "Sets the chunk-size property of a socket channel in order to
+dynamically adjust during reads."
   {:private true}
-  ;; Sets the chunk-size property of a socket channel in order to
-  ;; dynamically adjust during reads.
   (set self.chunk-size pattern-or-size))
 
 (fn socket-channel [client xform err-handler]
-  ;; returns a combo channel, where puts and takes are handled by
-  ;; different channels which are used as buffers for two async
-  ;; processes that interact with the socket
+  "Returns a combo channel, where puts and takes are handled by
+different channels which are used as buffers for two async processes
+that interact with the socket"
   {:private true}
   (let [recv (chan 1024 xform err-handler)
         resp (chan 1024 xform err-handler)
@@ -31,8 +31,28 @@
                :put! (fn [_  val handler enqueue?]
                        (recv:put! val handler enqueue?))
                :take! (fn [_ handler enqueue?]
-                        ;; TODO: test extensively
-                        (offer! ready :ready)
+                        (while (not (offer! ready :ready))
+                          ;; NOTE: We block, until the second `go-loop` below finishes it's cycle.
+                          ;;       This is, in fact, very bad, but the async.fnl scheduler can handle
+                          ;;       this reasonably well.  This should happen rarely, if ever - can't
+                          ;;       prove that it doesn't ever happen, so better safe than sorry.
+                          ;;       This will not block indefinitely, due to how the runtime is
+                          ;;       implemented - the `go-loop` will still run.
+                          ;;
+                          ;;       The reason we do this, is due to the fact, that we need to prevent
+                          ;;       reads from the socket, even if it has data, as we don't know the
+                          ;;       very first pattern the user would request from the socket.  The
+                          ;;       default pattern is 1024 bytes, thus the channel would always
+                          ;;       contain first 1024 bytes of the response, even if the user may
+                          ;;       want a different amount.  We should never try to read more than
+                          ;;       requested.
+                          ;;
+                          ;;       Then, after the specified pattern is fully read, we need to park
+                          ;;       the `go-loop` again until further explicit take on the
+                          ;;       `socket-channel`, as the pattern might change with the next one,
+                          ;;       and without parking, the socket would read an improper amount of
+                          ;;       data again.
+                          )
                         (resp:take! handler enqueue?))
                :close! close
                :close close

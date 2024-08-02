@@ -15,6 +15,7 @@
    :test.headers-test
    :test.url-test
    :test.body-test
-   :test.client-test])
+   :test.client-test
+   :test.httpbin-test])
 
 (run-tests (select-tests tests))
