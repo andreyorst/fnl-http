@@ -19,8 +19,11 @@
         : format-path}
   (require :http.url))
 
-(local {: chan}
+(local {:chan tcp-chan}
   (require :http.tcp))
+
+(local {: chan}
+  (require :lib.async))
 
 (local {: reader? : file-reader}
   (require :http.readers))
@@ -102,18 +105,21 @@ methods to act like Luasocket client."
   {:private true}
   (case opts.http-client
     http-client http-client
-    _ (let [src (chan opts.url nil
-                      (when (and opts.async?)
-                        (fn [err]
-                          (opts.on-raise err)
-                          nil)))]
+    _ (let [src (tcp-chan
+                 opts.url nil
+                 (when (and opts.async?)
+                   (fn [err]
+                     (opts.on-raise err)
+                     nil)))]
         (setmetatable
          {:read (fn [_ pattern]
-                  (src:set-chunk-size pattern)
-                  (<!? src))
+                  (let [ch (chan)]
+                    (src:set-chunk-size pattern ch)
+                    (<!? ch)))
           :receive (fn [_ pattern prefix]
-                     (src:set-chunk-size pattern)
-                     (.. (or prefix "") (<!? src)))
+                     (let [ch (chan)]
+                       (src:set-chunk-size pattern ch)
+                       (.. (or prefix "") (<!? ch))))
           :send (fn [_ data ...]
                   (->> (case (values (select :# ...) ...)
                          0 data

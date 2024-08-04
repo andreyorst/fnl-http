@@ -6,6 +6,12 @@
         : capitalize-header}
   (require :http.headers))
 
+(local {: <!?}
+  (require :http.async-extras))
+
+(local {: timeout}
+  (require :lib.async))
+
 (local {: format : lower : upper} string)
 
 (local {: ceil} math)
@@ -135,9 +141,10 @@ method."
     line
     (case (line:match "%s*([0-9a-fA-F]+)")
       size (tonumber (.. "0x" size))
-      _ (error (format "line missing chunk size: %q" line)))))
+      _ (error (format "line missing chunk size: %q" line)))
+    _ (error "source was exchausted while reading chunk size")))
 
-(fn chunked-body-reader [src initial-chunk]
+(fn chunked-body-reader [src]
   "Reads body in chunks, buffering each fully, and requesting the next
 chunk, once the buffer is empty."
   {:private true}
@@ -146,16 +153,21 @@ chunk, once the buffer is empty."
   ;;       possible chunk size - if the server sends a chunk large
   ;;       enough it can fill the memory, even if the user requested a
   ;;       stream.
-  (var chunk-size initial-chunk)
-  (var buffer (or (src:read chunk-size) ""))
+  (var buffer "")
+  (var chunk-size nil)
   (var more? true)
+  (var read-in-progress? false)
   (fn read-more []
     ;; TODO: needs to process entity headers after the last chunk.
+    (while read-in-progress?
+      (<!? (timeout 10)))
     (when more?
+      (set read-in-progress? true)
       (set chunk-size (read-chunk-size src))
       (if (> chunk-size 0)
           (set buffer (.. buffer (or (src:read chunk-size) "")))
-          (set more? false)))
+          (set more? false))
+      (set read-in-progress? false))
     (values (> chunk-size 0) (string-reader buffer)))
   (make-reader
    src
@@ -166,7 +178,7 @@ chunk, once the buffer is empty."
                       (let [buffer-content (rdr:read pattern)
                             len (if buffer-content (length buffer-content) 0)
                             read-more? (< len n)]
-                        (set buffer (buffer:sub (+ len 1)))
+                        (set buffer (or (rdr:read :*a) ""))
                         (if read-more?
                             (let [(_ rdr) (read-more)]
                               (if buffer-content
@@ -177,9 +189,9 @@ chunk, once the buffer is empty."
                       (let [buffer-content (rdr:read :*l)
                             (_ read-more?) (not (buffer:find "\n"))]
                         (when buffer-content
-                          (set buffer (buffer:sub (+ (length buffer-content) 2))))
+                          (set buffer (or (rdr:read :*a) "")))
                         (if read-more?
-                            (let [rdr (read-more)]
+                            (let [(_ rdr) (read-more)]
                               (if buffer-content
                                   (.. buffer-content (or (rdr:read :*l) ""))
                                   (rdr:read :*l)))
@@ -200,7 +212,7 @@ chunk, once the buffer is empty."
                        buffer-content (rdr:read :*l)
                        read-more? (not (buffer:find "\n"))]
                    (when buffer-content
-                     (set buffer (buffer:sub (+ (length buffer-content) 2))))
+                     (set buffer (or (rdr:read :*a) "")))
                    (if read-more?
                        (if buffer-content
                            (.. buffer-content (or (src:read :*l) ""))
@@ -247,10 +259,8 @@ its headers, and a body stream."
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
                          (capitalize-header k) (decode-value v))
-        chunk-size (when (chunked-encoding? parsed-headers.Transfer-Encoding)
-                     (read-chunk-size src))
-        stream (if chunk-size
-                   (chunked-body-reader src chunk-size)
+        stream (if (chunked-encoding? parsed-headers.Transfer-Encoding)
+                   (chunked-body-reader src)
                    (body-reader src))]
     (doto status
       (tset :headers headers)

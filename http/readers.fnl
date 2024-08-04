@@ -85,6 +85,7 @@ Accepts a file handle or a path string which is opened automatically."
 
 (fn string-reader [string]
   "Creates a `Reader` from the given `string`."
+  (assert (= :string (type string)) "expected a string as first argument")
   (var (i closed?) (values 1 false))
   (let [len (length string)
         try-read-line (fn [s pattern]

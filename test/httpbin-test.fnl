@@ -21,7 +21,7 @@
   started?)
 
 (fn kill [pid]
-  (with-open [_ (io.popen (.. "kill -9 " pid " >/dev/null 2>&1"))] nil))
+  (with-open [_ (io.popen (.. "kill -9 " pid " >/dev/null 2>&1"))]))
 
 (use-fixtures
  :once
@@ -113,21 +113,39 @@
      (. (http.get (url "/json") {:as :json}) :body))))
 
 (deftest asynchronous-body-read-test
-  (testing "Read a stream of bytes in multiple threads."
-    (let [resp (http.get (.. "http://localhost:" port "/stream-bytes/40000")
-                         {:headers {:connection "close"}
-                          :as :stream})
-          done (a.chan)
-          Timeout (setmetatable {} {:__fennelview #:Timeout})]
-      (for [i 1 4]
-        (a.go #(do (for [i 1 10]
-                     (resp.body:read 1000))
-                   (a.>! done i))))
-      (for [i 1 4]
-        (->> #(let [tout (a.timeout 1000)]
-                (match (a.alts! [done tout])
-                  [_ tout] Timeout
-                  [val _] val))
-             a.go
-             a.<!!
-             (assert-ne Timeout))))))
+  (let [Timeout (setmetatable {} {:__fennelview #:Timeout})]
+    (testing "Read a stream of bytes in multiple threads."
+      (let [resp (http.get (url "/bytes/40000")
+                           {:headers {:connection "close"}
+                            :as :stream})
+            done (a.chan)]
+        (for [i 1 4]
+          (a.go #(do (for [i 1 10]
+                       (resp.body:read 1000))
+                     (a.>! done i))))
+        (for [i 1 4]
+          (->> #(let [tout (a.timeout 1000)]
+                  (match (a.alts! [done tout])
+                    [_ tout] Timeout
+                    [val _] val))
+               a.go
+               a.<!!
+               (assert-ne Timeout)))))
+    (testing "Read a chunked stream of bytes in multiple threads."
+      (let [resp (http.get (url "/stream-bytes/40000")
+                           {:headers {:connection "close"}
+                            :as :stream})
+            done (a.chan)
+            Timeout (setmetatable {} {:__fennelview #:Timeout})]
+        (for [i 1 4]
+          (a.go #(do (for [i 1 10]
+                       (resp.body:read 1000))
+                     (a.>! done i))))
+        (for [i 1 4]
+          (->> #(let [tout (a.timeout 1000)]
+                  (match (a.alts! [done tout])
+                    [_ tout] Timeout
+                    [val _] val))
+               a.go
+               a.<!!
+               (assert-ne Timeout)))))))
