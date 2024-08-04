@@ -1,0 +1,5 @@
+;; -*- mode: fennel; -*- vi:ft=fennel
+
+(with-open [proc (io.popen "fenneldoc --no-sandbox http/[!init]*.fnl")]
+  (each [line (proc:lines)]
+    (print line)))
