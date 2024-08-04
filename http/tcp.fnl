@@ -6,16 +6,20 @@
         : close!}
   (require :lib.async))
 
+(local {: >!?}
+  (require :http.async-extras))
+
 (local {:select s/select
         :connect s/connect
         &as socket}
-    (require :socket))
+  (require :socket))
 
-(fn set-chunk-size [ch pattern-or-size]
-  "Sets the chunk-size property of a socket channel in order to
+(fn chunk-setter [ch]
+  (fn set-chunk-size [_ pattern-or-size]
+    "Sets the chunk-size property of a socket channel in order to
 dynamically adjust during reads."
-  {:private true}
-  (offer! ch pattern-or-size))
+    {:private true}
+    (>!? ch pattern-or-size)))
 
 (fn socket-channel [client xform err-handler]
   "Returns a combo channel, where puts and takes are handled by
@@ -23,8 +27,16 @@ different channels which are used as buffers for two async processes
 that interact with the socket"
   {:private true}
   (let [recv (chan 1024 xform err-handler)
+        ;; TODO: decide if xform is needed on the `resp` channel.  The
+        ;;       server responds with data, and we put it to the
+        ;;       channel.  Thus, it can look like when the server just
+        ;;       has this channel directly, so it makes sense to obey
+        ;;       the `xform`.  On the other hand, the server doesn't
+        ;;       really knows anything about the channel, and the
+        ;;       communication itself is already like an `xform`.
+        ;;       Decide what to do.
         resp (chan 1024 xform err-handler)
-        next-chunk (chan math.huge)
+        next-chunk (chan)
         close (fn [self] (recv:close!) (resp:close!) (set self.closed true))
         c (-> {:puts recv.puts
                :takes resp.takes
@@ -34,7 +46,7 @@ that interact with the socket"
                         (resp:take! handler enqueue?))
                :close! close
                :close close
-               :set-chunk-size (partial set-chunk-size next-chunk)}
+               :set-chunk-size (chunk-setter next-chunk)}
               (setmetatable
                {:__index (. (getmetatable next-chunk) :__index)
                 :__name "SocketChannel"
@@ -52,36 +64,30 @@ that interact with the socket"
             _ (recur (<! recv) 0))
           _ (do (<! (timeout 10))
                 (recur data i)))))
-    (go-loop [chunk-size nil
-              part ""]
-      (let [chunk-size (or chunk-size (<! next-chunk))]
-        (case (client:receive chunk-size)
-          data
-          (do (>! resp (.. part data))
-              (recur nil ""))
-          (where (nil :closed ?data)
-                 (or (= ?data nil) (= ?data "")))
-          (do (client:close)
-              (close! c))
-          (nil :closed data)
-          (do (client:close)
-              (>! resp data)
-              (close! c))
-          (where (nil :timeout ?data)
-                 (or (= ?data nil) (= ?data "")))
-          (do (<! (timeout 10))
-              (recur chunk-size part))
-          (nil :timeout data)
-          (let [bytes? (= :number (type chunk-size))
-                chunk-size (if bytes?
-                               (- chunk-size (length data))
-                               chunk-size)]
-            (<! (timeout 10))
-            (if bytes?
-                (recur (and (> chunk-size 0) chunk-size)
-                       (.. part data))
-                (recur chunk-size
-                       (.. part data)))))))
+    (go-loop [chunk-size (<! next-chunk)
+              partial-data ""]
+      (case (client:receive chunk-size)
+        data
+        (do (>! resp (.. partial-data data))
+            (recur (<! next-chunk) ""))
+        (where (nil :closed ?data)
+               (or (= ?data nil) (= ?data "")))
+        (do (client:close)
+            (close! c))
+        (nil :closed data)
+        (do (client:close)
+            (>! resp data)
+            (close! c))
+        (where (nil :timeout ?data)
+               (or (= ?data nil) (= ?data "")))
+        (do (<! (timeout 10))
+            (recur chunk-size partial-data))
+        (nil :timeout data)
+        (do (<! (timeout 10))
+            (case (and (= :number (type chunk-size))
+                       (- chunk-size (length data)))
+              chunk-size* (recur chunk-size* (.. partial-data data))
+              _ (recur chunk-size (.. partial-data data))))))
     c))
 
 (fn chan [{: host : port} xform err-handler]
@@ -90,8 +96,8 @@ Optionally accepts a transducer `xform`, and an error handler.
 `err-handler` must be a fn of one argument - if an exception occurs
 during transformation it will be called with the thrown value as an
 argument, and any non-nil return value will be placed in the channel.
-The read pattern f a socket can be controlled with the
-`set-chunk-size` method."
+The read pattern for a socket must be explicitly set with the
+`set-chunk-size` method before each take operation."
   (assert socket "tcp module requires luasocket")
   (let [host (or host :localhost)]
     (match-try (s/connect host port)

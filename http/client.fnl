@@ -96,29 +96,34 @@ used to indicate `multipart` subtype, the default is `form-data`."
           (tset :transfer-encoding nil))
         headers)))
 
-(fn make-client [opts]
-  "Creates a socket-channel based of `opts`. Adds a bunch of methods to
-act like Luasocket client object."
+(fn make-tcp-client [opts]
+  "Creates a socket-channel based of `opts`. Wraps it with a bunch of
+methods to act like Luasocket client."
   {:private true}
-  (or opts.http-client
-      (doto (chan opts.url nil
-                  (when (and opts.async?)
-                    (fn [err]
-                      (opts.on-raise err)
-                      nil)))
-        (tset :read (fn [src pattern]
-                      (src.set-chunk-size pattern)
-                      (<!? src)))
-        (tset :receive (fn [src pattern prefix]
-                         (src.set-chunk-size pattern)
-                         (.. (or prefix "") (<!? src))))
-        (tset :send (fn [ch data ...]
-                      (->> (case (values (select :# ...) ...)
-                             0 data
-                             (1 i) (data:sub i (length data))
-                             _ (data:sub ...))
-                           (>!? ch))))
-        (tset :write >!?))))
+  (case opts.http-client
+    http-client http-client
+    _ (let [src (chan opts.url nil
+                      (when (and opts.async?)
+                        (fn [err]
+                          (opts.on-raise err)
+                          nil)))]
+        (setmetatable
+         {:read (fn [_ pattern]
+                  (src:set-chunk-size pattern)
+                  (<!? src))
+          :receive (fn [_ pattern prefix]
+                     (src:set-chunk-size pattern)
+                     (.. (or prefix "") (<!? src)))
+          :send (fn [_ data ...]
+                  (->> (case (values (select :# ...) ...)
+                         0 data
+                         (1 i) (data:sub i (length data))
+                         _ (data:sub ...))
+                       (>!? src)))
+          :write (fn [_ data] (>!? src data))}
+         {:__name "tcp-client"
+          :__fennelview
+          #(.. "#<" (: (tostring $) :gsub "table:" "tcp-client") ">")}))))
 
 (local non-error-statuses
   {200 true
@@ -278,7 +283,7 @@ request in case of redirection."
                  nil
                  (= :string (type body))
                  body))
-        client (make-client opts)]
+        client (make-tcp-client opts)]
     (assert (or (not opts.async?) (and opts.on-response opts.on-raise))
             "If async? is true, on-response and on-raise callbacks must be passed")
     (set opts.start (or opts.start (gettime)))
