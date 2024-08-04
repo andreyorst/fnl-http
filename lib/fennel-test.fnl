@@ -523,7 +523,8 @@ macro. these fixtures are used accordingly to their specs.
                  :reporter :dots
                  :capture-output? true
                  :fennel-lib :fennel
-                 :shuffle? true}
+                 :shuffle? true
+                 :exit? false}
                 opts))]
     (io.stdout:write
      "Test run at " (os.date) ", seed: " config.seed "\n")
@@ -534,6 +535,8 @@ macro. these fixtures are used accordingly to their specs.
       (shuffle-tests tests))
     (each [_ [ns tests] (ipairs tests)]
       (run-ns-tests ns tests config fixtures warnings errors))
-    (config.reporter.stats-report warnings errors)))
+    (config.reporter.stats-report warnings errors)
+    (when (next errors)
+      (os.exit 1))))
 
 {: eq : run-tests}
