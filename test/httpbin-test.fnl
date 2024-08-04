@@ -117,7 +117,8 @@
     (let [resp (http.get (.. "http://localhost:" port "/stream-bytes/40000")
                          {:headers {:connection "close"}
                           :as :stream})
-          done (a.chan)]
+          done (a.chan)
+          Timeout (setmetatable {} {:__fennelview #:Timeout})]
       (for [i 1 4]
         (a.go #(do (for [i 1 10]
                      (resp.body:read 1000))
@@ -125,8 +126,8 @@
       (for [i 1 4]
         (->> #(let [tout (a.timeout 1000)]
                 (match (a.alts! [done tout])
-                  [_ tout] nil
+                  [_ tout] Timeout
                   [val _] val))
              a.go
              a.<!!
-             (assert-ne nil))))))
+             (assert-ne Timeout))))))
