@@ -964,8 +964,6 @@ available.  Returns `true` unless `port` is already closed."
   (case (port:put! val fhnop)
     retb (unbox retb)))
 
-
-
 (fn close! [port]
   "Close `port`."
   (assert (chan? port) "expected a channel")

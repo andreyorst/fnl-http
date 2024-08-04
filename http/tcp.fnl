@@ -11,11 +11,11 @@
         &as socket}
     (require :socket))
 
-(fn set-chunk-size [self pattern-or-size]
+(fn set-chunk-size [ch pattern-or-size]
   "Sets the chunk-size property of a socket channel in order to
 dynamically adjust during reads."
   {:private true}
-  (set self.chunk-size pattern-or-size))
+  (offer! ch pattern-or-size))
 
 (fn socket-channel [client xform err-handler]
   "Returns a combo channel, where puts and takes are handled by
@@ -24,42 +24,19 @@ that interact with the socket"
   {:private true}
   (let [recv (chan 1024 xform err-handler)
         resp (chan 1024 xform err-handler)
-        ready (chan)
+        next-chunk (chan math.huge)
         close (fn [self] (recv:close!) (resp:close!) (set self.closed true))
         c (-> {:puts recv.puts
                :takes resp.takes
                :put! (fn [_  val handler enqueue?]
                        (recv:put! val handler enqueue?))
                :take! (fn [_ handler enqueue?]
-                        (while (not (offer! ready :ready))
-                          ;; NOTE: We block, until the second `go-loop` below finishes it's cycle.
-                          ;;       This is, in fact, very bad, but the async.fnl scheduler can handle
-                          ;;       this reasonably well.  This should happen rarely, if ever - can't
-                          ;;       prove that it doesn't ever happen, so better safe than sorry.
-                          ;;       This will not block indefinitely, due to how the runtime is
-                          ;;       implemented - the `go-loop` will still run.
-                          ;;
-                          ;;       The reason we do this, is due to the fact, that we need to prevent
-                          ;;       reads from the socket, even if it has data, as we don't know the
-                          ;;       very first pattern the user would request from the socket.  The
-                          ;;       default pattern is 1024 bytes, thus the channel would always
-                          ;;       contain first 1024 bytes of the response, even if the user may
-                          ;;       want a different amount.  We should never try to read more than
-                          ;;       requested.
-                          ;;
-                          ;;       Then, after the specified pattern is fully read, we need to park
-                          ;;       the `go-loop` again until further explicit take on the
-                          ;;       `socket-channel`, as the pattern might change with the next one,
-                          ;;       and without parking, the socket would read an improper amount of
-                          ;;       data again.
-                          )
                         (resp:take! handler enqueue?))
                :close! close
                :close close
-               :chunk-size 1024
-               :set-chunk-size set-chunk-size}
+               :set-chunk-size (partial set-chunk-size next-chunk)}
               (setmetatable
-               {:__index (. (getmetatable ready) :__index)
+               {:__index (. (getmetatable next-chunk) :__index)
                 :__name "SocketChannel"
                 :__fennelview
                 #(.. "#<" (: (tostring $) :gsub "table:" "SocketChannel:") ">")}))]
@@ -75,16 +52,13 @@ that interact with the socket"
             _ (recur (<! recv) 0))
           _ (do (<! (timeout 10))
                 (recur data i)))))
-    (go-loop [wait? true
-              part ""
-              remaining nil]
-      (when wait?
-        (<! ready))
-      (let [size (or remaining c.chunk-size)]
-        (case (client:receive size "")
+    (go-loop [chunk-size nil
+              part ""]
+      (let [chunk-size (or chunk-size (<! next-chunk))]
+        (case (client:receive chunk-size)
           data
           (do (>! resp (.. part data))
-              (recur true "" nil))
+              (recur nil ""))
           (where (nil :closed ?data)
                  (or (= ?data nil) (= ?data "")))
           (do (client:close)
@@ -96,20 +70,18 @@ that interact with the socket"
           (where (nil :timeout ?data)
                  (or (= ?data nil) (= ?data "")))
           (do (<! (timeout 10))
-              (recur false part remaining))
+              (recur chunk-size part))
           (nil :timeout data)
-          (let [bytes? (= :number (type size))
-                remaining (if bytes?
-                              (- size (length data))
-                              size)]
+          (let [bytes? (= :number (type chunk-size))
+                chunk-size (if bytes?
+                               (- chunk-size (length data))
+                               chunk-size)]
             (<! (timeout 10))
             (if bytes?
-                (recur (= remaining 0)
-                       (.. part data)
-                       (and (> remaining 0) remaining))
-                (recur false
-                       (.. part data)
-                       remaining))))))
+                (recur (and (> chunk-size 0) chunk-size)
+                       (.. part data))
+                (recur chunk-size
+                       (.. part data)))))))
     c))
 
 (fn chan [{: host : port} xform err-handler]

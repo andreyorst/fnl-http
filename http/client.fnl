@@ -107,10 +107,10 @@ act like Luasocket client object."
                       (opts.on-raise err)
                       nil)))
         (tset :read (fn [src pattern]
-                      (src:set-chunk-size pattern)
+                      (src.set-chunk-size pattern)
                       (<!? src)))
         (tset :receive (fn [src pattern prefix]
-                         (src:set-chunk-size pattern)
+                         (src.set-chunk-size pattern)
                          (.. (or prefix "") (<!? src))))
         (tset :send (fn [ch data ...]
                       (->> (case (values (select :# ...) ...)
@@ -235,7 +235,7 @@ to issue a new request."
         location
         (if (<= max-redirects 0)
             (if opts.throw-errors?
-                (raise "too many redirecs" opts)
+                (raise "too many redirects" opts)
                 (respond response opts))
             (or (= 301 status)
                 (= 302 status))
