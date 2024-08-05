@@ -3,6 +3,9 @@
 (local http
   (require :http))
 
+(local json
+  (require :http.json))
+
 (local a
   (require :lib.async))
 
@@ -19,6 +22,10 @@
 
 (fn kill [pid]
   (with-open [_ (io.popen (.. "kill -9 " pid " >/dev/null 2>&1"))]))
+
+(fn select-keys [tbl keys]
+  (collect [_ k (ipairs keys)]
+    k (. tbl k)))
 
 (use-fixtures
  :once
@@ -43,8 +50,8 @@
         (tset :headers :Date nil)
         (tset :headers :Server nil))))
 
-(deftest get-test
-  (testing "basic GET request"
+(deftest methods-test
+  (testing "GET request"
     (assert-eq
      {:headers {:Access-Control-Allow-Credentials "true"
                 :Access-Control-Allow-Origin "*"
@@ -58,7 +65,71 @@
       (doto (http.get (url "/get"))
         (tset :body nil)
         (tset :length nil)
-        (tset :headers :Content-Length nil))))))
+        (tset :headers :Content-Length nil)))))
+  (testing "POST request"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :body "foo"
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (let [resp (cleanup-response
+                 (doto (http.post (url "/post") {:body "foo" :as :json})
+                   (tset :length nil)
+                   (tset :headers :Content-Length nil)))]
+       (set resp.body resp.body.data)
+       resp)))
+  (testing "DELETE request"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (cleanup-response
+      (doto (http.delete (url "/delete"))
+        (tset :body nil)
+        (tset :length nil)
+        (tset :headers :Content-Length nil)))))
+  (testing "PATCH request"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (cleanup-response
+      (doto (http.patch (url "/patch"))
+        (tset :body nil)
+        (tset :length nil)
+        (tset :headers :Content-Length nil)))))
+  (testing "POST request"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :body "foo"
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (let [resp (cleanup-response
+                 (doto (http.put (url "/put") {:body "foo" :as :json})
+                   (tset :length nil)
+                   (tset :headers :Content-Length nil)))]
+       (set resp.body resp.body.data)
+       resp))))
 
 (deftest redirection-test
   (testing "basic redirection"
@@ -106,6 +177,25 @@
       (doto (http.get (url "/absolute-redirect/1") {:follow-redirects? false})
         (tset :body nil)
         (tset :length nil)
+        (tset :headers :Content-Length nil))))
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "text/html; charset=utf-8"
+                :Location (url "/get")}
+      :trace-redirects []
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "SEE OTHER"
+      :status 303}
+     (cleanup-response
+      (doto (http.get (url "/redirect-to")
+                      {:query-params {:url (url "/get")
+                                      :status_code 303}
+                       :follow-redirects? false
+                       :as :json})
+        (tset :body nil)
+        (tset :length nil)
         (tset :headers :Content-Length nil)))))
   (testing "several redirects"
     (assert-eq
@@ -140,6 +230,37 @@
         (tset :body nil)
         (tset :length nil)
         (tset :headers :Content-Length nil)))))
+  (testing "redirect with the same method"
+    (assert-eq
+     "foo"
+     (-> (url "/redirect-to")
+         (http.post
+          {:query-params
+           {:url (url "/post")
+            :status_code 307}
+           :body "foo"
+           :as :json})
+         (. :body :data)))
+    (assert-eq
+     "foo"
+     (-> (url "/redirect-to")
+         (http.post
+          {:query-params
+           {:url (url "/post")
+            :status_code 308}
+           :body "foo"
+           :as :json})
+         (. :body :data))))
+  (testing "redirect with the GET method"
+    (assert-eq
+     (url "/get")
+     (-> (url "/redirect-to")
+         (http.post
+          {:query-params
+           {:url (url "/get")
+            :status_code 301}
+           :as :json})
+         (. :body :url))))
   (testing "too many redirects"
     (let [(ok? resp) (pcall http.get (url "/absolute-redirect/2") {:max-redirects 1})]
       (assert-not ok?)
@@ -158,7 +279,26 @@
                  :title "Overview"
                  :type "all"}]
        :title "Sample Slide Show"}}
-     (. (http.get (url "/json") {:as :json}) :body))))
+     (. (http.get (url "/json") {:as :json}) :body)))
+  (testing "parsing json stream"
+    (let [n 3]
+      (assert-eq
+       {:id 0 :url (url (.. "/stream/" n))}
+       (-> (url (.. "/stream/" n))
+           (http.get {:as :json})
+           (. :body)
+           (select-keys [:id :url])))))
+  (testing "parsing json stream manually"
+    (let [n 3]
+      (assert-eq
+       [{:id 0 :url (url (.. "/stream/" n))}
+        {:id 1 :url (url (.. "/stream/" n))}
+        {:id 2 :url (url (.. "/stream/" n))}]
+       (let [body (-> (url (.. "/stream/" n))
+                      (http.get {:as :stream})
+                      (. :body))]
+         (fcollect [i 1 n]
+           (select-keys (json.decode body) [:id :url])))))))
 
 (deftest asynchronous-body-read-test
   (let [Timeout (setmetatable {} {:__fennelview #:Timeout})]
@@ -197,3 +337,23 @@
                a.go
                a.<!!
                (assert-ne Timeout)))))))
+
+(deftest delayed-response-test
+  (testing "The response is delayed in fixed intervals"
+    (assert-eq
+     {:body "**********"
+      :headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Length "10"
+                :Content-Type "application/octet-stream"}
+      :length 10
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "OK"
+      :status 200
+      :trace-redirects {}}
+     (cleanup-response
+      (http.get
+       (url "/drip")
+       {:query-params
+        {:duration 1 :numbytes 10 :code 200 :delay 1}})))))

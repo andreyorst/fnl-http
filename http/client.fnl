@@ -150,11 +150,14 @@ methods to act like Luasocket client."
    304 true
    307 true})
 
-(fn try-coerce-body [response opts]
+(fn try-coerce-body [{:length len &as response} opts]
   (if (= :table (type response))
-      (case (values opts.as response.body)
-        (:json body) (pcall decode body)
-        (_ ?body) (values true ?body))
+      (if (or (= len nil)
+              (and len (> len 0)))
+          (case (values opts.as response.body)
+            (:json body) (pcall decode body)
+            (_ ?body) (values true ?body))
+          (values true nil))
       (values true response)))
 
 (fn raise* [response opts]
