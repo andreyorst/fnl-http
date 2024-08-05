@@ -49,6 +49,9 @@
         : upper}
   string)
 
+(local {: insert}
+  table)
+
 (local client {})
 
 ;;; Helper functions
@@ -168,10 +171,11 @@ methods to act like Luasocket client."
 
 (fn respond [response opts]
   (let [(ok? body) (try-coerce-body response opts)
-        response (if ok?
+        response (if (and ok? (= :table (type response)))
                      (doto response
                        (tset :parsed-headers nil)
-                       (tset :body body))
+                       (tset :body body)
+                       (tset :trace-redirects opts.redirect-trace))
                      body)]
     (if (or (not ok?)
             (and opts.throw-errors?
@@ -184,7 +188,8 @@ methods to act like Luasocket client."
         response (if (and ok? (= :table (type response)))
                      (doto response
                        (tset :parsed-headers nil)
-                       (tset :body body))
+                       (tset :body body)
+                       (tset :trace-redirects opts.redirect-trace))
                      body)]
     (raise* response opts)))
 
@@ -210,6 +215,13 @@ Consumes the `body` of the response, if provided."
           (http-client:close)
           nil)))
 
+(fn relative-url [url location]
+  (doto (collect [k v (pairs url)] k v)
+    (tset :path location)
+    (tset :query nil)
+    (tset :frarment nil)
+    (setmetatable (getmetatable url))))
+
 (fn redirect [response opts request-fn location method]
   "Issues a redirection request.
 If `method` is specifiyed, uses the given method for a new request.
@@ -222,7 +234,16 @@ function to issue a new request."
      (tset :method (or method opts.method))
      (tset :http-client (reuse-client? response))
      (tset :query-params nil)
-     (tset :url (parse-url location))
+     (tset :url (case (pcall parse-url location)
+                  (true url)
+                  (do (when opts.follow-redirects?
+                        (insert opts.redirect-trace (tostring url)))
+                      url)
+                  (false _)
+                  (let [url (relative-url opts.url location)]
+                    (when opts.follow-redirects?
+                      (insert opts.redirect-trace (tostring url)))
+                    url)))
      (tset :max-redirects (- opts.max-redirects 1)))))
 
 (fn follow-redirects [{: status : headers &as response}
@@ -345,7 +366,8 @@ are made and the body is sent using chunked transfer encoding."
                           :max-redirects math.huge
                           :url (parse-url url)
                           :on-response on-response
-                          :on-raise on-raise}]
+                          :on-raise on-raise
+                          :redirect-trace []}]
            k v)
      (tset :method (upper method)))))
 

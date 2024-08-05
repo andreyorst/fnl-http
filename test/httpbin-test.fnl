@@ -51,6 +51,7 @@
                 :Connection "keep-alive"
                 :Content-Type "application/json"}
       :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
       :reason-phrase "OK"
       :status 200}
      (cleanup-response
@@ -66,11 +67,27 @@
                 :Access-Control-Allow-Origin "*"
                 :Connection "keep-alive"
                 :Content-Type "application/json"}
+      :trace-redirects [(url "/get")]
       :protocol-version {:major 1 :minor 1 :name "HTTP"}
       :reason-phrase "OK"
       :status 200}
      (cleanup-response
       (doto (http.get (url "/absolute-redirect/1"))
+        (tset :body nil)
+        (tset :length nil)
+        (tset :headers :Content-Length nil)))))
+  (testing "relative redirection"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :trace-redirects [(url "/get")]
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "OK"
+      :status 200}
+     (cleanup-response
+      (doto (http.get (url "/relative-redirect/1"))
         (tset :body nil)
         (tset :length nil)
         (tset :headers :Content-Length nil)))))
@@ -81,11 +98,45 @@
                 :Connection "keep-alive"
                 :Content-Type "text/html; charset=utf-8"
                 :Location (url "/get")}
+      :trace-redirects []
       :protocol-version {:major 1 :minor 1 :name "HTTP"}
       :reason-phrase "FOUND"
       :status 302}
      (cleanup-response
       (doto (http.get (url "/absolute-redirect/1") {:follow-redirects? false})
+        (tset :body nil)
+        (tset :length nil)
+        (tset :headers :Content-Length nil)))))
+  (testing "several redirects"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :trace-redirects [(url "/absolute-redirect/2")
+                        (url "/absolute-redirect/1")
+                        (url "/get")]
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "OK"
+      :status 200}
+     (cleanup-response
+      (doto (http.get (url "/absolute-redirect/3"))
+        (tset :body nil)
+        (tset :length nil)
+        (tset :headers :Content-Length nil))))
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :trace-redirects [(url "/relative-redirect/2")
+                        (url "/relative-redirect/1")
+                        (url "/get")]
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "OK"
+      :status 200}
+     (cleanup-response
+      (doto (http.get (url "/relative-redirect/3"))
         (tset :body nil)
         (tset :length nil)
         (tset :headers :Content-Length nil)))))

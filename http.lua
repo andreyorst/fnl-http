@@ -60,6 +60,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
   local format = string["format"]
   local lower = string["lower"]
   local upper = string["upper"]
+  local insert = table["insert"]
   local client = {}
   local function get_boundary(headers)
     local boundary = nil
@@ -231,9 +232,10 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
   local function respond(response, opts)
     local ok_3f, body = try_coerce_body(response, opts)
     local response0
-    if ok_3f then
+    if (ok_3f and ("table" == type(response))) then
       response["parsed-headers"] = nil
       response["body"] = body
+      response["trace-redirects"] = opts["redirect-trace"]
       response0 = response
     else
       response0 = body
@@ -250,6 +252,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     if (ok_3f and ("table" == type(response))) then
       response["parsed-headers"] = nil
       response["body"] = body
+      response["trace-redirects"] = opts["redirect-trace"]
       response0 = response
     else
       response0 = body
@@ -286,8 +289,27 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       return nil
     end
   end
+  local function relative_url(url, location)
+    local tmp_9_auto
+    do
+      local tbl_16_auto = {}
+      for k, v in pairs(url) do
+        local k_17_auto, v_18_auto = k, v
+        if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
+          tbl_16_auto[k_17_auto] = v_18_auto
+        else
+        end
+      end
+      tmp_9_auto = tbl_16_auto
+    end
+    tmp_9_auto["path"] = location
+    tmp_9_auto["query"] = nil
+    tmp_9_auto["frarment"] = nil
+    setmetatable(tmp_9_auto, getmetatable(url))
+    return tmp_9_auto
+  end
   local function redirect(response, opts, request_fn, location, method)
-    local function _959_()
+    local function _960_()
       local tmp_9_auto
       do
         local tbl_16_auto = {}
@@ -303,29 +325,51 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       tmp_9_auto["method"] = (method or opts.method)
       tmp_9_auto["http-client"] = reuse_client_3f(response)
       tmp_9_auto["query-params"] = nil
-      tmp_9_auto["url"] = parse_url(location)
+      local _963_
+      do
+        local _961_, _962_ = pcall(parse_url, location)
+        if ((_961_ == true) and (nil ~= _962_)) then
+          local url = _962_
+          if opts["follow-redirects?"] then
+            insert(opts["redirect-trace"], tostring(url))
+          else
+          end
+          _963_ = url
+        elseif ((_961_ == false) and true) then
+          local _ = _962_
+          local url = relative_url(opts.url, location)
+          if opts["follow-redirects?"] then
+            insert(opts["redirect-trace"], tostring(url))
+          else
+          end
+          _963_ = url
+        else
+          _963_ = nil
+        end
+      end
+      tmp_9_auto["url"] = _963_
       tmp_9_auto["max-redirects"] = (opts["max-redirects"] - 1)
       return tmp_9_auto
     end
-    return request_fn(_959_())
+    return request_fn(_960_())
   end
-  local function follow_redirects(_960_, _961_, request_fn)
-    local status = _960_["status"]
-    local headers = _960_["headers"]
-    local response = _960_
-    local method = _961_["method"]
-    local throw_errors_3f = _961_["throw-errors?"]
-    local max_redirects = _961_["max-redirects"]
-    local force_redirects_3f = _961_["force-redirects?"]
-    local opts = _961_
+  local function follow_redirects(_970_, _971_, request_fn)
+    local status = _970_["status"]
+    local headers = _970_["headers"]
+    local response = _970_
+    local method = _971_["method"]
+    local throw_errors_3f = _971_["throw-errors?"]
+    local max_redirects = _971_["max-redirects"]
+    local force_redirects_3f = _971_["force-redirects?"]
+    local opts = _971_
     if (not opts["follow-redirects?"] or not redirect_3f(status)) then
       return respond(response, opts)
     else
-      local _962_ = headers.Location
-      if (_962_ == nil) then
+      local _972_ = headers.Location
+      if (_972_ == nil) then
         return respond(response, opts)
-      elseif (nil ~= _962_) then
-        local location = _962_
+      elseif (nil ~= _972_) then
+        local location = _972_
         if (max_redirects <= 0) then
           if opts["throw-errors?"] then
             return raise("too many redirects", opts)
@@ -354,21 +398,21 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     client0:write(request)
     stream_body(client0, body, headers)
     do
-      local _968_ = opts.multipart
-      if (nil ~= _968_) then
-        local parts = _968_
+      local _978_ = opts.multipart
+      if (nil ~= _978_) then
+        local parts = _978_
         stream_multipart(client0, parts, get_boundary(headers))
       else
       end
     end
     if opts["async?"] then
-      local _970_, _971_ = pcall(parse_http_response, client0, opts)
-      if ((_970_ == true) and (nil ~= _971_)) then
-        local resp = _971_
+      local _980_, _981_ = pcall(parse_http_response, client0, opts)
+      if ((_980_ == true) and (nil ~= _981_)) then
+        local resp = _981_
         return follow_redirects(resp, opts, request_fn)
-      elseif (true and (nil ~= _971_)) then
-        local _ = _970_
-        local err = _971_
+      elseif (true and (nil ~= _981_)) then
+        local _ = _980_
+        local err = _981_
         return opts["on-raise"](err)
       else
         return nil
@@ -381,7 +425,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
     local body = wrap_body(opts.body)
     local headers = prepare_headers(opts)
     local req
-    local function _974_()
+    local function _984_()
       if (headers["transfer-encoding"] == "chunked") then
         return nil
       elseif ("string" == type(body)) then
@@ -390,26 +434,26 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
         return nil
       end
     end
-    req = build_http_request(opts.method, format_path(opts.url, opts["query-params"]), headers, _974_())
+    req = build_http_request(opts.method, format_path(opts.url, opts["query-params"]), headers, _984_())
     local client0 = make_tcp_client(opts)
     assert((not opts["async?"] or (opts["on-response"] and opts["on-raise"])), "If async? is true, on-response and on-raise callbacks must be passed")
     opts.start = (opts.start or gettime())
     if opts["async?"] then
-      local _let_975_ = require("lib.async")
-      local go_1_auto = _let_975_["go"]
-      local function _976_()
+      local _let_985_ = require("lib.async")
+      local go_1_auto = _let_985_["go"]
+      local function _986_()
         return process_request(client0, req, body, headers, opts, request_2a)
       end
-      return go_1_auto(_976_)
+      return go_1_auto(_986_)
     else
       return process_request(client0, req, body, headers, opts, request_2a)
     end
   end
   client.request = function(method, url, opts, on_response, on_raise)
-    local function _979_()
+    local function _989_()
       local tmp_9_auto
       do
-        local tbl_16_auto = {as = "raw", time = gettime, ["throw-errors?"] = true, ["follow-redirects?"] = true, ["max-redirects"] = math.huge, url = parse_url(url), ["on-response"] = on_response, ["on-raise"] = on_raise, ["async?"] = false}
+        local tbl_16_auto = {as = "raw", time = gettime, ["throw-errors?"] = true, ["follow-redirects?"] = true, ["max-redirects"] = math.huge, url = parse_url(url), ["on-response"] = on_response, ["on-raise"] = on_raise, ["redirect-trace"] = {}, ["async?"] = false}
         for k, v in pairs((opts or {})) do
           local k_17_auto, v_18_auto = k, v
           if ((k_17_auto ~= nil) and (v_18_auto ~= nil)) then
@@ -422,7 +466,7 @@ package.preload["http.client"] = package.preload["http.client"] or function(...)
       tmp_9_auto["method"] = upper(method)
       return tmp_9_auto
     end
-    return request_2a(_979_())
+    return request_2a(_989_())
   end
   client.get = function(url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
     return client.request("get", url_2_auto, opts_3_auto, on_response_4_auto, on_raise_5_auto)
@@ -5283,4 +5327,4 @@ package.preload["http.json"] = package.preload["http.json"] or function(...)
   end
   return setmetatable({encode = encode, decode = decode}, {__call = _911_})
 end
-return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.71"}})})
+return setmetatable({client = require("http.client"), json = require("http.json"), readers = require("http.readers")}, {__index = setmetatable(require("http.client"), {__index = {__VERSION = "0.0.73"}})})
