@@ -143,6 +143,4 @@ Accepts the `path`, `query`, and `fragment` parts from the parsed URL, and optio
                     query-params)))
           "")))
 
-{: urlencode
- : parse-url
- : format-path}
+{: urlencode : parse-url : format-path}

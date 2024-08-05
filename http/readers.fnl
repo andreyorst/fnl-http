@@ -202,8 +202,4 @@ used."
     {:__index Reader} true
     _ false))
 
-{: make-reader
- : file-reader
- : string-reader
- : reader?
- :ltn12-reader (and ltn? ltn12-reader)}
+{: make-reader : file-reader : string-reader : reader? :ltn12-reader (and ltn? ltn12-reader)}

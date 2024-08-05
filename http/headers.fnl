@@ -33,5 +33,4 @@ If coersion fails, returns the value as is."
         "false" false
         _ value)))
 
-{: decode-value
- : capitalize-header}
+{: decode-value : capitalize-header}

@@ -1,0 +1,16 @@
+;; -*- mode: fennel; -*- vi:ft=fennel
+
+(with-open [proc (io.popen (.. "rm luacov.*;"
+                               "for file in $(find -type f -name '*.lua'); do rm $file; done;"
+                               "fennel --correlate -c test/httpbin-test.fnl > test/httpbin-test.lua;"
+                               "touch http.lua;"
+                               "for file in $(find -type f -name '*.fnl' | grep 'http/'); do fennel --correlate -c $file > ${file%.fnl}.lua; done;"
+                               "fennel --correlate -c lib/async.fnl > lib/async.lua;"
+                               "fennel --correlate -c lib/fennel-test.fnl > lib/fennel-test.lua;"
+                               "lua -lluarocks.loader -lluacov test/httpbin-test.lua;"
+                               "luacov-console .;"
+                               "luacov-console -l 'http.*';"
+                               "luacov-console -s;"
+                               "for file in $(find -type f -name '*.lua'); do rm $file; done;"))]
+  (each [line (proc:lines)]
+    (print line)))

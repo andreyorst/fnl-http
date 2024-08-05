@@ -1,7 +1,10 @@
 (require-macros (doto :lib.fennel-test require))
 
 (local http
-  (require :http))
+  (require :http.client))
+
+(local readers
+  (require :http.readers))
 
 (local json
   (require :http.json))
@@ -113,7 +116,7 @@
         (tset :body nil)
         (tset :length nil)
         (tset :headers :Content-Length nil)))))
-  (testing "POST request"
+  (testing "PUT request"
     (assert-eq
      {:headers {:Access-Control-Allow-Credentials "true"
                 :Access-Control-Allow-Origin "*"
@@ -129,6 +132,63 @@
                    (tset :length nil)
                    (tset :headers :Content-Length nil)))]
        (set resp.body resp.body.data)
+       resp))))
+
+(deftest post-test
+  (testing "POST raw data"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :body "foo"
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (let [resp (cleanup-response
+                 (doto (http.post (url "/post") {:body "foo" :as :json})
+                   (tset :length nil)
+                   (tset :headers :Content-Length nil)))]
+       (set resp.body resp.body.data)
+       resp)))
+  (testing "POST stream data"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :body "foo"
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (let [resp (cleanup-response
+                 (doto (http.post (url "/post") {:body (readers.string-reader "foo") :as :json})
+                   (tset :length nil)
+                   (tset :headers :Content-Length nil)))]
+       (set resp.body resp.body.data)
+       resp)))
+  (testing "POST multipart data"
+    (assert-eq
+     {:headers {:Access-Control-Allow-Credentials "true"
+                :Access-Control-Allow-Origin "*"
+                :Connection "keep-alive"
+                :Content-Type "application/json"}
+      :body {:files {:baz "qux"} :form {:foo "bar"}}
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :trace-redirects []
+      :reason-phrase "OK"
+      :status 200}
+     (let [resp (cleanup-response
+                 (doto (http.post (url "/post")
+                                  {:multipart
+                                   [{:name "foo" :content "bar"}
+                                    {:name "baz" :content "qux" :filename "baz.txt"}]
+                                   :as :json})
+                   (tset :length nil)
+                   (tset :headers :Content-Length nil)))]
+       (set resp.body (select-keys resp.body [:form :files]))
        resp))))
 
 (deftest redirection-test

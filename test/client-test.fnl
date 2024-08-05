@@ -1,7 +1,7 @@
 (require-macros (doto :lib.fennel-test require))
 
 (local http
-  (require :http))
+  (require :http.client))
 
 (local a
   (require :lib.async))

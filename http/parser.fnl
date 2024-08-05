@@ -340,7 +340,4 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
         fragment (url:match "#([^?]+)%??")]
     {: scheme : host : port : userinfo : path : query : fragment}))
 
-{: parse-http-response
- : parse-http-request
- : chunked-encoding?
- : parse-url}
+{: parse-http-response : parse-http-request : chunked-encoding? : parse-url}

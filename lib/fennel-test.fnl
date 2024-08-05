@@ -285,51 +285,51 @@ comparison.  Tables as keys are supported."
 ;;;; Reporters
 
 (local dots
-  {:ns-start #(do (io.stdout:write "(") (io.stdout:flush))
-   :ns-report #(do (io.stdout:write ")") (io.stdout:flush))
+  {:ns-start #(do (_G.io.stdout:write "(") (_G.io.stdout:flush))
+   :ns-report #(do (_G.io.stdout:write ")") (_G.io.stdout:flush))
    :test-start #nil
    :test-report (fn [ok? test-name msg]
-                  (io.stdout:write (if ok? "." "F"))
-                  (io.stdout:flush))
+                  (_G.io.stdout:write (if ok? "." "F"))
+                  (_G.io.stdout:flush))
    :stats-report (fn [warnings errors]
-                   (io.stdout:write "\n")
+                   (_G.io.stdout:write "\n")
                    (each [_ message (ipairs warnings)]
-                     (io.stderr:write "Warning: " message "\n"))
+                     (_G.io.stderr:write "Warning: " message "\n"))
                    (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
-                     (io.stderr:write
+                     (_G.io.stderr:write
                       "Error in '" ns
                       "' in test '" test-name "':\n"
                       message "\n")
                      (when (not= "" stdout)
-                       (io.stderr:write
+                       (_G.io.stderr:write
                         "Test stdout:\n"
                         stdout))
                      (when (not= "" stderr)
-                       (io.stderr:write
+                       (_G.io.stderr:write
                         "Test stderr:\n"
                         stderr))))})
 
 (local namespaces
   {:ns-start (fn [ns]
-               (io.stdout:write ns ": ")
-               (io.stdout:flush))
-   :ns-report (fn [ns ok?] (io.stdout:write (if ok? "PASS" "FAIL") "\n"))
+               (_G.io.stdout:write ns ": ")
+               (_G.io.stdout:flush))
+   :ns-report (fn [ns ok?] (_G.io.stdout:write (if ok? "PASS" "FAIL") "\n"))
    :test-start #nil
    :test-report #nil
    :stats-report (fn [warnings errors]
                    (each [_ message (ipairs warnings)]
-                     (io.stderr:write "Warning: " message "\n"))
+                     (_G.io.stderr:write "Warning: " message "\n"))
                    (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
-                     (io.stderr:write
+                     (_G.io.stderr:write
                       "Error in '" ns
                       "' in test '" test-name "':\n"
                       message "\n")
                      (when (not= "" stdout)
-                       (io.stderr:write
+                       (_G.io.stderr:write
                         "Test stdout:\n"
                         stdout))
                      (when (not= "" stderr)
-                       (io.stderr:write
+                       (_G.io.stderr:write
                         "Test stderr:\n"
                         stderr))))})
 
@@ -337,7 +337,7 @@ comparison.  Tables as keys are supported."
 
 (fn file-exists? [file]
   {:private true}
-  (let [fh (io.open file)]
+  (let [fh (_G.io.open file)]
     (when fh (fh:close))
     (not= fh nil)))
 
@@ -361,7 +361,7 @@ comparison.  Tables as keys are supported."
              (= :function (type config.reporter.stats-report)))
         nil
         (not= nil config.reporter)
-        (do (io.stderr:write
+        (do (_G.io.stderr:write
              "Warning: unknown or malformed reporter: "
              (view config.reporter)
              "\nUsing default reporter: dots\n")
@@ -385,9 +385,9 @@ comparison.  Tables as keys are supported."
   "Redirects output from stdout and stderr to `out` and `err` tables."
   {:private true}
   (let [{:write io/write :read io/read
-         : stdin : stdout : stderr} io
+         : stdin : stdout : stderr} _G.io
         {:write fd/write :read fd/read &as fd}
-        (. (getmetatable io.stdin) :__index)
+        (. (getmetatable _G.io.stdin) :__index)
         lua-print print
         pack #(doto [$...] (tset :n (select "#" $...)))
         args (pack ...)]
@@ -397,13 +397,13 @@ comparison.  Tables as keys are supported."
           (fd/write fd ...))
       fd)
     (fn _G.print [...]
-      (io.write (.. (join "\t" ...) "\n"))
+      (_G.io.write (.. (join "\t" ...) "\n"))
       nil)
-    (fn io.write [...]
-      (: (io.output) :write ...))
+    (fn _G.io.write [...]
+      (: (_G.io.output) :write ...))
     (let [(_ res) (pcall #(pack (fn1 (unpack args 1 args.n))))]
       (set _G.print lua-print)
-      (set io.wirte io/write)
+      (set _G.io.wirte io/write)
       (set fd.write fd/write)
       (unpack res 1 res.n))))
 
@@ -518,16 +518,16 @@ macro. these fixtures are used accordingly to their specs.
         (setup-runner
          (merge {:seed
                  (tonumber
-                  (or (os.getenv "FENNEL_TEST_SEED")
-                      (math.floor (* 1000 (+ (os.time) (os.clock))))))
+                  (or (_G.os.getenv "FENNEL_TEST_SEED")
+                      (math.floor (* 1000 (+ (_G.os.time) (_G.os.clock))))))
                  :reporter :dots
                  :capture-output? true
                  :fennel-lib :fennel
                  :shuffle? true
                  :exit? false}
                 opts))]
-    (io.stdout:write
-     "Test run at " (os.date) ", seed: " config.seed "\n")
+    (_G.io.stdout:write
+     "Test run at " (_G.os.date) ", seed: " config.seed "\n")
     (load-tests modules config tests fixtures)
     (setup-fixtures :once fixtures)
     (setup-fixtures :each fixtures)
@@ -537,6 +537,6 @@ macro. these fixtures are used accordingly to their specs.
       (run-ns-tests ns tests config fixtures warnings errors))
     (config.reporter.stats-report warnings errors)
     (when (next errors)
-      (os.exit 1))))
+      (_G.os.exit 1))))
 
 {: eq : run-tests}

@@ -194,7 +194,4 @@ and `read` methods or a string.  Parses the contents to a Lua table."
                    "JSON parse error: unexpected token ('%s' (code %d))"
                    c (c:byte))))))))
 
-(setmetatable
- {: encode
-  : decode}
- {:__call (fn [_ value] (encode value))})
+(setmetatable {: encode : decode} {:__call (fn [_ value] (encode value))})
