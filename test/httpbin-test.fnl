@@ -12,13 +12,10 @@
   (.. "http://localhost:" port (or path "")))
 
 (fn wait-for-server [port]
-  (var started? false)
-  (for [i 1 10 :until started?]
-    (set started?
-      (or (pcall http.head (url)
-                 {:headers {:connection "close"}})
-          (a.<!! (a.timeout 100)))))
-  started?)
+  (faccumulate [started? false i 1 10 :until started?]
+    (or (pcall http.head (url)
+               {:headers {:connection "close"}})
+        (a.<!! (a.timeout 100)))))
 
 (fn kill [pid]
   (with-open [_ (io.popen (.. "kill -9 " pid " >/dev/null 2>&1"))]))
