@@ -35,14 +35,12 @@
  (fn [t]
    ((fn loop [attempt]
       (if (< attempt 10)
-          (do
-            (set port (+ 8100 (math.random 899)))
-            (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
-              (if (wait-for-server port)
-                  (do (t)
-                      (kill (proc:read :*l)))
-                  (do (kill (proc:read :*l))
-                      (loop (+ attempt 1))))))
+          (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
+            (if (wait-for-server port)
+                (do (t)
+                    (kill (proc:read :*l)))
+                (do (kill (proc:read :*l))
+                    (loop (+ attempt 1)))))
           (io.write "skipping tests after 10 failed connection attempts: "))) 0)))
 
 (fn cleanup-response [resp]
@@ -349,11 +347,10 @@
            (. :body)
            (select-keys [:id :url])))))
   (testing "parsing json stream manually"
-    (let [n 3]
+    (let [n 100]
       (assert-eq
-       [{:id 0 :url (url (.. "/stream/" n))}
-        {:id 1 :url (url (.. "/stream/" n))}
-        {:id 2 :url (url (.. "/stream/" n))}]
+       (fcollect [i 0 (- n 1)]
+         {:id i :url (url (.. "/stream/" n))})
        (let [body (-> (url (.. "/stream/" n))
                       (http.get {:as :stream})
                       (. :body))]
@@ -417,3 +414,26 @@
        (url "/drip")
        {:query-params
         {:duration 1 :numbytes 10 :code 200 :delay 1}})))))
+
+(deftest request-inspection-test
+  (testing "query params understood"
+    (assert-eq
+     {:a "1" :b "2"}
+     (-> (url "/post")
+         (http.post  {:query-params {:a "1" :b "2"} :as :json})
+         (. :body :args)))
+    (assert-eq
+     {:a "1" :b "2" :c "3"}
+     (-> (url "/post?a=1")
+         (http.post {:query-params {:b "2" :c "3"} :as :json})
+         (. :body :args)))
+    (assert-eq
+     {:a ["1" "2"] :c "3"}
+     (-> (url "/post?a=1")
+         (http.post {:query-params {:a "2" :c "3"} :as :json})
+         (. :body :args)))
+    (assert-eq
+     {:a ["1" "2" "3"]}
+     (-> (url "/post?a=1")
+         (http.post {:query-params {:a ["2" "3"]} :as :json})
+         (. :body :args)))))

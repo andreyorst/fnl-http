@@ -54,4 +54,6 @@ headers table and a content string respectively."
    (or (headers->string ?headers) "")
    (or ?content "")))
 
-{: build-http-response : build-http-request : headers->string}
+{: build-http-response
+ : build-http-request
+ : headers->string}

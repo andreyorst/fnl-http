@@ -199,4 +199,8 @@ Needs to know the `boundary`."
     (dst:write "\r\n"))
   (dst:write (format "--%s--\r\n" boundary)))
 
-{: stream-body : format-chunk : stream-multipart : multipart-content-length : wrap-body}
+{: stream-body
+ : format-chunk
+ : stream-multipart
+ : multipart-content-length
+ : wrap-body}

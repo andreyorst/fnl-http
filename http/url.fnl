@@ -30,44 +30,43 @@ characters. The default pattern is `\"[^%w._~-]\"`."
     (icollect [_ v (pairs vals)]
       (.. key "=" (urlencode (tostring v))))))
 
-(fn sort-query-params [h1 h2]
+(fn sort-query-params [[k1] [k2]]
   {:private true}
-  (< (h1:match "^[^=]+") (h2:match "^[^=]+")))
+  (< k1 k2))
 
 (fn generate-query-string [params]
   (when params
-    (-> (accumulate [res [] k v (pairs params)]
-          (do (if (sequential? v)
-                  (each [_ param (ipairs (multi-param-entries k v))]
-                    (insert res param))
-                  (->> (.. (urlencode (tostring k))
-                           "="
-                           (urlencode (tostring v)))
-                       (insert res)))
-              res))
-        (doto (sort sort-query-params))
-        (concat "&"))))
+    (let [ordered (doto (icollect [k v (pairs params)] [k v])
+                    (sort sort-query-params))]
+      (-> (accumulate [res [] _ [k v] (ipairs ordered)]
+            (do (if (sequential? v)
+                    (each [_ param (ipairs (multi-param-entries k v))]
+                      (insert res param))
+                    (->> (.. (urlencode (tostring k))
+                             "="
+                             (urlencode (tostring v)))
+                         (insert res)))
+                res))
+          (concat "&")))))
 
-(fn merge-query-params [...]
+(fn merge-query-params [?query-a ?query-b]
   {:private true}
-  (case (values (select :# ...) ...)
-    0 nil
-    1 ...
-    (_ ?query-a ?query-b)
-    (merge-query-params
-     (when (or (not= nil ?query-a) (not= nil ?query-b))
-       (accumulate [query (collect [k v (pairs (or ?query-a {}))] k v)
-                    k v (pairs (or ?query-b {}))]
-         (case (. query k)
-           [val &as t]
-           (->> (doto query
-                  (tset k (if (sequential? v)
-                              (icollect [_ val (pairs v) :into t]
-                                val)
-                              (doto t (insert v))))))
-           val (doto query (tset k [val v]))
-           nil (doto query (tset k v)))))
-     (select 3 ...))))
+  (when (or (not= nil ?query-a) (not= nil ?query-b))
+    (accumulate [query (collect [k v (pairs (or ?query-a {}))] k v)
+                 k v (pairs (or ?query-b {}))]
+      (case (. query k)
+        [val &as t]
+        (->> (doto query
+               (tset k (if (sequential? v)
+                           (icollect [_ val (ipairs v) :into t]
+                             val)
+                           (doto t (insert v))))))
+        val (doto query
+              (tset k (if (sequential? v)
+                          (icollect [_ val* (ipairs v) :into [val]]
+                            val*)
+                          [val v])))
+        nil (doto query (tset k v))))))
 
 (fn parse-query-string [query]
   (when query
@@ -143,4 +142,6 @@ Accepts the `path`, `query`, and `fragment` parts from the parsed URL, and optio
                     query-params)))
           "")))
 
-{: urlencode : parse-url : format-path}
+{: urlencode
+ : parse-url
+ : format-path}
