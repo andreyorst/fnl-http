@@ -1,5 +1,8 @@
 (require-macros (doto :lib.fennel-test require))
 
+(local {: skip-test}
+  (require :lib.fennel-test))
+
 (local http
   (require :http.client))
 
@@ -20,10 +23,12 @@
  (fn [t]
    (with-open [proc (io.popen "fennel test/server.fnl & echo $!")]
      (let [pid (proc:read :*l)
-           attempts 100]
-       (when (wait-for-server attempts 8000)
-         (t)
-         (kill pid))))))
+           attempts 10]
+       (if (wait-for-server attempts 8000)
+           (do (t)
+               (kill pid))
+           (do (kill pid)
+               (skip-test (.. "coudln't connect to echo server after " attempts " attempts") false)))))))
 
 (deftest post-test
   (testing "posting raw data"

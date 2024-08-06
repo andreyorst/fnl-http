@@ -1,5 +1,8 @@
 (require-macros (doto :lib.fennel-test require))
 
+(local {: skip-test}
+  (require :lib.fennel-test))
+
 (local http
   (require :http.client))
 
@@ -35,10 +38,12 @@
  (fn [t]
    (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
      (let [pid (proc:read :*l)
-           attempts 100]
-       (when (wait-for-server attempts 8000)
-         (t)
-         (kill pid))))))
+           attempts 10]
+       (if (wait-for-server attempts 8000)
+           (do (t)
+               (kill pid))
+           (do (kill pid)
+               (skip-test (.. "coudln't connect to httpbin server after " attempts " attempts") false)))))))
 
 (fn cleanup-response [resp]
   (if (= :table (type resp))

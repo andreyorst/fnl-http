@@ -282,6 +282,9 @@ comparison.  Tables as keys are supported."
         (and (eq a b) (eq (select 2 ...))))))
 
 ;;; Test Runner
+
+(local Skip (setmetatable {} {:__fennelview #:Skip}))
+
 ;;;; Reporters
 
 (local dots
@@ -289,22 +292,32 @@ comparison.  Tables as keys are supported."
    :ns-report #(do (_G.io.stdout:write ")") (_G.io.stdout:flush))
    :test-start #nil
    :test-report (fn [ok? test-name msg]
-                  (_G.io.stdout:write (if ok? "." "F"))
+                  (_G.io.stdout:write
+                   (case ok?
+                     (where (or true :warn)) "."
+                     :skip "-"
+                     _ "F"))
                   (_G.io.stdout:flush))
-   :stats-report (fn [warnings errors]
+   :stats-report (fn [warnings errors skipped-tests]
                    (_G.io.stdout:write "\n")
                    (each [_ message (ipairs warnings)]
                      (_G.io.stderr:write "Warning: " message "\n"))
+                   (each [_ {: ns : test-name : message} (ipairs skipped-tests)]
+                     (_G.io.stderr:write
+                      "In '" ns "' skipped test '" test-name "': "
+                      message "\n"))
                    (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
                      (_G.io.stderr:write
                       "Error in '" ns
-                      "' in test '" test-name "':\n"
-                      message "\n")
-                     (when (not= "" stdout)
+                      (if test-name
+                          (.. "' in test '" test-name "'")
+                          "")
+                       (if message (.. ":\n" message "\n") "\n"))
+                     (when (and stdout (not= "" stdout))
                        (_G.io.stderr:write
                         "Test stdout:\n"
                         stdout))
-                     (when (not= "" stderr)
+                     (when (and stderr (not= "" stderr))
                        (_G.io.stderr:write
                         "Test stderr:\n"
                         stderr))))})
@@ -313,22 +326,34 @@ comparison.  Tables as keys are supported."
   {:ns-start (fn [ns]
                (_G.io.stdout:write ns ": ")
                (_G.io.stdout:flush))
-   :ns-report (fn [ns ok?] (_G.io.stdout:write (if ok? "PASS" "FAIL") "\n"))
+   :ns-report (fn [ns ok?] (_G.io.stdout:write
+                            (case ok?
+                              true "PASS"
+                              :warn "WARN"
+                              :skip "SKIP"
+                              _ "FAIL")
+                            "\n"))
    :test-start #nil
    :test-report #nil
-   :stats-report (fn [warnings errors]
+   :stats-report (fn [warnings errors skipped-tests]
                    (each [_ message (ipairs warnings)]
                      (_G.io.stderr:write "Warning: " message "\n"))
+                   (each [_ {: ns : test-name : message} (ipairs skipped-tests)]
+                     (_G.io.stderr:write
+                      "In '" ns "' skipped test '" test-name "': "
+                      message "\n"))
                    (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
                      (_G.io.stderr:write
                       "Error in '" ns
-                      "' in test '" test-name "':\n"
-                      message "\n")
-                     (when (not= "" stdout)
+                      (if test-name
+                          (.. "' in test '" test-name "'")
+                          "")
+                      (if message (.. ":\n" message "\n") "\n"))
+                     (when (and stdout (not= "" stdout))
                        (_G.io.stderr:write
                         "Test stdout:\n"
                         stdout))
-                     (when (not= "" stderr)
+                     (when (and stderr (not= "" stderr))
                        (_G.io.stderr:write
                         "Test stderr:\n"
                         stderr))))})
@@ -461,10 +486,10 @@ comparison.  Tables as keys are supported."
 ;;;; Runner
 
 (local socket
-  (match (pcall require :socket) (true s) s _ nil))
+  (case (pcall require :socket) (true s) s _ nil))
 
 (local posix
-  (match (pcall require :posix) (true p) p _ nil))
+  (case (pcall require :posix) (true p) p _ nil))
 
 (local time
   (if (?. socket :gettime)
@@ -474,41 +499,57 @@ comparison.  Tables as keys are supported."
       (let [gettime posix.clock_gettime
             nanosleep posix.nanosleep]
         #(let [(s ns) (gettime)]
-           (+ s (/ ns 1000000000))))
-      os.time))
+           (+ s (/ ns 1000000000))))))
 
 (local difftime #(- $1 $2))
 
-(local test-times {})
-
-(fn run-ns-tests [ns tests config fixtures warnings errors]
+(fn run-ns-tests [ns tests config fixtures
+                  {: warnings : errors : skipped-tests : test-times &as state}]
   {:private true}
   (let [{: reporter} config
         oncef (or (. fixtures.once ns) default-fixture)]
     (var ok? true)
     (reporter.ns-start ns)
-    (oncef
-     (fn []
-       (let [eachf (or (. fixtures.each ns) default-fixture)]
-         (if (= 0 (length tests))
-             (table.insert warnings (: "namespace '%s' has no tests" :format ns))
-             (each [test-n [test-name test-fn] (ipairs tests)]
-               (let [ns-test [ns test-name]]
-                 (tset test-times ns-test (time))
-                 (reporter.test-start ns test-name test-n (length tests))
-                 (let [err [] out []]
-                   (match (if config.capture-output?
-                              (with-no-output out err #(pcall eachf test-fn))
-                              (pcall eachf test-fn))
-                     (false msg) (do (set ok? false)
-                                     (reporter.test-report
-                                      false ns test-name msg)
-                                     (table.insert errors {: ns : test-name :message msg
-                                                           :stdout (table.concat out "")
-                                                           :stderr (table.concat err "")}))
-                     _ (reporter.test-report true ns test-name))
-                   (tset test-times ns-test (difftime (time) (. test-times ns-test))))))))))
-    (reporter.ns-report ns ok?)))
+    (if (= 0 (length tests))
+        (do (table.insert warnings (: "namespace '%s' has no tests" :format ns))
+            (reporter.ns-report ns :warn))
+        (let [ns-runner (fn []
+                          (let [eachf (or (. fixtures.each ns) default-fixture)]
+                            (each [test-n [test-name test-fn] (ipairs tests)]
+                              (let [ns-test [ns test-name]]
+                                (when time
+                                  (tset test-times ns-test (time)))
+                                (reporter.test-start ns test-name test-n (length tests))
+                                (let [err [] out []]
+                                  (match (if config.capture-output?
+                                             (with-no-output out err #(pcall eachf test-fn))
+                                             (pcall eachf test-fn))
+                                    (_ [Skip ?message])
+                                    (do (reporter.test-report
+                                         :skip ns test-name)
+                                        (set state.total-tests (math.max 0 (- state.total-tests 1)))
+                                        (when time
+                                          (tset test-times ns-test nil))
+                                        (table.insert skipped-tests
+                                                      {: ns : test-name :message ?message}))
+                                    (false message)
+                                    (do (set ok? false)
+                                        (reporter.test-report
+                                         false ns test-name message)
+                                        (table.insert errors {: ns : test-name : message
+                                                              :stdout (table.concat out "")
+                                                              :stderr (table.concat err "")}))
+                                    _ (reporter.test-report true ns test-name))
+                                  (when (and time (. test-times ns-test))
+                                    (tset test-times ns-test (difftime (time) (. test-times ns-test)))))))))]
+          (match (pcall oncef ns-runner)
+            (_ [Skip ?message])
+            (do (reporter.ns-report ns :skip)
+                (table.insert skipped-tests {: ns :message ?message}))
+            (false message)
+            (do (table.insert errors {: ns : message})
+                (reporter.ns-report ns false))
+            _ (reporter.ns-report ns ok?))))))
 
 (fn merge [t1 t2]
   (if (and (= :table (type t1)) (= :table (type t2)))
@@ -536,8 +577,12 @@ macro. these fixtures are used accordingly to their specs.
 ```"
   (let [tests []
         fixtures {:once {} :each {}}
-        errors []
-        warnings []
+        tests []
+        state {:errors []
+               :warnings []
+               :skipped-tests []
+               :test-times {}
+               :total-tests 0}
         config
         (setup-runner
          (merge {:seed
@@ -547,20 +592,31 @@ macro. these fixtures are used accordingly to their specs.
                  :reporter :dots
                  :capture-output? true
                  :fennel-lib :fennel
-                 :shuffle? true
-                 :exit? false}
+                 :shuffle? true}
                 opts))]
     (_G.io.stdout:write
      "Test run at " (_G.os.date) ", seed: " config.seed "\n")
     (load-tests modules config tests fixtures)
+
     (setup-fixtures :once fixtures)
     (setup-fixtures :each fixtures)
     (when config.shuffle?
       (shuffle-tests tests))
+    (set state.total-tests
+      (accumulate [total 0 _ [_ tests] (ipairs tests)]
+        (+ total (length tests))))
     (each [_ [ns tests] (ipairs tests)]
-      (run-ns-tests ns tests config fixtures warnings errors))
-    (config.reporter.stats-report warnings errors test-times)
-    (when (next errors)
-      (_G.os.exit 1))))
+      (run-ns-tests ns tests config fixtures state))
+    (let [{: warnings : errors : skipped-tests : total-tests : test-times} state]
+      (config.reporter.stats-report warnings errors skipped-tests total-tests test-times)
+      (when (next errors)
+        (_G.os.exit 1)))))
 
-{: eq : run-tests}
+(fn skip-test [reason throw?]
+  "Call this function inside a test or a fixture to stop the test early
+and mark it as skipped."
+  (if (not= throw? false)
+      (error [Skip reason])
+      [Skip reason]))
+
+{: eq : run-tests : skip-test}
