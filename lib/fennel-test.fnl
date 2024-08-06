@@ -471,8 +471,8 @@ comparison.  Tables as keys are supported."
        (let [eachf (or (. fixtures.each ns) default-fixture)]
          (if (= 0 (length tests))
              (table.insert warnings (: "namespace '%s' has no tests" :format ns))
-             (each [_ [test-name test-fn] (ipairs tests)]
-               (reporter.test-start ns test-name)
+             (each [test-n [test-name test-fn] (ipairs tests)]
+               (reporter.test-start ns test-name test-n (length tests))
                (let [err [] out []]
                  (match (if config.capture-output?
                             (with-no-output out err #(pcall eachf test-fn))

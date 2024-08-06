@@ -1,2 +1,69 @@
 ;; -*- mode: fennel -*-
-{:reporter :namespaces}
+(local colors
+  {:black 30
+   :gray 90
+   :red 31
+   :orange 91
+   :green 32
+   :salad 92
+   :yellow 33
+   :blue 34
+   :magenta 95
+   :cyan 36
+   :white 37
+   :default 39})
+
+(local colorize?
+  (case (os.getenv "NO_COLOR")
+    val false
+    _ true))
+
+(fn colorize [text color]
+  (if colorize?
+      (string.format "[%dm%s[m" (or (. colors color) color) text)
+      text))
+
+(fn pad [n total]
+  (-> (case (values n total)
+        (1 1) "╾─ "
+        (1 _) "┌─ "
+        (total total) "└─ "
+        _ "├─ ")
+      (colorize :gray)))
+
+(local reporter
+  {:ns-start (fn [ns] (io.write "\n"
+                                (colorize "┌─ " :gray)
+                                "Running tests in "
+                                (colorize ns :magenta)
+                                "\n"))
+   :ns-report (fn [_ ok?] (io.write (colorize "└─ " :gray)
+                                    (if ok? (colorize "PASS" :salad) (colorize "FAIL" :orange))
+                                    "\n"))
+   :test-start (fn [_ test-name n total]
+                 (io.write (colorize "│" :gray) (pad n total) test-name ": ")
+                 (io.flush))
+   :test-report (fn [ok? _ _ msg]
+                  (io.write (if ok? (colorize "PASS" :salad) (colorize "FAIL" :orange)) "\n"))
+   :stats-report (fn [warnings errors]
+                   (io.write "\n")
+                   (each [_ message (ipairs warnings)]
+                     (_G.io.stderr:write (colorize "Warning: " :orange) message "\n"))
+                   (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
+                     (_G.io.stderr:write
+                      (colorize "Error" :orange) " in '" ns
+                      "' in test '" test-name "':\n"
+                      message "\n")
+                     (when (not= "" stdout)
+                       (_G.io.stderr:write
+                        (colorize "Test stdout:\n" :gray)
+                        stdout))
+                     (when (not= "" stderr)
+                       (_G.io.stderr:write
+                        (colorize "Test stderr:\n" :gray)
+                        stderr)))
+                   (if (> (length errors) 0)
+                       (io.write "Test failure\n")
+                       (io.write "Test passed\n")))})
+
+{: reporter}
