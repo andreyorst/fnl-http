@@ -21,10 +21,9 @@
    (with-open [proc (io.popen "fennel test/server.fnl & echo $!")]
      (let [pid (proc:read :*l)
            attempts 100]
-       (if (wait-for-server attempts 8000)
-           (do (t)
-               (kill pid))
-           (io.write "skipping tests after " attempts " failed connection attempts: "))))))
+       (when (wait-for-server attempts 8000)
+         (t)
+         (kill pid))))))
 
 (deftest post-test
   (testing "posting raw data"

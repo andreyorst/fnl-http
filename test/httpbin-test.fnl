@@ -17,8 +17,8 @@
 (fn url [path]
   (.. "http://localhost:" port (or path "")))
 
-(fn wait-for-server [port]
-  (faccumulate [started? false i 1 10 :until started?]
+(fn wait-for-server [attempts port]
+  (faccumulate [started? false i 1 attempts :until started?]
     (or (pcall http.head (url)
                {:headers {:connection "close"}})
         (a.<!! (a.timeout 100)))))
@@ -33,15 +33,12 @@
 (use-fixtures
  :once
  (fn [t]
-   ((fn loop [attempt]
-      (if (< attempt 10)
-          (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
-            (if (wait-for-server port)
-                (do (t)
-                    (kill (proc:read :*l)))
-                (do (kill (proc:read :*l))
-                    (loop (+ attempt 1)))))
-          (io.write "skipping tests after 10 failed connection attempts: "))) 0)))
+   (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
+     (let [pid (proc:read :*l)
+           attempts 100]
+       (when (wait-for-server attempts 8000)
+         (t)
+         (kill pid))))))
 
 (fn cleanup-response [resp]
   (if (= :table (type resp))
@@ -437,3 +434,47 @@
      (-> (url "/post?a=1")
          (http.post {:query-params {:a ["2" "3"]} :as :json})
          (. :body :args)))))
+
+(deftest errornous-response-test
+  (testing "4XX codes"
+    (each [_ method (ipairs [:delete :get :patch :post :put])]
+      (let [request (. http method)]
+        (for [code 400 499]
+          (assert-not
+           (pcall request (url (.. "/status/" code))))
+          (assert-eq
+           code
+           (-> (url (.. "/status/" code))
+               (request {:throw-errors? false})
+               (. :status)))
+          (let [resp (a.chan)]
+            (request (url (.. "/status/" code))
+                      {:async? true}
+                      #nil #(a.>! resp $))
+            (assert-eq code (. (a.<!! resp) :status)))
+          (let [resp (a.chan)]
+            (request (url (.. "/status/" code))
+                      {:async? true :throw-errors? false}
+                      #(a.>! resp $) #nil)
+            (assert-eq code (. (a.<!! resp) :status)))))))
+  (testing "5XX codes"
+    (each [_ method (ipairs [:delete :get :patch :post :put])]
+      (let [request (. http method)]
+        (for [code 500 599]
+          (assert-not
+           (pcall request (url (.. "/status/" code))))
+          (assert-eq
+           code
+           (-> (url (.. "/status/" code))
+               (request {:throw-errors? false})
+               (. :status)))
+          (let [resp (a.chan)]
+            (request (url (.. "/status/" code))
+                     {:async? true}
+                     #nil #(a.>! resp $))
+            (assert-eq code (. (a.<!! resp) :status)))
+          (let [resp (a.chan)]
+            (request (url (.. "/status/" code))
+                     {:async? true :throw-errors? false}
+                     #(a.>! resp $) #nil)
+            (assert-eq code (. (a.<!! resp) :status))))))))
