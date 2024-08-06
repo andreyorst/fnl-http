@@ -10,17 +10,32 @@
    :blue 34
    :magenta 95
    :cyan 36
-   :white 37
-   :default 39})
+   :white 37})
+
+(local styles
+  {:bold 1
+   :dim 2
+   :italic 3
+   :underline 4
+   :blink 5
+   :reverse 7
+   :hide 8})
 
 (local colorize?
   (case (os.getenv "NO_COLOR")
     val false
     _ true))
 
-(fn colorize [text color]
+(fn colorize [text color style]
   (if colorize?
-      (string.format "[%dm%s[m" (or (. colors color) color) text)
+      (string.format "%s%s%s[0m"
+                     (case (. colors color)
+                       color (string.format "[%dm" color)
+                       _ "")
+                     (case (. styles style)
+                       style (string.format "[%dm" style)
+                       _ "")
+                     text)
       text))
 
 (fn pad [n total]
@@ -31,39 +46,86 @@
         _ "├─ ")
       (colorize :gray)))
 
+(fn perc-diff [total val]
+  (* (/ val total) 100))
+
+(fn report-longest-namespaces [test-times total-time]
+  (let [[ns-times ns-counts]
+        (accumulate [[ns-times ns-counts] [{} {}]
+                     [ns] time (pairs test-times)]
+          [(if (. ns-times ns)
+               (doto ns-times (tset ns (+ (. ns-times ns) time)))
+               (doto ns-times (tset ns time)))
+           (if (. ns-counts ns)
+               (doto ns-counts (tset ns (+ (. ns-counts ns) 1)))
+               (doto ns-counts (tset ns 1)))])
+        sorted (doto (icollect [k v (pairs ns-times)] [k v])
+                 (table.sort (fn [[_ t1] [_ t2]] (> t1 t2))))
+        top-3 (icollect [i [name time] (ipairs sorted) :until (= i 4)] [name time])
+        top-3-total (accumulate [total 0 _ [_ time] (ipairs top-3)] (+ total time))
+        averages (collect [_ [ns time] (ipairs top-3)]
+                   ns (/ time (. ns-counts ns)))]
+    (io.write (string.format "\nTop 3 slowest namespaces (%0.4f seconds, %0.2f%% of total time)\n"
+                             top-3-total (perc-diff total-time top-3-total)))
+    (each [_ [ns time] (ipairs top-3)]
+      (io.write (string.format "  %s\n    %s average (%0.4f seconds / %d tests)\n"
+                               (colorize ns :magenta)
+                               (colorize (string.format "%0.4f seconds" (. averages ns)) nil :bold)
+                               time
+                               (. ns-counts ns))))))
+(fn report-longest-tests [test-times total-time]
+  (let [sorted (doto (icollect [k v (pairs test-times)] [k v])
+                 (table.sort (fn [[_ t1] [_ t2]] (> t1 t2))))
+        top-3 (icollect [i [name time] (ipairs sorted) :until (= i 4)] [name time])
+        top-3-total (accumulate [total 0 _ [_ time] (ipairs top-3)] (+ total time))]
+    (io.write (string.format "\nTop 3 slowest tests (%0.4f seconds, %0.2f%% of total time)\n"
+                             top-3-total (perc-diff total-time top-3-total)))
+    (each [_ [[ns name] time] (ipairs top-3)]
+      (io.write (string.format "  %s/%s took %s\n"
+                               (colorize ns :magenta) (colorize name :cyan)
+                               (colorize (string.format "%0.4f seconds" time) nil :bold))))))
+
 (local reporter
-  {:ns-start (fn [ns] (io.write "\n"
-                                (colorize "┌─ " :gray)
-                                "Running tests in "
-                                (colorize ns :magenta)
-                                "\n"))
-   :ns-report (fn [_ ok?] (io.write (colorize "└─ " :gray)
-                                    (if ok? (colorize "PASS" :salad) (colorize "FAIL" :orange))
-                                    "\n"))
+  {:ns-start (fn [ns] (io.write
+                       (string.format
+                        "\n%sRunning tests in %s\n"
+                        (pad 1 nil)
+                        (colorize ns :magenta))))
+   :ns-report (fn [_ ok?] (io.write
+                           (string.format
+                            "%s%s\n"
+                            (pad 2 2)
+                            (if ok? (colorize "PASS" :salad) (colorize "FAIL" :orange)))))
    :test-start (fn [_ test-name n total]
-                 (io.write (colorize "│" :gray) (pad n total) test-name ": ")
+                 (io.write (string.format "%s%s%s: " (colorize "│" :gray) (pad n total) (colorize test-name :cyan)))
                  (io.flush))
    :test-report (fn [ok? _ _ msg]
-                  (io.write (if ok? (colorize "PASS" :salad) (colorize "FAIL" :orange)) "\n"))
-   :stats-report (fn [warnings errors]
-                   (io.write "\n")
-                   (each [_ message (ipairs warnings)]
-                     (_G.io.stderr:write (colorize "Warning: " :orange) message "\n"))
-                   (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
-                     (_G.io.stderr:write
-                      (colorize "Error" :orange) " in '" ns
-                      "' in test '" test-name "':\n"
-                      message "\n")
-                     (when (not= "" stdout)
+                  (io.write (string.format "%s\n" (if ok? (colorize "PASS" :salad) (colorize "FAIL" :orange)))))
+   :stats-report (fn [warnings errors test-times]
+                   (let [[total-tests total-time]
+                         (accumulate [[total-tests total-time] [0 0] _ time (pairs test-times)]
+                           [(+ total-tests 1) (+ total-time time)])]
+                     (io.write (string.format "\nRan %d tests in %0.4f seconds, %d warnings, %d errors\n"
+                                              total-tests total-time (length warnings) (length errors)))
+                     (each [_ message (ipairs warnings)]
+                       (_G.io.stderr:write (colorize "Warning: " :orange) message "\n"))
+                     (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
                        (_G.io.stderr:write
-                        (colorize "Test stdout:\n" :gray)
-                        stdout))
-                     (when (not= "" stderr)
-                       (_G.io.stderr:write
-                        (colorize "Test stderr:\n" :gray)
-                        stderr)))
-                   (if (> (length errors) 0)
-                       (io.write "Test failure\n")
-                       (io.write "Test passed\n")))})
+                        (colorize "Error" :orange) " in '" ns
+                        "' in test '" test-name "':\n"
+                        message "\n")
+                       (when (not= "" stdout)
+                         (_G.io.stderr:write
+                          (colorize "Test stdout:\n" :gray)
+                          stdout))
+                       (when (not= "" stderr)
+                         (_G.io.stderr:write
+                          (colorize "Test stderr:\n" :gray)
+                          stderr)))
+                     (report-longest-namespaces test-times total-time)
+                     (report-longest-tests test-times total-time)
+                     (if (> (length errors) 0)
+                         (io.write (colorize "\nTest failure\n" :orange))
+                         (io.write (colorize "\nTest passed\n" :salad)))))})
 
 {: reporter}

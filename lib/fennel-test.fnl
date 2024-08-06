@@ -460,6 +460,27 @@ comparison.  Tables as keys are supported."
 
 ;;;; Runner
 
+(local socket
+  (match (pcall require :socket) (true s) s _ nil))
+
+(local posix
+  (match (pcall require :posix) (true p) p _ nil))
+
+(local time
+  (if (?. socket :gettime)
+      (let [sleep socket.sleep]
+        socket.gettime)
+      (?. posix :clock_gettime)
+      (let [gettime posix.clock_gettime
+            nanosleep posix.nanosleep]
+        #(let [(s ns) (gettime)]
+           (+ s (/ ns 1000000000))))
+      os.time))
+
+(local difftime #(- $1 $2))
+
+(local test-times {})
+
 (fn run-ns-tests [ns tests config fixtures warnings errors]
   {:private true}
   (let [{: reporter} config
@@ -472,18 +493,21 @@ comparison.  Tables as keys are supported."
          (if (= 0 (length tests))
              (table.insert warnings (: "namespace '%s' has no tests" :format ns))
              (each [test-n [test-name test-fn] (ipairs tests)]
-               (reporter.test-start ns test-name test-n (length tests))
-               (let [err [] out []]
-                 (match (if config.capture-output?
-                            (with-no-output out err #(pcall eachf test-fn))
-                            (pcall eachf test-fn))
-                   (false msg) (do (set ok? false)
-                                   (reporter.test-report
-                                    false ns test-name msg)
-                                   (table.insert errors {: ns : test-name :message msg
-                                                         :stdout (table.concat out "")
-                                                         :stderr (table.concat err "")}))
-                   _ (reporter.test-report true ns test-name))))))))
+               (let [ns-test [ns test-name]]
+                 (tset test-times ns-test (time))
+                 (reporter.test-start ns test-name test-n (length tests))
+                 (let [err [] out []]
+                   (match (if config.capture-output?
+                              (with-no-output out err #(pcall eachf test-fn))
+                              (pcall eachf test-fn))
+                     (false msg) (do (set ok? false)
+                                     (reporter.test-report
+                                      false ns test-name msg)
+                                     (table.insert errors {: ns : test-name :message msg
+                                                           :stdout (table.concat out "")
+                                                           :stderr (table.concat err "")}))
+                     _ (reporter.test-report true ns test-name))
+                   (tset test-times ns-test (difftime (time) (. test-times ns-test))))))))))
     (reporter.ns-report ns ok?)))
 
 (fn merge [t1 t2]
@@ -535,7 +559,7 @@ macro. these fixtures are used accordingly to their specs.
       (shuffle-tests tests))
     (each [_ [ns tests] (ipairs tests)]
       (run-ns-tests ns tests config fixtures warnings errors))
-    (config.reporter.stats-report warnings errors)
+    (config.reporter.stats-report warnings errors test-times)
     (when (next errors)
       (_G.os.exit 1))))
 

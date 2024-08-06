@@ -449,13 +449,13 @@
                (. :status)))
           (let [resp (a.chan)]
             (request (url (.. "/status/" code))
-                      {:async? true}
-                      #nil #(a.>! resp $))
+                     {:async? true}
+                     #nil #(a.>! resp $))
             (assert-eq code (. (a.<!! resp) :status)))
           (let [resp (a.chan)]
             (request (url (.. "/status/" code))
-                      {:async? true :throw-errors? false}
-                      #(a.>! resp $) #nil)
+                     {:async? true :throw-errors? false}
+                     #(a.>! resp $) #nil)
             (assert-eq code (. (a.<!! resp) :status)))))))
   (testing "5XX codes"
     (each [_ method (ipairs [:delete :get :patch :post :put])]
