@@ -21,7 +21,7 @@
 (use-fixtures
  :once
  (fn [t]
-   (with-open [proc (io.popen "fennel test/server.fnl & echo $!")]
+   (with-open [proc (io.popen "fennel test/echo-server.fnl & echo $!")]
      (let [pid (proc:read :*l)
            attempts 10]
        (if (wait-for-server attempts 8000)
@@ -62,3 +62,26 @@
                        "Host: localhost:8000\r\n\r\n"
                        (valid:read :*a))
                    resp.body)))))
+
+(deftest query-parameters-test
+  (testing "query params appear in the target path"
+    (assert-eq
+     "POST /?a=1&b=2 HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"
+     (-> "localhost:8000"
+         (http.post {:query-params {:a "1" :b "2"}})
+         (. :body)))
+    (assert-eq
+     "POST /?a=1&b=2&c=3 HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"
+     (-> "localhost:8000?a=1"
+         (http.post {:query-params {:b "2" :c "3"}})
+         (. :body)))
+    (assert-eq
+     "POST /?a=1&a=2&c=3 HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"
+     (-> "localhost:8000?a=1"
+         (http.post {:query-params {:a "2" :c "3"}})
+         (. :body)))
+    (assert-eq
+     "POST /?a=1&a=2&a=3 HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"
+     (-> "localhost:8000?a=1"
+         (http.post {:query-params {:a ["2" "3"]}})
+         (. :body)))))
