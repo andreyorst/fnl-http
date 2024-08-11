@@ -28,16 +28,14 @@ The optional parameter `?headers` is used for tail recursion, and
 should not be provided by the caller, unless the intention is to
 append or override existing headers."
   {:private true}
-  (let [headers (or ?headers {})
-        line (src:read :*l)]
-    (case line
-      (where (or "\r" ""))
-      headers
-      _ (read-headers
-         src
-         (case (parse-header (or line ""))
-           (header value)
-           (doto headers (tset header value)))))))
+  (let [headers (or ?headers {})]
+    (case (src:read :*l)
+      (where (or "\r" "")) headers
+      ?line (read-headers
+             src
+             (case (parse-header (or ?line ""))
+               (header value)
+               (doto headers (tset header value)))))))
 
 ;;; HTTP Response
 
@@ -297,15 +295,19 @@ its headers, and a body stream."
 (fn read-request-status-line [src]
   "Read the first line from the HTTP response and parse it."
   {:private true}
-  (parse-request-status-line (src:read :*l)))
+  (case (src:read :*l)
+    line (parse-request-status-line line)))
 
 (fn parse-http-request [src]
   "Parses the HTTP/1.1 request read from `src`."
   (let [status (read-request-status-line src)
-        headers (read-headers src)]
-    (doto status
-      (tset :headers headers)
-      (tset :content (src:read :*a)))))
+        headers (read-headers src)
+        parsed-headers (collect [k v (pairs headers)]
+                         (capitalize-header k) (decode-value v))]
+    (when status
+      (doto status
+        (tset :headers headers)
+        (tset :content (src:read (or parsed-headers.Content-Length :*a)))))))
 
 ;;; URL
 

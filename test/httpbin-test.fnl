@@ -20,7 +20,7 @@
 (fn url [path]
   (.. "http://localhost:" port (or path "")))
 
-(fn wait-for-server [attempts port]
+(fn wait-for-server [attempts]
   (faccumulate [started? false i 1 attempts :until started?]
     (or (pcall http.head (url)
                {:headers {:connection "close"}})
@@ -39,7 +39,7 @@
    (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
      (let [pid (proc:read :*l)
            attempts 10]
-       (if (wait-for-server attempts 8000)
+       (if (wait-for-server attempts)
            (do (t)
                (kill pid))
            (do (kill pid)

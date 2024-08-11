@@ -21,11 +21,10 @@ dynamically adjust during reads."
     {:private true}
     (>!? ch [pattern-or-size out])))
 
-(fn socket-channel [client xform err-handler]
+(fn socket->chan [client xform err-handler]
   "Returns a combo channel, where puts and takes are handled by
 different channels which are used as buffers for two async processes
 that interact with the socket"
-  {:private true}
   (let [recv (chan 1024 xform err-handler)
         next-chunk (chan)
         close (fn [self] (recv:close!) (set self.closed true))
@@ -92,7 +91,7 @@ The read pattern for a socket must be explicitly set with the
   (let [host (or host :localhost)]
     (match-try (s/connect host port)
       client (client:settimeout 0)
-      _ (socket-channel client xform err-handler)
+      _ (socket->chan client xform err-handler)
       (catch (nil err) (error err)))))
 
-{: chan}
+{: chan : socket->chan}
