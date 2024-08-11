@@ -24,6 +24,7 @@
 ;;; Macros
 
 (eval-compiler
+  (local assertion-counter (gensym :fennel-test/assertion-counter))
   (local lib-name (or ... "fennel-test"))
 
   (fn string-len [s]
@@ -72,13 +73,15 @@ Deep compare values:
              (error (: "in expression:\n%s\n%s\n" :format ,s1 (tostring# left#)))
              (not rok#)
              (error (: "in expression:\n%s\n%s\n" :format ,s2 (tostring# right#)))
-             (assert (eq# left# right#)
-                     (string.format
-                      "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
-                      ,formatted
-                      (tostring# left#)
-                      (tostring# right#)
-                      ,(if msg `(.. " Info: " (tostring# ,msg)) ""))))
+             (do (tset ,assertion-counter :assertions
+                       (+ (. ,assertion-counter :assertions) 1))
+                 (assert (eq# left# right#)
+                         (string.format
+                          "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
+                          ,formatted
+                          (tostring# left#)
+                          (tostring# right#)
+                          ,(if msg `(.. " Info: " (tostring# ,msg)) "")))))
          nil)))
 
   (fn assert-ne
@@ -105,13 +108,15 @@ Deep compare values:
              (error (: "in expression:\n%s\n%s\n" :format ,s1 (tostring# left#)))
              (not rok#)
              (error (: "in expression:\n%s\n%s\n" :format ,s2 (tostring# right#)))
-             (assert (not (eq# left# right#))
-                     (string.format
-                      "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
-                      ,formatted
-                      (tostring# left#)
-                      (tostring# right#)
-                      ,(if msg `(.. " Info: " (tostring# ,msg)) ""))))
+             (do (tset ,assertion-counter :assertions
+                       (+ (. ,assertion-counter :assertions) 1))
+                 (assert (not (eq# left# right#))
+                         (string.format
+                          "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
+                          ,formatted
+                          (tostring# left#)
+                          (tostring# right#)
+                          ,(if msg `(.. " Info: " (tostring# ,msg)) "")))))
          nil)))
 
   (fn assert-is
@@ -130,7 +135,9 @@ Deep compare values:
                             `(pcall (fn [...] ,expr) ...)
                             `(pcall (fn [] ,expr)))]
        (if suc#
-           (do (assert res# (string.format
+           (do (tset ,assertion-counter :assertions
+                     (+ (. ,assertion-counter :assertions) 1))
+               (assert res# (string.format
                              "assertion failed for expression:\n%s\nResult: %s\n%s"
                              ,(view expr {:one-line? true})
                              (tostring res#)
@@ -152,7 +159,9 @@ Deep compare values:
                             `(pcall (fn [...] ,expr) ...)
                             `(pcall (fn [] ,expr)))]
        (if suc#
-           (do (assert (not res#)
+           (do (tset ,assertion-counter :assertions
+                     (+ (. ,assertion-counter :assertions) 1))
+               (assert (not res#)
                        (string.format
                         "assertion failed for expression:\n(not %s)\nResult: %s\n%s"
                         ,(view expr {:one-line? true})
@@ -175,12 +184,12 @@ Deep compare values:
   )
 ```
 "
-    `(let [(_# test-ns#) ...]
-       (fn ,name []
+    `(let [(_# test-ns# _# state#) ...]
+       (fn ,name [,assertion-counter]
          ,...)
        (if (= :table (type test-ns#))
            (table.insert test-ns# [,(tostring name) ,name])
-           (,name))))
+           (,name {:assertions 0}))))
 
   (fn testing
     [description ...]
@@ -316,7 +325,7 @@ comparison.  Tables as keys are supported."
                       (if test-name
                           (.. "' in test '" test-name "'")
                           "")
-                       (if message (.. ":\n" message "\n") "\n"))
+                      (if message (.. ":\n" message "\n") "\n"))
                      (when (and stdout (not= "" stdout))
                        (io.stderr:write
                         "Test stdout:\n"
@@ -442,7 +451,7 @@ comparison.  Tables as keys are supported."
 
 ;;;; Test loading
 
-(fn load-tests [modules config tests fixtures]
+(fn load-tests [modules config tests fixtures state]
   {:private true}
   (let [{: make-searcher : view} (require config.fennel-lib)
         searcher (make-searcher
@@ -453,7 +462,7 @@ comparison.  Tables as keys are supported."
       (let [module-tests []
             fn1 (searcher module-name)]
         (if (= :function (type fn1))
-            (do (fn1 module-name module-tests fixtures)
+            (do (fn1 module-name module-tests fixtures state)
                 (table.insert tests [module-name module-tests]))
             (error fn1 2))))))
 
@@ -505,7 +514,8 @@ comparison.  Tables as keys are supported."
       (?. posix :clock_gettime)
       (let [gettime posix.clock_gettime]
         #(let [(s ns) (gettime)]
-           (+ s (/ ns 1000000000))))))
+           (+ s (/ ns 1000000000))))
+      os.clock))
 
 (local difftime #(- $1 $2))
 
@@ -523,13 +533,13 @@ comparison.  Tables as keys are supported."
                           (let [eachf (or (. fixtures.each ns) default-fixture)]
                             (each [test-n [test-name test-fn] (ipairs tests)]
                               (let [ns-test [ns test-name]]
-                                (when time
-                                  (tset test-times ns-test (time)))
                                 (reporter.test-start ns test-name test-n (length tests))
                                 (let [err [] out []]
+                                  (when time
+                                    (tset test-times ns-test (time)))
                                   (match (if config.capture-output?
-                                             (with-no-output out err #(pcall eachf test-fn))
-                                             (pcall eachf test-fn))
+                                             (with-no-output out err #(pcall eachf #(test-fn state)))
+                                             (pcall eachf #(test-fn state)))
                                     (_ [Skip ?message])
                                     (do (reporter.test-report
                                          :skip ns test-name)
@@ -590,7 +600,8 @@ macro. these fixtures are used accordingly to their specs.
                :warnings []
                :skipped-tests []
                :test-times {}
-               :executed-test-count 0}
+               :executed-test-count 0
+               :assertions 0}
         config
         (setup-runner
          (merge {:seed
@@ -604,7 +615,7 @@ macro. these fixtures are used accordingly to their specs.
                 opts))]
     (io.stdout:write
      "Test run at " (os.date) ", seed: " config.seed "\n")
-    (load-tests modules config tests fixtures)
+    (load-tests modules config tests fixtures state)
     (setup-fixtures :once fixtures)
     (setup-fixtures :each fixtures)
     (when config.shuffle?
@@ -614,8 +625,8 @@ macro. these fixtures are used accordingly to their specs.
         (+ total (length tests))))
     (each [_ [ns tests] (ipairs tests)]
       (run-ns-tests ns tests config fixtures state))
-    (let [{: warnings : errors : skipped-tests : executed-test-count : test-times} state]
-      (config.reporter.stats-report warnings errors skipped-tests executed-test-count test-times)
+    (let [{: warnings : errors : skipped-tests : executed-test-count : test-times : assertions} state]
+      (config.reporter.stats-report warnings errors skipped-tests assertions executed-test-count test-times)
       (when (next errors)
         (os.exit 1)))))
 

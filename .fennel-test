@@ -106,12 +106,12 @@
                       :skip (colorize "SKIP" :lemon)
                       :warn (colorize "WARN" :lemon)
                       _ (colorize "FAIL" :orange)))))
-   :stats-report (fn [warnings errors skipped-tests total-tests test-times]
+   :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
                    (let [total-time
                          (accumulate [total-time 0 _ time (pairs test-times)]
                            (+ total-time time))]
-                     (io.write (string.format "\nRan %d tests in %0.4f seconds, %d skipped, %d warnings, %d errors\n"
-                                              total-tests total-time (length skipped-tests) (length warnings) (length errors)))
+                     (io.write (string.format "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n"
+                                              total-tests total-time assertions (length skipped-tests) (length warnings) (length errors)))
                      (when (next warnings)
                        (io.stderr:write "\n"))
                      (each [_ message (ipairs warnings)]
