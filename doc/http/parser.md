@@ -2,19 +2,9 @@
 
 **Table of contents**
 
-- [`chunked-encoding?`](#chunked-encoding)
 - [`parse-http-request`](#parse-http-request)
 - [`parse-http-response`](#parse-http-response)
 - [`parse-url`](#parse-url)
-
-## `chunked-encoding?`
-Function signature:
-
-```
-(chunked-encoding? transfer-encoding)
-```
-
-Test if `transfer-encoding` header is chunked.
 
 ## `parse-http-request`
 Function signature:

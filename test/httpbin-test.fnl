@@ -36,6 +36,8 @@
 (use-fixtures
  :once
  (fn [t]
+   (when (os.getenv :SKIP_INTEGRATION)
+     (skip-test "skipping long test"))
    (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
      (let [pid (proc:read :*l)
            attempts 10]

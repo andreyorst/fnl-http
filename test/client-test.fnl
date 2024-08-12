@@ -23,7 +23,7 @@
  (fn [t]
    (with-open [proc (io.popen "fennel test/echo-server.fnl & echo $!")]
      (let [pid (proc:read :*l)
-           attempts 10]
+           attempts 100]
        (if (wait-for-server attempts 8000)
            (do (t)
                (kill pid))

@@ -6,13 +6,16 @@
         : capitalize-header}
   (require :http.headers))
 
-(local {: <!?}
-  (require :http.async-extras))
+(local {: <!? : chunked-encoding?}
+  (require :http.utils))
 
 (local {: timeout}
   (require :lib.async))
 
-(local {: format : lower : upper} string)
+(local {: body-reader : chunked-body-reader}
+  (require :http.body))
+
+(local {: format : upper} string)
 
 (local {: ceil} math)
 
@@ -42,199 +45,36 @@ append or override existing headers."
 (fn parse-response-status-line [status]
   "Parse HTTP response status line."
   {:private true}
-  (if status
-      ((fn loop [reader fields res]
-         (case fields
-           [field & fields]
-           (let [part (reader)]
-             (loop reader fields
-                   (case field
-                     :protocol-version
-                     (let [(name major minor) (part:match "([^/]+)/(%d).(%d)")]
-                       (doto res
-                         (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
-                     _ (doto res
-                         (tset field (decode-value part))))
-                   ))
-           _
-           (let [reason (-> "%s/%s.%s +%s +"
-                            (format res.protocol-version.name res.protocol-version.major res.protocol-version.minor res.status)
-                            (status:gsub ""))]
-             (doto res
-               (tset :reason-phrase reason)))))
-       (status:gmatch "([^ ]+)")
-       [:protocol-version :status]
-       {})
-      (error "status line was not received from server")))
+  ((fn loop [reader fields res]
+     (case fields
+       [field & fields]
+       (let [part (reader)]
+         (loop reader fields
+               (case field
+                 :protocol-version
+                 (let [(name major minor) (part:match "([^/]+)/(%d).(%d)")]
+                   (doto res
+                     (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
+                 _ (doto res
+                     (tset field (decode-value part))))))
+       _
+       (let [reason (-> "%s/%s.%s +%s +"
+                        (format res.protocol-version.name
+                                res.protocol-version.major
+                                res.protocol-version.minor res.status)
+                        (status:gsub ""))]
+         (doto res
+           (tset :reason-phrase reason)))))
+   (status:gmatch "([^ ]+)")
+   [:protocol-version :status]
+   {}))
 
 (fn read-response-status-line [src]
   "Read the first line from the HTTP response and parse it."
   {:private true}
-  (parse-response-status-line (src:read :*l)))
-
-(fn body-reader [src]
-  "Read the body of the request, with possible buffering via the `peek`
-method."
-  {:private true}
-  (var buffer "")
-  (make-reader
-   src
-   {:read-bytes (fn [src pattern]
-                  (let [rdr (string-reader buffer)
-                        buffer-content (rdr:read pattern)]
-                    (case pattern
-                      (where n (= :number (type n)))
-                      (let [len (if buffer-content (length buffer-content) 0)
-                            read-more? (< len n)]
-                        (set buffer (buffer:sub (+ len 1)))
-                        (if read-more?
-                            (if buffer-content
-                                (.. buffer-content (or (src:read (- n len)) ""))
-                                (src:read (- n len)))
-                            buffer-content))
-                      (where (or :*l :l))
-                      (let [read-more? (not (buffer:find "\n"))]
-                        (when buffer-content
-                          (set buffer (buffer:sub (+ (length buffer-content) 2))))
-                        (if read-more?
-                            (if buffer-content
-                                (.. buffer-content (or (src:read pattern) ""))
-                                (src:read pattern))
-                            buffer-content))
-                      (where (or :*a :a))
-                      (do (set buffer "")
-                          (case (src:read pattern)
-                            nil (when buffer-content
-                                  buffer-content)
-                            data (.. (or buffer-content "") data)))
-                      _ (error (tostring pattern)))))
-    :read-line (fn [src]
-                 (let [rdr (string-reader buffer)
-                       buffer-content (rdr:read :*l)
-                       read-more? (not (buffer:find "\n"))]
-                   (when buffer-content
-                     (set buffer (buffer:sub (+ (length buffer-content) 2))))
-                   (if read-more?
-                       (if buffer-content
-                           (.. buffer-content (or (src:read :*l) ""))
-                           (src:read :*l))
-                       buffer-content)))
-    :close (fn [src] (src:close))
-    :peek (fn [src bytes]
-            (assert (= :number (type bytes)) "expected number of bytes to peek")
-            (let [rdr (string-reader buffer)
-                  content (or (rdr:read bytes) "")
-                  len (length content)]
-              (if (= bytes len)
-                  content
-                  (let [data (src:read (- bytes len))]
-                    (set buffer (.. buffer (or data "")))
-                    buffer))))}))
-
-(fn read-chunk-size [src]
-  {:private true}
-  ;; TODO: needs to process chunk extensions
   (case (src:read :*l)
-    "" (read-chunk-size src)
-    line
-    (case (line:match "%s*([0-9a-fA-F]+)")
-      size (tonumber (.. "0x" size))
-      _ (error (format "line missing chunk size: %q" line)))
-    _ (error "source was exchausted while reading chunk size")))
-
-(fn chunked-body-reader [src]
-  "Reads body in chunks, buffering each fully, and requesting the next
-chunk, once the buffer is empty."
-  {:private true}
-  ;; TODO: think about rewriting it so the chunk is not required to be
-  ;;       read in full.  The main problem with this approach is the
-  ;;       possible chunk size - if the server sends a chunk large
-  ;;       enough it can fill the memory, even if the user requested a
-  ;;       stream.
-  (var buffer "")
-  (var chunk-size nil)
-  (var more? true)
-  (var read-in-progress? false)
-  (fn read-more []
-    ;; TODO: needs to process entity headers after the last chunk.
-    (while read-in-progress?
-      (<!? (timeout 10)))
-    (when more?
-      (set read-in-progress? true)
-      (set chunk-size (read-chunk-size src))
-      (if (> chunk-size 0)
-          (set buffer (.. buffer (or (src:read chunk-size) "")))
-          (set more? false))
-      (set read-in-progress? false))
-    (values (> chunk-size 0) (string-reader buffer)))
-  (make-reader
-   src
-   {:read-bytes (fn [_ pattern]
-                  (let [rdr (string-reader buffer)]
-                    (case pattern
-                      (where n (= :number (type n)))
-                      (let [buffer-content (rdr:read pattern)
-                            len (if buffer-content (length buffer-content) 0)
-                            read-more? (< len n)]
-                        (set buffer (or (rdr:read :*a) ""))
-                        (if read-more?
-                            (let [(_ rdr) (read-more)]
-                              (if buffer-content
-                                  (.. buffer-content (or (rdr:read (- n len)) ""))
-                                  (rdr:read (- n len))))
-                            buffer-content))
-                      (where (or :*l :l))
-                      (let [buffer-content (rdr:read :*l)
-                            (_ read-more?) (not (buffer:find "\n"))]
-                        (when buffer-content
-                          (set buffer (or (rdr:read :*a) "")))
-                        (if read-more?
-                            (let [(_ rdr) (read-more)]
-                              (if buffer-content
-                                  (.. buffer-content (or (rdr:read :*l) ""))
-                                  (rdr:read :*l)))
-                            buffer-content))
-                      (where (or :*a :a))
-                      (let [buffer-content (rdr:read :*a)]
-                        (set buffer "")
-                        (while (read-more) nil)
-                        (let [rdr (string-reader buffer)]
-                          (set buffer "")
-                          (case (rdr:read :*a)
-                            nil (when buffer-content
-                                  buffer-content)
-                            data (.. (or buffer-content "") data))))
-                      _ (error (tostring pattern)))))
-    :read-line (fn [src]
-                 (let [rdr (string-reader buffer)
-                       buffer-content (rdr:read :*l)
-                       read-more? (not (buffer:find "\n"))]
-                   (when buffer-content
-                     (set buffer (or (rdr:read :*a) "")))
-                   (if read-more?
-                       (if buffer-content
-                           (.. buffer-content (or (src:read :*l) ""))
-                           (src:read :*l))
-                       buffer-content)))
-    :close (fn [src] (src:close))
-    :peek (fn [_ bytes]
-            (assert (= :number (type bytes)) "expected number of bytes to peek")
-            (let [rdr (string-reader buffer)
-                  content (or (rdr:read bytes) "")
-                  len (length content)]
-              (if (= bytes len)
-                  content
-                  (let [(_ rdr) (read-more)]
-                    (let [data (rdr:read (- bytes len))]
-                      (set buffer (.. buffer (or data "")))
-                      buffer)))))}))
-
-(fn chunked-encoding? [transfer-encoding]
-  "Test if `transfer-encoding` header is chunked."
-  (case (lower (or transfer-encoding ""))
-    (where header (or (header:match "chunked[, ]")
-                      (header:match "chunked$")))
-    true))
+    line (parse-response-status-line line)
+    _ (error "status line was not received from server")))
 
 (fn parse-http-response [src {: as : start : time : method}]
   "Parse the beginning of the HTTP response.
@@ -303,11 +143,17 @@ its headers, and a body stream."
   (let [status (read-request-status-line src)
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
-                         (capitalize-header k) (decode-value v))]
-    (when status
+                         (capitalize-header k) (decode-value v))
+        stream (if (chunked-encoding? parsed-headers.Transfer-Encoding)
+                   (chunked-body-reader src)
+                   (body-reader src))]
+    (case status
+      {: method}
       (doto status
         (tset :headers headers)
-        (tset :content (src:read (or parsed-headers.Content-Length :*a)))))))
+        (tset :content
+              (when (not= (upper (or method "")) :HEAD)
+                (stream:read (or parsed-headers.Content-Length :*a))))))))
 
 ;;; URL
 
@@ -344,5 +190,4 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
 
 {: parse-http-response
  : parse-http-request
- : chunked-encoding?
  : parse-url}

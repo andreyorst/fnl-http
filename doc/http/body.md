@@ -2,11 +2,34 @@
 
 **Table of contents**
 
+- [`body-reader`](#body-reader)
+- [`chunked-body-reader`](#chunked-body-reader)
 - [`format-chunk`](#format-chunk)
 - [`multipart-content-length`](#multipart-content-length)
 - [`stream-body`](#stream-body)
 - [`stream-multipart`](#stream-multipart)
 - [`wrap-body`](#wrap-body)
+
+## `body-reader`
+Function signature:
+
+```
+(body-reader src)
+```
+
+Read the body part of the request source `src`, with possible
+buffering via the `peek` method.
+
+## `chunked-body-reader`
+Function signature:
+
+```
+(chunked-body-reader src)
+```
+
+Reads the body part of the request source `src` in chunks, buffering
+each in full, and requesting the next chunk, once the buffer contains
+less data than was requested.
 
 ## `format-chunk`
 Function signature:

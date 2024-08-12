@@ -16,5 +16,4 @@
       (client:settimeout 1)
       (let [(_ _ request) (client:receive :*a)
             response (build-http-response 200 "OK" {:connection "close"} request)]
-        (print request)
         (client:send response)))))

@@ -24,7 +24,10 @@
 ;;; Macros
 
 (eval-compiler
-  (local assertion-counter (gensym :fennel-test/assertion-counter))
+  (local state
+    (-> :fennel-test/state_
+        (.. (math.random (or math.maxinteger 10000000)))
+        gensym))
   (local lib-name (or ... "fennel-test"))
 
   (fn string-len [s]
@@ -73,8 +76,9 @@ Deep compare values:
              (error (: "in expression:\n%s\n%s\n" :format ,s1 (tostring# left#)))
              (not rok#)
              (error (: "in expression:\n%s\n%s\n" :format ,s2 (tostring# right#)))
-             (do (tset ,assertion-counter :assertions
-                       (+ (. ,assertion-counter :assertions) 1))
+             (do ,(when (in-scope? state)
+                    `(tset ,state :assertions
+                           (+ (. ,state :assertions) 1)))
                  (assert (eq# left# right#)
                          (string.format
                           "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
@@ -108,8 +112,9 @@ Deep compare values:
              (error (: "in expression:\n%s\n%s\n" :format ,s1 (tostring# left#)))
              (not rok#)
              (error (: "in expression:\n%s\n%s\n" :format ,s2 (tostring# right#)))
-             (do (tset ,assertion-counter :assertions
-                       (+ (. ,assertion-counter :assertions) 1))
+             (do ,(when (in-scope? state)
+                    `(tset ,state :assertions
+                           (+ (. ,state :assertions) 1)))
                  (assert (not (eq# left# right#))
                          (string.format
                           "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
@@ -135,8 +140,9 @@ Deep compare values:
                             `(pcall (fn [...] ,expr) ...)
                             `(pcall (fn [] ,expr)))]
        (if suc#
-           (do (tset ,assertion-counter :assertions
-                     (+ (. ,assertion-counter :assertions) 1))
+           (do ,(when (in-scope? state)
+                  `(tset ,state :assertions
+                         (+ (. ,state :assertions) 1)))
                (assert res# (string.format
                              "assertion failed for expression:\n%s\nResult: %s\n%s"
                              ,(view expr {:one-line? true})
@@ -159,8 +165,9 @@ Deep compare values:
                             `(pcall (fn [...] ,expr) ...)
                             `(pcall (fn [] ,expr)))]
        (if suc#
-           (do (tset ,assertion-counter :assertions
-                     (+ (. ,assertion-counter :assertions) 1))
+           (do ,(when (in-scope? state)
+                  `(tset ,state :assertions
+                         (+ (. ,state :assertions) 1)))
                (assert (not res#)
                        (string.format
                         "assertion failed for expression:\n(not %s)\nResult: %s\n%s"
@@ -185,7 +192,7 @@ Deep compare values:
 ```
 "
     `(let [(_# test-ns# _# state#) ...]
-       (fn ,name [,assertion-counter]
+       (fn ,name [,state]
          ,...)
        (if (= :table (type test-ns#))
            (table.insert test-ns# [,(tostring name) ,name])

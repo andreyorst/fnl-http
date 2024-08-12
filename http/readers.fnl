@@ -48,6 +48,7 @@ each is `nil`."
         (setmetatable
          {:__index Reader
           :__close close
+          :__len (if len (fn [] (len source)) #nil)
           :__name "Reader"
           :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")}))))
 

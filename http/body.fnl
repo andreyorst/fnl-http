@@ -1,20 +1,17 @@
 (local {: headers->string}
   (require :http.builder))
 
-(local {: reader? : file-reader}
+(local {: reader? : file-reader : string-reader : make-reader}
   (require :http.readers))
-
-(local {: chunked-encoding?}
-  (require :http.parser))
 
 (local {: urlencode}
   (require :http.url))
 
-(local {: chan?}
+(local {: chan? : timeout}
   (require :lib.async))
 
-(local {: <!?}
-  (require :http.async-extras))
+(local {: <!? : chunked-encoding?}
+  (require :http.utils))
 
 (local format string.format)
 
@@ -199,8 +196,160 @@ Needs to know the `boundary`."
     (dst:write "\r\n"))
   (dst:write (format "--%s--\r\n" boundary)))
 
+(fn body-reader [src]
+  "Read the body part of the request source `src`, with possible
+buffering via the `peek` method."
+  {:private true}
+  (var buffer "")
+  (make-reader
+   src
+   {:read-bytes (fn [src pattern]
+                  (let [rdr (string-reader buffer)
+                        buffer-content (rdr:read pattern)]
+                    (case pattern
+                      (where n (= :number (type n)))
+                      (let [len (if buffer-content (length buffer-content) 0)
+                            read-more? (< len n)]
+                        (set buffer (buffer:sub (+ len 1)))
+                        (if read-more?
+                            (if buffer-content
+                                (.. buffer-content (or (src:read (- n len)) ""))
+                                (src:read (- n len)))
+                            buffer-content))
+                      (where (or :*l :l))
+                      (let [read-more? (not (buffer:find "\n"))]
+                        (when buffer-content
+                          (set buffer (buffer:sub (+ (length buffer-content) 2))))
+                        (if read-more?
+                            (if buffer-content
+                                (.. buffer-content (or (src:read pattern) ""))
+                                (src:read pattern))
+                            buffer-content))
+                      (where (or :*a :a))
+                      (do (set buffer "")
+                          (case (src:read pattern)
+                            nil (when buffer-content
+                                  buffer-content)
+                            data (.. (or buffer-content "") data)))
+                      _ (error (.. "unsupported pattern: " (tostring pattern))))))
+    :read-line (fn [src]
+                 (let [rdr (string-reader buffer)
+                       buffer-content (rdr:read :*l)
+                       read-more? (not (buffer:find "\n"))]
+                   (when buffer-content
+                     (set buffer (buffer:sub (+ (length buffer-content) 2))))
+                   (if read-more?
+                       (if buffer-content
+                           (.. buffer-content (or (src:read :*l) ""))
+                           (src:read :*l))
+                       buffer-content)))
+    :close (fn [src] (src:close))
+    :peek (fn [src bytes]
+            (assert (= :number (type bytes)) "expected number of bytes to peek")
+            (let [rdr (string-reader buffer)
+                  content (or (rdr:read bytes) "")
+                  len (length content)]
+              (if (= bytes len)
+                  content
+                  (let [data (src:read (- bytes len))]
+                    (set buffer (.. buffer (or data "")))
+                    buffer))))}))
+
+(fn read-chunk-size [src]
+  {:private true}
+  ;; TODO: needs to process chunk extensions
+  (case (src:read :*l)
+    (where (or "" "\r"))
+    (read-chunk-size src)
+    line
+    (case (line:match "%s*([0-9a-fA-F]+)")
+      size (tonumber (.. "0x" size))
+      _ (error (format "line missing chunk size: %s" line)))
+    _ (error "source was exchausted while reading chunk size")))
+
+(fn chunked-body-reader [src]
+  "Reads the body part of the request source `src` in chunks, buffering
+each in full, and requesting the next chunk, once the buffer contains
+less data than was requested."
+  {:private true}
+  ;; TODO: think about rewriting it so the chunk is not required to be
+  ;;       read in full.  The main problem with this approach is the
+  ;;       possible chunk size - if the server sends a chunk large
+  ;;       enough it can fill the memory, even if the user requested a
+  ;;       stream.
+  (var buffer "")
+  (var chunk-size nil)
+  (var more? true)
+  (var read-in-progress? false)
+  (fn read-next-chunk []
+    (while read-in-progress?
+      (<!? (timeout 10)))
+    (when more?
+      (set read-in-progress? true)
+      (set chunk-size (read-chunk-size src))
+      (if (> chunk-size 0)
+          (set buffer (.. buffer (or (src:read chunk-size) "")))
+          ((fn read-entity-headers [line]
+             ;; TODO: needs to actually process entity headers
+             (case line
+               (where (or "" "\r")) (set more? false)
+               _ (read-entity-headers (src:read :*l))))))
+      (set read-in-progress? false))
+    (values (> chunk-size 0) (string-reader buffer)))
+  (fn read-bytes [_ pattern]
+    (let [number? (= :number (type pattern))
+          rdr (string-reader buffer)]
+      (case (values pattern number?)
+        (where (or :*l :l (_ true)))
+        (let [read-more?
+              (if number?
+                  (< (length buffer) pattern)
+                  (buffer:find "\n" nil true))]
+          (if read-more?
+              (case (read-next-chunk)
+                true (read-bytes _ pattern)
+                (false rdr)
+                (let [content (rdr:read pattern)]
+                  (set buffer (or (rdr:read :*a) ""))
+                  content))
+              (let [content (rdr:read pattern)]
+                (set buffer (or (rdr:read :*a) ""))
+                content)))
+        (where (or :*a :a))
+        (do (while (read-next-chunk) nil)
+            (let [rdr (string-reader buffer)]
+              (set buffer "")
+              (rdr:read :*a)))
+        _ (error (.. "unsupported pattern: " (tostring pattern))))))
+  (fn read-line [src]
+    (let [rdr (string-reader buffer)
+          has-newline? (buffer:find "\n" nil true)]
+      (if has-newline?
+          (case (read-next-chunk)
+            true (read-line src)
+            (false rdr)
+            (let [content (rdr:read :*l)]
+              (set buffer (or (rdr:read :*a) ""))
+              content))
+          (let [content (rdr:read :*l)]
+            (set buffer (or (rdr:read :*a) ""))
+            content))))
+  (fn peek [_ bytes]
+    (assert (= :number (type bytes)) "expected number of bytes to peek")
+    (let [rdr (string-reader buffer)]
+      (if (< (length buffer) bytes)
+          (case (read-next-chunk)
+            true (peek _ bytes)
+            (false rdr) (rdr:peek bytes))
+          (rdr:peek bytes))))
+  (fn close [src]
+    (src:close))
+  (make-reader src {: read-bytes : peek : read-line : close}))
+
 {: stream-body
  : format-chunk
  : stream-multipart
  : multipart-content-length
- : wrap-body}
+ : wrap-body
+ : body-reader
+ : chunked-body-reader}

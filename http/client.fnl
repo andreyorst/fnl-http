@@ -8,11 +8,10 @@
 (local {: >! : <! : >!! : <!! : chan?}
   (require :lib.async))
 
-(local {: >!? : <!?}
-  (require :http.async-extras))
+(local {: >!? : <!? : make-tcp-client : chunked-encoding?}
+  (require :http.utils))
 
-(local {: chunked-encoding?
-        : parse-http-response}
+(local {: parse-http-response}
   (require :http.parser))
 
 (local {: parse-url
@@ -102,37 +101,20 @@ used to indicate `multipart` subtype, the default is `form-data`."
           (tset :transfer-encoding nil))
         headers)))
 
-(fn make-tcp-client [opts]
+(fn make-tcp-client* [opts]
   "Creates a socket-channel based of `opts`. Wraps it with a bunch of
 methods to act like Luasocket client."
   {:private true}
   (case opts.http-client
     http-client http-client
-    _ (let [src (tcp-chan
-                 opts.url nil
-                 (when (and opts.async?)
-                   (fn [err]
-                     (opts.on-raise err)
-                     nil)))]
-        (setmetatable
-         {:read (fn [_ pattern]
-                  (let [ch (chan)]
-                    (src:set-chunk-size pattern ch)
-                    (<!? ch)))
-          :receive (fn [_ pattern prefix]
-                     (let [ch (chan)]
-                       (src:set-chunk-size pattern ch)
-                       (.. (or prefix "") (<!? ch))))
-          :send (fn [_ data ...]
-                  (->> (case (values (select :# ...) ...)
-                         0 data
-                         (1 i) (data:sub i (length data))
-                         _ (data:sub ...))
-                       (>!? src)))
-          :write (fn [_ data] (>!? src data))}
-         {:__name "tcp-client"
-          :__fennelview
-          #(.. "#<" (: (tostring $) :gsub "table:" "tcp-client") ">")}))))
+    _ (-> opts.url
+          (tcp-chan
+           nil
+           (when (and opts.async?)
+             (fn [err]
+               (opts.on-raise err)
+               nil)))
+          make-tcp-client)))
 
 (local non-error-statuses
   {200 true
@@ -198,7 +180,15 @@ methods to act like Luasocket client."
 
 (fn redirect? [status]
   {:private true}
-  (<= 300 status 399))
+  (and (= :number (type status)) (<= 300 status 399)))
+
+(fn consume-reader [src remaining]
+  (case (src:read (if (< 1024 remaining) 1024 remaining))
+    data
+    (when (> remaining 0)
+      (consume-reader
+       src
+       (- remaining (length data))))))
 
 (fn reuse-client? [{: body : http-client : headers :length len}]
   "Based on the response, check if `http-client` should be reused or closed.
@@ -207,15 +197,12 @@ Consumes the `body` of the response, if provided."
   (when (reader? body)
     ;; consume body
     (if len
-        (body:read len)
+        (consume-reader body len)
         (chunked-encoding? headers.Transfer-Encoding)
-        (body:read :*a)))
-  (case (lower headers.Connection)
+        (consume-reader body math.huge)))
+  (case (lower (or headers.Connection "keep-alive"))
     "keep-alive" http-client
-    _ (do (when (reader? body)
-            ;; read the rest of the stream
-            (body:read :*a))
-          (http-client:close)
+    _ (do (http-client:close)
           nil)))
 
 (fn relative-url [url location]
@@ -313,7 +300,7 @@ request in case of redirection."
                  nil
                  (= :string (type body))
                  body))
-        client (make-tcp-client opts)]
+        client (make-tcp-client* opts)]
     (assert (or (not opts.async?) (and opts.on-response opts.on-raise))
             "If async? is true, on-response and on-raise callbacks must be passed")
     (set opts.start (or opts.start (gettime)))

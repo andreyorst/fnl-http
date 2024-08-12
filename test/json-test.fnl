@@ -6,16 +6,26 @@
 (local readers
   (require :http.readers))
 
+(local body
+  (require :http.body))
+
 (deftest parse-test
   (testing "parsing from file reader"
-    (let [valid (require :test.data.valid)
-          parsed (decode (readers.file-reader "test/data/valid.json"))]
-      (assert-eq valid parsed)))
+    (assert-eq (require :test.data.valid)
+               (decode (readers.file-reader "test/data/valid.json"))))
   (testing "parsing from string reader"
-    (let [valid (require :test.data.valid)
-          parsed (decode (: (readers.file-reader "test/data/valid.json") :read :*a))]
-      (assert-eq valid parsed)))
+    (assert-eq (require :test.data.valid)
+               (decode (: (readers.file-reader "test/data/valid.json") :read :*a))))
   (testing "parsing from string"
-    (let [valid {:foo :bar :baz [1 2 3]}
-          parsed (decode "{\"foo\": \"bar\", \"baz\": [1, 2, 3], \"qux\": null}")]
-      (assert-eq valid parsed))))
+    (assert-eq {:foo :bar :baz [1 2 3]}
+               (decode "{\"foo\": \"bar\", \"baz\": [1, 2, 3], \"qux\": null}"))))
+
+(deftest parse-body-test
+  (testing "parsing from body reader"
+    (with-open [valid (io.open "test/data/valid.json")]
+      (assert-eq (require :test.data.valid)
+                 (decode (body.body-reader valid)))))
+  (testing "parsing from chunked body reader"
+    (with-open [chunked (io.open "test/data/chunked-body")]
+      (assert-eq (require :test.data.valid)
+                 (decode (body.chunked-body-reader chunked))))))

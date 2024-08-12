@@ -1,5 +1,6 @@
 (local {: reader?
-        : string-reader}
+        : string-reader
+        : make-reader}
   (require :http.readers))
 
 (local {: concat} table)
@@ -150,8 +151,8 @@
                    (case (rdr:peek 1)
                      "," (do (rdr:read 1) (loop obj))
                      "}" (do (rdr:read 1) obj)
-                     _ (error (.. "JSON parse error: expected ',' or '}' after the value: " (encode value)))))
-             _ (error (.. "JSON parse error: expected colon after the key: " (encode key)))))))
+                     _ (error (.. "JSON parse error: expected ',' or '}' after the value: " (encode value) ", got " _))))
+             _ (error (.. "JSON parse error: expected colon after the key: " (encode key) ", got " _))))))
    {}))
 
 (fn parse-arr [rdr parse]
@@ -170,7 +171,7 @@
              "," (do (rdr:read 1) (loop arr))
              "]" (do (rdr:read 1) arr)
              _ (error (.. "JSON parse error: expected ',' or ']' after the value: "
-                          (encode val)))))))
+                          (encode val) ", got " _))))))
    []))
 
 (fn decode [data]

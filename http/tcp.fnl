@@ -7,7 +7,7 @@
   (require :lib.async))
 
 (local {: >!?}
-  (require :http.async-extras))
+  (require :http.utils))
 
 (local {:select s/select
         :connect s/connect
