@@ -1,0 +1,54 @@
+---
+
+stages:
+  - test
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  fennel: main
+  fenneldoc: v1.0.1
+  SKIP_INTEGRATION: true
+
+.install_fennel: &fennel |-
+  cd "$HOME"
+  git clone -q --depth=1 --branch="$fennel" \
+        https://git.sr.ht/~technomancy/fennel
+  cd fennel || exit -1
+  make install
+  cd "$CI_PROJECT_DIR"
+
+.prepare: &prepare
+  - >
+    apk add -q
+    $LUA ${LUA}-dev luarocks${LUA#lua}
+    git make gcc musl-dev
+  - luarocks-${LUA#lua} install luasocket
+  - *fennel
+  - eval $(luarocks --lua-version ${LUA#lua} path)
+
+Lua5.2:
+  image: alpine:edge
+  stage: test
+  before_script:
+    - export LUA=lua5.2
+    - *prepare
+  script:
+    - fennel --lua $LUA tasks/run-tests
+
+Lua5.3:
+  image: alpine:edge
+  stage: test
+  before_script:
+    - export LUA=lua5.3
+    - *prepare
+  script:
+    - fennel --lua $LUA tasks/run-tests
+
+Lua5.4:
+  image: alpine:edge
+  stage: test
+  before_script:
+    - export LUA=lua5.4
+    - *prepare
+  script:
+    - fennel --lua $LUA tasks/run-tests
