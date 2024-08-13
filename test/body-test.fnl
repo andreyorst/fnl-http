@@ -28,14 +28,22 @@
   (testing "wrapping files returns a file reader"
     (with-open [f (io.open "test/data/valid.json" :r)]
       (assert-is (reader? (wrap-body f)))))
+  (testing "wrapping closed files throws an error"
+    (->> (with-open [f (io.open "test/data/valid.json" :r)] f)
+         (pcall wrap-body)
+         assert-not))
   (testing "wrapping channels returns the same channel"
-    (let [ch (chan)]
-      (assert-is (chan? (wrap-body ch)))
-      (assert-eq ch (wrap-body ch))))
-  (testing "wrapping readers returns the same reader"
-    (let [r (string-reader "foo")]
-      (assert-is (reader? (wrap-body r)))
-      (assert-eq r (wrap-body r)))))
+           (let [ch (chan)]
+             (assert-is (chan? (wrap-body ch)))
+             (assert-eq ch (wrap-body ch))))
+   (testing "wrapping readers returns the same reader"
+            (let [r (string-reader "foo")]
+              (assert-is (reader? (wrap-body r)))
+              (assert-eq r (wrap-body r))))
+   (testing "wrapping tables returns the json reader"
+            (let [t {:foo "bar"}]
+              (assert-is (reader? (wrap-body t :application/json)))
+              (assert-eq "{\"foo\": \"bar\"}" (: (wrap-body t :application/json) :read :*a)))))
 
 (deftest format-chunk-test
   (testing "formatting chunk from file"

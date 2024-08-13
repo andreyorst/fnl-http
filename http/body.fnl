@@ -13,7 +13,14 @@
 (local {: <!? : chunked-encoding?}
   (require :http.utils))
 
-(local format string.format)
+(local {: format : lower}
+  string)
+
+(local {:type io/type}
+  io)
+
+(local {: encode}
+  (require :http.json))
 
 (fn get-chunk-data [src]
   "Obtain a single chunk from `src`."
@@ -110,16 +117,16 @@ use binary encoding."
       :binary
       (error (.. "Unsupported body type" (type body)) 2)))
 
-(fn wrap-body [body]
+(fn wrap-body [body content-type]
   "Wraps `body` in a streamable object."
-  (case (type body)
+  (case (or (io/type body) (type body))
     :table (if (chan? body) body
                (reader? body) body
-               body)
-    :userdata (case (getmetatable body)
-                {:__name :FILE*}
-                (file-reader body)
-                _ body)
+               (= :application/json (lower (or content-type "")))
+               (string-reader (encode body))
+               :else
+               (tostring table))
+    (where (or :file "closed file")) (file-reader body)
     _ body))
 
 (fn format-multipart-part [{: name : filename : filename*
@@ -136,7 +143,7 @@ Default headers include `content-disposition`, `content-length`,
 `content-type`, and `content-transfer-encoding`. Provide `headers` for
 additional or to change the default ones."
   {:private true}
-  (let [content (wrap-body content)]
+  (let [content (wrap-body content mime-type)]
     (format
      "--%s\r\n%s\r\n"
      boundary
@@ -165,7 +172,7 @@ Needs to know the `boundary`."
                      : content
                      &as part}
                   (ipairs multipart)]
-       (let [content (wrap-body content)]
+       (let [content (wrap-body content multipart.mime-type)]
          (+ total
             (length (format-multipart-part part boundary))
             (if (= :string (type content)) (+ (length content) 2)
@@ -187,7 +194,7 @@ Needs to know the `boundary`."
          (ipairs multipart)]
     (assert (not= nil content) "Multipart content cannot be nil")
     (assert name "Multipart body must contain at least content and name")
-    (let [content (wrap-body content)]
+    (let [content (wrap-body content multipart.mime-type)]
       (->> (if (= :string (type content)) content "")
            (.. (format-multipart-part part boundary))
            (dst:write))

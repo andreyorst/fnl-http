@@ -52,15 +52,17 @@ each is `nil`."
           :__name "Reader"
           :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")}))))
 
-(local {: open} io)
+(local {: open :type io/type} io)
 
 (fn file-reader [file]
   "Creates a `Reader` from the given `file`.
 Accepts a file handle or a path string which is opened automatically."
-  (let [file (case (type file)
+  (let [file (case (or (io/type file) (type file))
                :string (open file :r)
-               _ file)
-        open? #(pick-values 1 (pcall #($:read 0) $))]
+               :file file
+               "closed file" (error "file is closed" 2)
+               _ (error (.. "expected a string path or a file handle, got " _)))
+        open? #(case (io/type $) :file true)]
     (make-reader file
                  {:close #(when (open? $) ($:close))
                   :read-bytes (fn [f pattern]

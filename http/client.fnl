@@ -43,6 +43,9 @@
 (local {: decode}
   (require :http.json))
 
+(local {: capitalize-header}
+  (require :http.headers))
+
 (local {: format
         : lower
         : upper}
@@ -86,20 +89,21 @@ used to indicate `multipart` subtype, the default is `form-data`."
                       (->> (get-boundary headers)
                            (multipart-content-length multipart)
                            (tset headers :content-length)))
-                    headers)]
-    (if (and (not multipart)
-             (chan? body))
-        ;; force chunked encoding for channels supplied as a body
-        (doto headers
-          (tset :content-length nil)
-          (tset :transfer-encoding "chunked"))
-        ;; force streaming for readers if content-length was supplied
-        (and (not multipart)
-             (reader? body)
-             headers.content-length)
-        (doto headers
-          (tset :transfer-encoding nil))
-        headers)))
+                    headers)
+        headers (if (and (not multipart)
+                         (chan? body))
+                    ;; force chunked encoding for channels supplied as a body
+                    (doto headers
+                      (tset :content-length nil)
+                      (tset :transfer-encoding "chunked"))
+                    ;; force streaming for readers if content-length was supplied
+                    (and (not multipart)
+                         (reader? body)
+                         headers.content-length)
+                    (doto headers
+                      (tset :transfer-encoding nil)))]
+    (collect [k v (pairs headers)]
+      (capitalize-header k) v)))
 
 (fn make-tcp-client* [opts]
   "Creates a socket-channel based of `opts`. Wraps it with a bunch of
@@ -290,8 +294,8 @@ request in case of redirection."
 
 (fn request* [opts]
   {:private true}
-  (let [body (wrap-body opts.body)
-        headers (prepare-headers opts)
+  (let [headers (prepare-headers opts)
+        body (wrap-body opts.body headers.Content-Type)
         req (build-http-request
              opts.method
              (format-path opts.url opts.query-params)
