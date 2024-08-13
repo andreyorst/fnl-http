@@ -83,7 +83,7 @@ used to indicate `multipart` subtype, the default is `form-data`."
                                  :content-type (when multipart
                                                  (.. "multipart/" (or mime-subtype "form-data")
                                                      "; boundary=------------" (random-uuid)))}]
-                  k v)
+                  (lower k) v)
         headers (if multipart
                     (doto headers
                       (->> (get-boundary headers)
@@ -101,9 +101,10 @@ used to indicate `multipart` subtype, the default is `form-data`."
                          (reader? body)
                          headers.content-length)
                     (doto headers
-                      (tset :transfer-encoding nil)))]
+                      (tset :transfer-encoding nil))
+                    headers)]
     (collect [k v (pairs headers)]
-      (capitalize-header k) v)))
+      (lower k) v)))
 
 (fn make-tcp-client* [opts]
   "Creates a socket-channel based of `opts`. Wraps it with a bunch of
@@ -295,7 +296,7 @@ request in case of redirection."
 (fn request* [opts]
   {:private true}
   (let [headers (prepare-headers opts)
-        body (wrap-body opts.body headers.Content-Type)
+        body (wrap-body opts.body headers.content-type)
         req (build-http-request
              opts.method
              (format-path opts.url opts.query-params)

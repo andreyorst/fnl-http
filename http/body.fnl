@@ -120,8 +120,9 @@ use binary encoding."
 (fn wrap-body [body content-type]
   "Wraps `body` in a streamable object."
   (case (or (io/type body) (type body))
-    :table (if (chan? body) body
-               (reader? body) body
+    :table (if (or (chan? body)
+                   (reader? body))
+               body
                (= :application/json (lower (or content-type "")))
                (string-reader (encode body))
                :else
