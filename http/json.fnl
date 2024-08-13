@@ -122,7 +122,7 @@
                     (where c (. -escapable c))
                     (loop chars true)
                     (where "u" _G.utf8 (: (or (rdr:peek 5) "") :match "u%x%x%x%x"))
-                    (loop (.. chars (_G.utf8.char (tonumber (.. "0x" (: (rdr:read 5) :match "u(%x%x%x%x)"))))))
+                    (loop (.. chars (_G.utf8.char (tonumber (: (rdr:read 5) :match "u(%x%x%x%x)") 16))))
                     c (do (rdr:read 1)
                           (loop (.. chars c) false))))
          "\"" (if escaped?

@@ -111,7 +111,13 @@
                          (accumulate [total-time 0 _ time (pairs test-times)]
                            (+ total-time time))]
                      (io.write (string.format "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n"
-                                              total-tests total-time assertions (length skipped-tests) (length warnings) (length errors)))
+                                              total-tests total-time assertions
+                                              (accumulate [n 0 _ test (ipairs skipped-tests)]
+                                                (case test
+                                                  {: test-count
+                                                   :test-name nil} (+ n test-count)
+                                                  _ (+ n 1)))
+                                              (length warnings) (length errors)))
                      (when (next warnings)
                        (io.stderr:write "\n"))
                      (each [_ message (ipairs warnings)]

@@ -567,10 +567,11 @@ comparison.  Tables as keys are supported."
                                     (tset test-times ns-test (difftime (time) (. test-times ns-test)))))))))]
           (match (pcall oncef ns-runner)
             (_ [Skip ?message])
-            (do (reporter.ns-report ns :skip)
-                (set state.executed-test-count
-                  (math.max 0 (- state.executed-test-count (length tests))))
-                (table.insert skipped-tests {: ns :message ?message}))
+            (let [test-count (length tests)]
+              (reporter.ns-report ns :skip)
+              (set state.executed-test-count
+                (math.max 0 (- state.executed-test-count test-count)))
+                (table.insert skipped-tests {: ns :message ?message : test-count}))
             (false message)
             (do (table.insert errors {: ns : message})
                 (reporter.ns-report ns false))

@@ -263,7 +263,7 @@ buffering via the `peek` method."
     (read-chunk-size src)
     line
     (case (line:match "%s*([0-9a-fA-F]+)")
-      size (tonumber (.. "0x" size))
+      size (tonumber size 16)
       _ (error (format "line missing chunk size: %s" line)))
     _ (error "source was exchausted while reading chunk size")))
 
