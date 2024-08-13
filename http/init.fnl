@@ -25,7 +25,8 @@ SOFTWARE.
 (setmetatable
  {:client (require :http.client)
   :json (require :http.json)
-  :readers (require :http.readers)}
+  :readers (require :http.readers)
+  :server (require :http.server)}
  {:__index (setmetatable
             (require :http.client)
             {:__index {:__VERSION :dev}})})

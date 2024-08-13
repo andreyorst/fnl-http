@@ -1,0 +1,646 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2024-08-14 Wed 09:46 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>&lrm;</title>
+<meta name="author" content="termux" />
+<meta name="generator" content="Org Mode" />
+<style>
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+</head>
+<body>
+<div id="content" class="content">
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgacad5cf">1. fnl-http</a></li>
+<li><a href="#orgb58aadd">2. Building</a></li>
+<li><a href="#orgc3b4c8c">3. Usage</a>
+<ul>
+<li><a href="#org7721266">3.1. Examples</a>
+<ul>
+<li><a href="#org9b8e6e0">3.1.1. Accessing resources synchronously</a></li>
+<li><a href="#org38d9b03">3.1.2. Accessing resources asynchronously</a></li>
+<li><a href="#orge73e61a">3.1.3. <code>multipart/form-data</code></a></li>
+</ul>
+</li>
+<li><a href="#org7f8d279">3.2. Extra modules</a>
+<ul>
+<li><a href="#org99ea41f">3.2.1. JSON support</a></li>
+<li><a href="#org3d6fbcf">3.2.2. Readers</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgacad5cf" class="outline-2">
+<h2 id="orgacad5cf"><span class="section-number-2">1.</span> fnl-http</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+A <a href="https://github.com/dakrone/clj-http">clj-http</a>-inspired library for making HTTP/1.1 requests written in Fennel.
+This library utilizes <a href="https://gitlab.com/andreyorst/async.fnl">async.fnl</a> for asynchronous request processing and <a href="https://w3.impa.br/~diego/software/luasocket/home.html">luasocket</a> for an actual implementation of sockets.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgb58aadd" class="outline-2">
+<h2 id="orgb58aadd"><span class="section-number-2">2.</span> Building</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+To build a self-contained library to use in other projects, run the following command in the root of the repository:
+</p>
+
+<p>
+fennel tasks/build
+</p>
+
+<p>
+This command produces a file named <code>http.lua</code> at the root directory of the repository, which is ready to be used.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgc3b4c8c" class="outline-2">
+<h2 id="orgc3b4c8c"><span class="section-number-2">3.</span> Usage</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+The <code>http.client</code> module provides the following functions:
+</p>
+
+<ul class="org-ul">
+<li><code>get</code></li>
+<li><code>post</code></li>
+<li><code>put</code></li>
+<li><code>patch</code></li>
+<li><code>options</code></li>
+<li><code>trace</code></li>
+<li><code>head</code></li>
+<li><code>delete</code></li>
+<li><code>connect</code></li>
+</ul>
+
+<p>
+Each invokes a specified HTTP method.
+</p>
+
+<p>
+A generic function <code>client.request</code> accepts the method name as a string and is a base for all other functions internally.
+</p>
+
+<p>
+All functions accept the <code>opts</code> table, which contains the following keys:
+</p>
+
+<ul class="org-ul">
+<li><code>async?</code> - a boolean, whether the request should be asynchronous.
+The result is a channel, that can be awaited.
+The successful response of a server is then passed to the <code>on-response</code> callback.
+In case of any error during the request, the <code>on-raise</code> callback is called with the error message.</li>
+<li><code>headers</code> - a table with the HTTP headers for the request</li>
+<li><code>body</code> - an optional string body.</li>
+<li><code>as</code> - how to coerce the body of the response.</li>
+<li><code>throw-errors?</code> - whether to throw errors on response statuses other than 200, 201, 202, 203, 204, 205, 206, 207, 300, 301, 302, 303, 304, 307.
+Defaults to <code>true</code>.</li>
+<li><code>multipart</code> - a list of multipart parts.
+See [multipart examples](#multipart-form-data) below.</li>
+</ul>
+
+<p>
+Several options are available for the <code>as</code> key:
+</p>
+
+<ul class="org-ul">
+<li><code>stream</code> - the body will be a stream object with a <code>read</code> method.</li>
+<li><code>raw</code> - the body will be a string.
+This is the default value for <code>as</code>.</li>
+<li><code>json</code> - the body will be parsed as JSON into a Lua table.
+Note, that <code>null</code> values are omitted from the resulting table.</li>
+</ul>
+</div>
+
+<div id="outline-container-org7721266" class="outline-3">
+<h3 id="org7721266"><span class="section-number-3">3.1.</span> Examples</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+Loading the library:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(local http (require :http))
+</pre>
+</div>
+
+<p>
+The library provides three main modules:
+</p>
+
+<ul class="org-ul">
+<li><code>http.client</code>, containing all of the HTTP methods and a generic <code>request</code> function,</li>
+<li><code>http.readers</code>, containing [readers](#readers)</li>
+<li><code>http.json</code>, containing a [json parser and encoder](#json-support)</li>
+</ul>
+
+<p>
+All other modules are preloaded and for internal use only.
+</p>
+
+<p>
+The <code>http</code> module also contains all HTTP method functions, so it can be used as <code>http.get</code> instead of <code>http.client.get</code>.
+If preferred, modules can be imported as separate locals with destructuring:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(local {: client : readers : json}
+  (require :http))
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org9b8e6e0" class="outline-4">
+<h4 id="org9b8e6e0"><span class="section-number-4">3.1.1.</span> Accessing resources synchronously</h4>
+<div class="outline-text-4" id="text-3-1-1">
+<p>
+The default scheme for requests is <code>http://</code> if not provided explicitly.
+If the path part is missing, it defaults to <code>/</code>.
+Here's an example of accessing <code>http://lua-users.org/</code>:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(http.get "lua-users.org")
+</pre>
+</div>
+
+<p>
+The response is a table, containing the headers, body, and additional info:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">{:body "&lt;!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"&gt;..."
+ :http-client #&lt;SocketChannel: 0x55c220a1dcc0&gt;
+ :headers {:Accept-Ranges "bytes"
+           :Connection "keep-alive"
+           :Content-Length "1055"
+           :Content-Type "text/html"
+           :Date "Fri, 19 Jul 2024 13:46:58 GMT"
+           :ETag "\"61acad05-41f\""
+           :Last-Modified "Sun, 05 Dec 2021 12:13:57 GMT"
+           :Server "nginx/1.20.1"
+           :Strict-Transport-Security "max-age=0;"}
+ :length 1055
+ :protocol-version {:major 1 :minor 1 :name "HTTP"}
+ :reason-phrase "OK"
+ :request-time 60
+ :status 200}
+</pre>
+</div>
+
+<p>
+Each function accepts a table with options, that can modify how the request is made, or how the response is provided.
+For example, if the body is larger, it can be processed as a stream, by supplying the following options table:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(http.get "http://lua-users.org/" {:as :stream})
+</pre>
+</div>
+
+<p>
+In the response table, the <code>body</code> key will contain a <code>#&lt;Reader: 0x55c220e65920&gt;</code> object.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">{:body #&lt;Reader: 0x55c220e65920&gt;
+ :http-client #&lt;SocketChannel: 0x55c221568ba0&gt;
+ :headers {:Accept-Ranges "bytes"
+           :Connection "keep-alive"
+           :Content-Length "1055"
+           :Content-Type "text/html"
+           :Date "Fri, 19 Jul 2024 13:48:28 GMT"
+           :ETag "\"61acad05-41f\""
+           :Last-Modified "Sun, 05 Dec 2021 12:13:57 GMT"
+           :Server "nginx/1.20.1"
+           :Strict-Transport-Security "max-age=0;"}
+ :length 1055
+ :protocol-version {:major 1 :minor 1 :name "HTTP"}
+ :reason-phrase "OK"
+ :request-time 59
+ :status 200}
+</pre>
+</div>
+
+<p>
+Beware, that before closing the <code>http-client</code>, you must consume the body of the response.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org38d9b03" class="outline-4">
+<h4 id="org38d9b03"><span class="section-number-4">3.1.2.</span> Accessing resources asynchronously</h4>
+<div class="outline-text-4" id="text-3-1-2">
+<p>
+By supplying an options table with the <code>async?</code> key set to <code>true</code>, the request will be processed asynchronously:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(http.get "http://lua-users.org/" {:async? true} on-response on-raise)
+</pre>
+</div>
+
+<p>
+The result will be a channel, which can be awaited using the <code>async</code> library, but it's not required:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">*&lt;ManyToManyChannel: 0x55c221b267c0&gt;
+</pre>
+</div>
+
+<p>
+The channel itself, however, won't contain the response.
+Instead, it has to be processed with the <code>on-response</code> and <code>on-raise</code> callbacks.
+The <code>on-response</code> and <code>on-raise</code> callback run in the asynchronous context, thus blocking operations should be avoided.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(http.get "http://lua-users.org/"
+          {:async? true
+           :as :stream
+           :headers {:connection "close"}}
+          (fn on-response [resp]
+            (print (resp.body:read :*a)))
+          (fn on-raise [err]
+            (case err
+              {: status : reason-phrase}
+              (io.stderr:write status " " reason-phrase "\n")
+              _ (io.stderr:write err "\n"))))
+</pre>
+</div>
+
+<p>
+In its default form, this library doesn't require you to use <code>async.fnl</code> directly.
+However, by using the <code>async.fnl</code> library, more options are available.
+For example, multiple requests can be issued, selecting the fastest:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(let [index (http.get "http://lua-users.org/"
+                      {:async? true
+                       :as :stream
+                       :headers {:connection :close}}
+                      on-response on-raise)
+      wiki (http.get "http://lua-users.org/wiki/"
+                     {:async? true
+                      :as :stream
+                      :headers {:connection :close}}
+                     on-response on-raise)]
+  (go (match (alts! [index wiki])
+        [_ index] (print "lua-users.org/ was faster")
+        [_ wiki] (print "lua-users.org/wiki/ was faster"))))
+</pre>
+</div>
+
+<p>
+Refer to the <a href="https://gitlab.com/andreyorst/async.fnl/-/blob/main/doc/src/async.md">documentation</a> for more on how to use the <code>async.fnl</code> library.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge73e61a" class="outline-4">
+<h4 id="orge73e61a"><span class="section-number-4">3.1.3.</span> <code>multipart/form-data</code></h4>
+<div class="outline-text-4" id="text-3-1-3">
+<p>
+You can send multipart requests with the <code>multipart</code> field in the <code>opts</code> table:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(http.post "http://example.com"
+           {:multipart
+            [{:name "text" :content "text data"}
+             {:name "channel"
+              :content some-channel
+              :length 322}
+             {:name "text-stream"
+              :content (http.readers.string-reader "some text")}
+             {:name "file"
+              :content (io.open "pic.png")
+              :filename "pic.png"
+              :mime-type "image/png"}]})
+</pre>
+</div>
+
+<p>
+Additional fields can be added to each part:
+</p>
+
+<ul class="org-ul">
+<li><code>name</code> - part name.</li>
+<li><code>filename</code> - optional file name</li>
+<li><code>filename*</code> - optional file name with ASCII-only characters.
+The client automatically URL-encodes this field as per <a href="https://www.rfc-editor.org/rfc/rfc5777">rfc5777</a>.</li>
+<li><code>content</code> - the body of the part.
+Can be a string, a Reader, a file, or a channel.</li>
+<li><code>length</code> - optional content length.
+Must be specified if there's no way to determine length from the content object.</li>
+<li><code>headers</code> - additional headers for the given part.</li>
+<li><code>mime-type</code> - optional mime type for the given part.
+By default, the mime type is guessed based on the <code>content</code> field.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org7f8d279" class="outline-3">
+<h3 id="org7f8d279"><span class="section-number-3">3.2.</span> Extra modules</h3>
+<div class="outline-text-3" id="text-3-2">
+<p>
+After loading the main client module, extra public modules are available:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(local json http.json) ;; json parser and encoder
+(local readers http.readers) ;; Reader module for creating readers
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org99ea41f" class="outline-4">
+<h4 id="org99ea41f"><span class="section-number-4">3.2.1.</span> JSON support</h4>
+<div class="outline-text-4" id="text-3-2-1">
+<p>
+The <code>json</code> module contains two functions: <code>encode</code> and <code>decode</code>.
+</p>
+
+<p>
+The <code>encode</code> function, produces a JSON string, given any Lua value, including tables.
+<b><b>Note</b></b>, cyclic tables are not supported.
+</p>
+
+<p>
+You can either use <code>json.encode</code> or just call the <code>json</code> module as a function:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(json.encode {:foo "bar" :baz [1 2 3]})
+;; "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"
+</pre>
+</div>
+
+<p>
+The <code>decode</code> function, decodes a given string, or a Reader object:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-fennel">(json.decode "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}")
+;; {:baz [1 2 3] :foo "bar"}
+(json.decode (readers.string-reader "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"))
+;; {:baz [1 2 3] :foo "bar"}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3d6fbcf" class="outline-4">
+<h4 id="org3d6fbcf"><span class="section-number-4">3.2.2.</span> Readers</h4>
+<div class="outline-text-4" id="text-3-2-2">
+<p>
+A Reader is a stateful object, which has a few specific methods:
+</p>
+
+<ul class="org-ul">
+<li><code>read</code> - reads an amount of bytes (or a pattern) from the Reader, advancing it.</li>
+<li><code>peek</code> - peeks at a specified amount of bytes without advancing the Reader.</li>
+<li><code>lines</code> - returns a function, that returns lines, similar to <code>(: (io.open "file") :lines)</code></li>
+<li><code>close</code> - closes the Reader, such that all methods no longer return any values.</li>
+</ul>
+
+<p>
+Readers help process large request bodies and allow stream-like workflow.
+</p>
+
+<p>
+There are a few predefined readers:
+</p>
+
+<ul class="org-ul">
+<li><code>file-reader</code> - wraps a file handle, or a path string, and returns a Reader.</li>
+<li><code>string-reader</code> - wraps a string, returning a Reader.</li>
+<li><code>ltn12-reader</code> - wraps an LTN12 source, returning a Reader &lt;sup&gt;&lt;i&gt;yo dawg we put a reader on your reader, so you could read while you read&lt;/i&gt;&lt;/sup&gt;.</li>
+</ul>
+
+<p>
+Custom Reader objects can be created with the <code>make-reader</code> function.
+This function accepts the object to read from, and a table of methods:
+</p>
+
+<ul class="org-ul">
+<li><code>read-bytes</code> - should read a specified amount of bytes, and advance the object in some way.</li>
+<li><code>read-line</code> - should return a single line, and advance the object.</li>
+<li><code>peek</code> - should read a specified amount of bytes, without advancing a reader.</li>
+<li><code>close</code> - should close the object, such that other functions will no longer use it, and return <code>nil</code> on any call.</li>
+</ul>
+
+<p>
+All methods are optional, and nonexistent methods will return <code>nil</code> by default.
+Provide a method that throws an error, if you want your Reader to prohibit some methods.
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: termux</p>
+<p class="date">Created: 2024-08-14 Wed 09:46</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

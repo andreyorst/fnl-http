@@ -42,11 +42,13 @@ Test if `transfer-encoding` header is chunked.
 Function signature:
 
 ```
-(make-tcp-client socket-channel)
+(make-tcp-client socket-channel resources)
 ```
 
 Accepts a `socket-channel`. Wraps it with a bunch of
-methods to act like Luasocket client.
+methods to act like Luasocket client. `resources` is a hash-set of
+values mapped to `true` needed to be closed before the client is
+closed.
 
 
 <!-- Generated with Fenneldoc v1.0.1

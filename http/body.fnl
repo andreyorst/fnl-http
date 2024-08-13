@@ -118,7 +118,9 @@ use binary encoding."
       (error (.. "Unsupported body type" (type body)) 2)))
 
 (fn wrap-body [body content-type]
-  "Wraps `body` in a streamable object."
+  "Wraps `body` in a streamable object.
+If the `content-type` is given and is `application/json` and the
+`body` is a table it is encoded as JSON reader."
   (case (or (io/type body) (type body))
     :table (if (or (chan? body)
                    (reader? body))

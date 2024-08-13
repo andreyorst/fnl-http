@@ -20,9 +20,11 @@ available.  Returns `true` unless `port` is already closed."
       (>!! port val)
       (>! port val)))
 
-(fn make-tcp-client [socket-channel]
+(fn make-tcp-client [socket-channel resources]
   "Accepts a `socket-channel`. Wraps it with a bunch of
-methods to act like Luasocket client."
+methods to act like Luasocket client. `resources` is a hash-set of
+values mapped to `true` needed to be closed before the client is
+closed."
   (setmetatable
    {:read (fn [_ pattern]
             (let [ch (chan)]
@@ -37,7 +39,10 @@ methods to act like Luasocket client."
                    (1 i) (data:sub i (length data))
                    _ (data:sub ...))
                  (>!? socket-channel)))
-    :close (fn [_] (socket-channel:close))
+    :close (fn [_]
+             (each [resource (pairs (or resources {}))]
+               (pcall #(resource:close)))
+             (socket-channel:close))
     :write (fn [_ data] (>!? socket-channel data))}
    {:__name "tcp-client"
     :__fennelview

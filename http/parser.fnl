@@ -15,7 +15,7 @@
 (local {: body-reader : chunked-body-reader}
   (require :http.body))
 
-(local {: format : upper} string)
+(local {: format : upper : lower} string)
 
 (local {: ceil} math)
 
@@ -153,7 +153,11 @@ its headers, and a body stream."
         (tset :headers headers)
         (tset :content
               (when (not= (upper (or method "")) :HEAD)
-                (stream:read (or parsed-headers.Content-Length :*a))))))))
+                (if parsed-headers.Content-Length
+                    (stream:read parsed-headers.Content-Length)
+                    (or (= :close (lower (or parsed-headers.Connection "")))
+                        (chunked-encoding? parsed-headers.Transfer-Encoding))
+                    (stream:read :*a))))))))
 
 ;;; URL
 

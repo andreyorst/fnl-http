@@ -283,6 +283,61 @@ This function accepts the object to read from, and a table of methods:
 All methods are optional, and nonexistent methods will return `nil` by default.
 Provide a method that throws an error, if you want your Reader to prohibit some methods.
 
+### Server
+
+This library contains a proof-of-concept HTTP/1.1 server.
+It's a simple asynchronous server, that accepts a handler function doing all of the heavy-lifting of routing, and provides a simple API for the response format.
+
+Here's an example handler implementation:
+
+```fennel
+(fn handler [{: path : headers &as request}]
+  (case path
+    "/" (let [url (.. "http://" headers.Host "/index.html")
+              body (.. "<!DOCTYPE HTML>"
+                       "<title>Redirecting...</title><h1>Redirecting...</h1>"
+                       "<p>You should be redirected automatically to target URL: "
+                       "<a href=\"" url "\">" url "</a>.  If not click the link.</p>")]
+          {:status 302
+           :headers {:connection "close"
+                     :location "/index.html"
+                     :content-length (length body)}
+           :body body})
+    _ (case (io.open (.. "." path))
+        file {:status 200
+              :headers {:connection (or headers.Connection :keep-alive)
+                        :transfer-encoding :chunked
+                        :content-type (case (path:match "%.(.-)$")
+                                        :html :text/html
+                                        :ico :image/x-icon
+                                        _ :application/octet-stream)}
+              :body file}
+        _ (let [body "404: not found"]
+            {:status 404
+             :headers {:connection (or headers.Connection "keep-alive")
+                       :content-length (length body)
+                       :content-type "text/plain"}
+             :body body}))))
+```
+
+This handler doesn't handle request methods other than `GET` and serves all files in the server's working directory.
+The server can then be ran like this:
+
+```fennel
+(local {: server} (require :http))
+(local handler (require :handler))
+
+(local server
+  (server.start-server handler {:port 12345}))
+
+(server:wait)
+```
+
+The `(server:wait)` call blocks the main thread.
+If the application has some kind of main loop, the server would run by itself and no call to the `wait` method would be needed.
+
+The server is experimental and not properly tested.
+
 [1]: https://github.com/dakrone/clj-http
 [2]: https://gitlab.com/andreyorst/async.fnl
 [3]: https://w3.impa.br/~diego/software/luasocket/home.html

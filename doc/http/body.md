@@ -76,10 +76,12 @@ Write `multipart` entries to `dst` separated with the `boundary`.
 Function signature:
 
 ```
-(wrap-body body)
+(wrap-body body content-type)
 ```
 
 Wraps `body` in a streamable object.
+If the `content-type` is given and is `application/json` and the
+`body` is a table it is encoded as JSON reader.
 
 
 <!-- Generated with Fenneldoc v1.0.1

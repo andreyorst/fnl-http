@@ -299,7 +299,11 @@ comparison.  Tables as keys are supported."
 
 ;;; Test Runner
 
-(local Skip (setmetatable {} {:__fennelview #:Skip}))
+(local Skip
+  (setmetatable
+   {}
+   {:__tostring #:Skip
+    :__fennelview #:Skip}))
 
 ;;;; Reporters
 
