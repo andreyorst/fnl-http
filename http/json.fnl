@@ -1,7 +1,11 @@
 (local {: reader?
         : string-reader
+        : file-reader
         : make-reader}
   (require :http.readers))
+
+(local {: file?}
+  (require :http.utils))
 
 (local {: concat} table)
 
@@ -179,6 +183,7 @@
 and `read` methods or a string.  Parses the contents to a Lua table."
   (let [rdr (if (reader? data) data
                 (string? data) (string-reader data)
+                (file? data) (file-reader data)
                 (error "expected a reader, or a string as input" 2))]
     ((fn loop []
        (case (rdr:peek 1)
@@ -189,7 +194,8 @@ and `read` methods or a string.  Parses the contents to a Lua table."
          (where "f" (= "false" (rdr:peek 5))) (do (rdr:read 5) false)
          (where "n" (= "null" (rdr:peek 4))) (do (rdr:read 4) nil)
          (where c (c:match "[ \t\n]")) (loop (skip-space rdr))
-         (where n (n:match "[-0-9]")) (parse-num rdr)
+         (where n (n:match "%-") (: (rdr:peek 2) :match "%-[0-9]")) (parse-num rdr)
+         (where n (n:match "[0-9]")) (parse-num rdr)
          nil (error "JSON parse error: end of stream")
          c (error (format
                    "JSON parse error: unexpected token ('%s' (code %d))"

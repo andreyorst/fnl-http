@@ -1,6 +1,16 @@
+(local {: max}
+  math)
+
 (fn ok? [ok? ...] (when ok? ...))
 
-(local Reader {})
+(local Reader
+  {:__close (fn [this ...]
+              (ok? (pcall this.close this.source ...)))
+   :__len (fn [this]
+            (case this.length
+              len (len this.source)))
+   :__name "Reader"
+   :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")})
 
 (fn make-reader [source {: read-bytes : read-line : close : peek :length len}]
   {:fnl/docstring "Generic reader generator.
@@ -24,33 +34,29 @@ reader source supports line iteration.
 All methods are optional, and if not provided, the return value of
 each is `nil`."
    :fnl/arglist [source {: read-bytes : read-line : close : peek : length}]}
-  (let [close (if close
-                  (fn [_ ...]
-                    (ok? (pcall close source ...)))
-                  #nil)]
-    (-> {: close
-         :read (if read-bytes
-                   (fn [_ pattern ...]
-                     (read-bytes source pattern ...)) #nil)
-         :lines (if read-line
-                    (fn []
-                      (fn [_ ...]
-                        (read-line source ...)))
-                    (fn [] #nil))
-         :peek (if peek
-                   (fn [_ pattern ...]
-                     (peek source pattern ...))
-                   #nil)
-         :length (if len
-                     (fn []
-                       (len source))
-                     #nil)}
-        (setmetatable
-         {:__index Reader
-          :__close close
-          :__len (if len (fn [] (len source)) #nil)
-          :__name "Reader"
-          :__fennelview #(.. "#<" (: (tostring $) :gsub "table:" "Reader:") ">")}))))
+  (-> {:source source
+       :close (if close
+                  (fn [this ...]
+                    (close this.source ...))
+                  #nil)
+       :read (if read-bytes
+                 (fn [this pattern ...]
+                   (read-bytes this.source pattern ...))
+                 #nil)
+       :lines (if read-line
+                  (fn [this]
+                    (fn [_ ...]
+                      (read-line this.source ...)))
+                  (fn [] #nil))
+       :peek (if peek
+                 (fn [this pattern ...]
+                   (peek this.source pattern ...))
+                 #nil)
+       :length (if len
+                   (fn [this]
+                     (len this.source))
+                   #nil)}
+      (setmetatable Reader)))
 
 (local {: open :type io/type} io)
 
@@ -62,15 +68,21 @@ Accepts a file handle or a path string which is opened automatically."
                :file file
                "closed file" (error "file is closed" 2)
                _ (error (.. "expected a string path or a file handle, got " _)))
-        open? #(case (io/type $) :file true)]
+        open? #(case (io/type $) :file true)
+        close #(when (open? $) ($:close))]
     (make-reader file
-                 {:close #(when (open? $) ($:close))
+                 {:close close
                   :read-bytes (fn [f pattern]
                                 (when (open? f)
-                                  (f:read pattern)))
+                                  (case (f:read pattern)
+                                    bytes bytes
+                                    nil (do (close f) nil))))
                   :read-line (fn [f]
-                               (let [next-line (when (open? f) (file:lines))]
-                                 (when (open? f) (next-line))))
+                               (let [next-line (when (open? f) (f:lines))]
+                                 (when (open? f)
+                                   (case (next-line)
+                                     line line
+                                     nil (do (close f) nil)))))
                   :peek (fn [f pattern]
                           (assert (= :number (type pattern)) "expected number of bytes to peek")
                           (when (open? f)
@@ -83,8 +95,6 @@ Accepts a file handle or a path string which is opened automatically."
                                     len (- (f:seek :end) current)]
                                 (f:seek :cur (- len))
                                 len)))})))
-
-(local {: max} math)
 
 (fn string-reader [string]
   "Creates a `Reader` from the given `string`."
@@ -145,7 +155,7 @@ used."
   (let [step (or step ltn12.pump.step)]
     (var buffer "")
     (var closed? false)
-    (fn read [_ pattern]
+    (fn read [source pattern]
       (when (not closed?)
         (let [rdr (string-reader buffer)
               content (rdr:read pattern)
@@ -157,7 +167,7 @@ used."
                 (if (< len pattern)
                     (if (step source (sink/table data))
                         (do (set buffer (.. buffer (or (. data 1) "")))
-                            (case (read _ (- bytes len))
+                            (case (read source (- bytes len))
                               (where data data) (.. (or content "") data)
                               _ content))
                         content)
@@ -172,19 +182,19 @@ used."
                     content)
                 (if (step source (sink/table data))
                     (do (set buffer (.. buffer (or (. data 1) "")))
-                        (case (read _ pattern)
+                        (case (read source pattern)
                           data (.. (or content "") data)
                           _ content))
                     (do (set buffer (or (rdr:read :*a) ""))
                         content)))))))
     (make-reader
      source
-     {:close (fn []
+     {:close (fn [source]
                (while (step source (sink/null)) nil)
                (set closed? true))
       :read-bytes read
       :read-line #(when (not closed?) (read $ :*l))
-      :peek (fn peek [_ bytes]
+      :peek (fn peek [source bytes]
               (when (not closed?)
                 (let [rdr (string-reader buffer)
                       content (rdr:peek bytes)
@@ -193,7 +203,7 @@ used."
                   (if (< len bytes)
                       (if (step source (sink/table data))
                           (do (set buffer (.. buffer (or (. data 1) "")))
-                              (case (peek _ (- bytes len))
+                              (case (peek source (- bytes len))
                                 (where data data) data
                                 _ content))
                           content)
@@ -202,7 +212,7 @@ used."
 (fn reader? [obj]
   "Check if `obj` is an instance of `Reader`."
   (match (getmetatable obj)
-    {:__index Reader} true
+    Reader true
     _ false))
 
 {: make-reader

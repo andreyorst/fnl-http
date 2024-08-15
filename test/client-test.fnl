@@ -19,16 +19,16 @@
   (with-open [_ (io.popen (.. "kill -9 " pid " >/dev/null 2>&1"))]))
 
 (use-fixtures
- :once
- (fn [t]
-   (with-open [proc (io.popen "fennel test/echo-server.fnl & echo $!")]
-     (let [pid (proc:read :*l)
-           attempts 100]
-       (if (wait-for-server attempts 8000)
-           (do (t)
-               (kill pid))
-           (do (kill pid)
-               (skip-test (.. "coudln't connect to echo server after " attempts " attempts") false)))))))
+    :once
+  (fn [t]
+    (with-open [proc (io.popen "fennel test/echo-server.fnl & echo $!")]
+      (let [pid (proc:read :*l)
+            attempts 100]
+        (if (wait-for-server attempts 8000)
+            (do (t)
+                (kill pid))
+            (do (kill pid)
+                (skip-test (.. "coudln't connect to echo server after " attempts " attempts") false)))))))
 
 (deftest post-test
   (testing "posting raw data"

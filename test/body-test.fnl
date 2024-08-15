@@ -33,17 +33,17 @@
          (pcall wrap-body)
          assert-not))
   (testing "wrapping channels returns the same channel"
-           (let [ch (chan)]
-             (assert-is (chan? (wrap-body ch)))
-             (assert-eq ch (wrap-body ch))))
-   (testing "wrapping readers returns the same reader"
-            (let [r (string-reader "foo")]
-              (assert-is (reader? (wrap-body r)))
-              (assert-eq r (wrap-body r))))
-   (testing "wrapping tables returns the json reader"
-            (let [t {:foo "bar"}]
-              (assert-is (reader? (wrap-body t :application/json)))
-              (assert-eq "{\"foo\": \"bar\"}" (: (wrap-body t :application/json) :read :*a)))))
+    (let [ch (chan)]
+      (assert-is (chan? (wrap-body ch)))
+      (assert-eq ch (wrap-body ch))))
+  (testing "wrapping readers returns the same reader"
+    (let [r (string-reader "foo")]
+      (assert-is (reader? (wrap-body r)))
+      (assert-eq r (wrap-body r))))
+  (testing "wrapping tables returns the json reader"
+    (let [t {:foo "bar"}]
+      (assert-is (reader? (wrap-body t :application/json)))
+      (assert-eq "{\"foo\": \"bar\"}" (: (wrap-body t :application/json) :read :*a)))))
 
 (deftest format-chunk-test
   (testing "formatting chunk from file"
@@ -70,18 +70,16 @@
       (stream-body sw (string-reader "foobar") {:content-length 6})
       (assert-eq "foobar" (sw:string))))
   (testing "streaming-body from file reader"
-    (with-open [data (io.open "test/data/valid.json" :r)
+    (with-open [r (file-reader "test/data/valid.json")
                 valid (io.open "test/data/valid.json" :r)]
-      (let [r (file-reader data)
-            len (r:length)
+      (let [len (r:length)
             sw (string-writer)]
         (stream-body sw r {:content-length len})
         (assert-eq (valid:read :*a) (sw:string)))))
   (testing "chunked encoding from file"
-    (with-open [data (io.open "test/data/valid.json" :r)
+    (with-open [r (file-reader "test/data/valid.json")
                 valid (io.open "test/data/chunked-body" :r)]
-      (let [r (file-reader data)
-            sw (string-writer)]
+      (let [sw (string-writer)]
         (stream-body sw r {:transfer-encoding "chunked"})
         (assert-eq (valid:read :*a) (sw:string)))))
   (testing "chunked encoding from channel"

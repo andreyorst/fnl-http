@@ -15,10 +15,8 @@
 (local a
   (require :lib.async))
 
-(var port 8001)
-
 (fn url [path]
-  (.. "http://localhost:" port (or path "")))
+  (.. "http://localhost:8001" (or path "")))
 
 (fn wait-for-server [attempts]
   (faccumulate [started? false i 1 attempts :until started?]
@@ -34,18 +32,18 @@
     k (. tbl k)))
 
 (use-fixtures
- :once
- (fn [t]
-   (when (os.getenv :SKIP_INTEGRATION)
-     (skip-test "skipping long test"))
-   (with-open [proc (io.popen (.. "podman run  -p " port ":80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
-     (let [pid (proc:read :*l)
-           attempts 10]
-       (if (wait-for-server attempts)
-           (do (t)
-               (kill pid))
-           (do (kill pid)
-               (skip-test (.. "coudln't connect to httpbin server after " attempts " attempts") false)))))))
+    :once
+  (fn [t]
+    (when (os.getenv :SKIP_INTEGRATION_TESTS)
+      (skip-test "skipping integration tests"))
+    (with-open [proc (io.popen (.. "podman run  -p 8001:80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
+      (let [pid (proc:read :*l)
+            attempts 10]
+        (if (wait-for-server attempts)
+            (do (t)
+                (kill pid))
+            (do (kill pid)
+                (skip-test (.. "coudln't connect to httpbin server after " attempts " attempts") false)))))))
 
 (fn cleanup-response [resp]
   (if (= :table (type resp))

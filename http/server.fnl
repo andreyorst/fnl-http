@@ -141,8 +141,8 @@
               (when (reader? body)
                 (tset resources body true))
               (tset headers :content-length
-                    (when (not (chunked-encoding? headers.transfer-encoding))
-                      headers.content-length))
+                (when (not (chunked-encoding? headers.transfer-encoding))
+                  headers.content-length))
               (respond client ok? status ?reason headers body))
             (where (ok? ?resp)
                    (or (= :string (type ?resp))
@@ -181,7 +181,8 @@ client as a response.  Two formats of return values are supported:
    field can contain the same kinds of values as above.
 
 Note, the files and readers are automatically closed when the
-connection to the client is closed."
+connection to the client is closed. Readers also automatically close
+when exhausted."
   (let [{: host : port} (or conn {})
         server (socket.bind (or host "localhost") (or port 0))]
     (server:settimeout 0)

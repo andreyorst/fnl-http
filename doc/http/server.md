@@ -29,7 +29,8 @@ client as a response.  Two formats of return values are supported:
    field can contain the same kinds of values as above.
 
 Note, the files and readers are automatically closed when the
-connection to the client is closed.
+connection to the client is closed. Readers also automatically close
+when exhausted.
 
 
 <!-- Generated with Fenneldoc v1.0.1

@@ -106,14 +106,14 @@ its headers, and a body stream."
       (tset :length (tonumber parsed-headers.Content-Length))
       (tset :http-client src)
       (tset :request-time
-            (when (and start time)
-              (ceil (* 1000 (- (time) start)))))
+          (when (and start time)
+            (ceil (* 1000 (- (time) start)))))
       (tset :body
-            (when (not= (upper (or method "")) :HEAD)
-              (case as
-                :raw (stream:read (or parsed-headers.Content-Length :*a))
-                (where (or :json :stream)) stream
-                _ (error (format "unsupported coersion method '%s'" as))))))))
+          (when (not= (upper (or method "")) :HEAD)
+            (case as
+              :raw (stream:read (or parsed-headers.Content-Length :*a))
+              (where (or :json :stream)) stream
+              _ (error (format "unsupported coersion method '%s'" as))))))))
 
 ;;; HTTP Request
 
@@ -152,12 +152,12 @@ its headers, and a body stream."
       (doto status
         (tset :headers headers)
         (tset :content
-              (when (not= (upper (or method "")) :HEAD)
-                (if parsed-headers.Content-Length
-                    (stream:read parsed-headers.Content-Length)
-                    (or (= :close (lower (or parsed-headers.Connection "")))
-                        (chunked-encoding? parsed-headers.Transfer-Encoding))
-                    (stream:read :*a))))))))
+            (when (not= (upper (or method "")) :HEAD)
+              (if parsed-headers.Content-Length
+                  (stream:read parsed-headers.Content-Length)
+                  (or (= :close (lower (or parsed-headers.Connection "")))
+                      (chunked-encoding? parsed-headers.Transfer-Encoding))
+                  (stream:read :*a))))))))
 
 ;;; URL
 

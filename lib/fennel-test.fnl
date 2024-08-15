@@ -318,8 +318,21 @@ comparison.  Tables as keys are supported."
                      :skip "-"
                      _ "F"))
                   (io.stdout:flush))
-   :stats-report (fn [warnings errors skipped-tests]
-                   (io.stdout:write "\n")
+   :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
+                   (-> "\n\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
+                       (string.format
+                        total-tests
+                        (accumulate [total-time 0 _ time (pairs test-times)]
+                          (+ total-time time))
+                        assertions
+                        (accumulate [n 0 _ test (ipairs skipped-tests)]
+                          (case test
+                            {: test-count
+                             :test-name nil} (+ n test-count)
+                            _ (+ n 1)))
+                        (length warnings)
+                        (length errors))
+                       io.write)
                    (each [_ message (ipairs warnings)]
                      (io.stderr:write "Warning: " message "\n"))
                    (each [_ {: ns : test-name : message} (ipairs skipped-tests)]
@@ -359,7 +372,21 @@ comparison.  Tables as keys are supported."
                             "\n"))
    :test-start #nil
    :test-report #nil
-   :stats-report (fn [warnings errors skipped-tests]
+   :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
+                   (-> "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
+                       (string.format
+                        total-tests
+                        (accumulate [total-time 0 _ time (pairs test-times)]
+                          (+ total-time time))
+                        assertions
+                        (accumulate [n 0 _ test (ipairs skipped-tests)]
+                          (case test
+                            {: test-count
+                             :test-name nil} (+ n test-count)
+                            _ (+ n 1)))
+                        (length warnings)
+                        (length errors))
+                       io.write)
                    (each [_ message (ipairs warnings)]
                      (io.stderr:write "Warning: " message "\n"))
                    (each [_ {: ns : test-name : message} (ipairs skipped-tests)]

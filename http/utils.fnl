@@ -4,6 +4,8 @@
 
 (local {: lower} string)
 
+(local {:type io/type} io)
+
 (fn <!? [port]
   "Takes a value from `port`.  Will return `nil` if closed.  Will block
 if nothing is available and used on the main thread.  Will park if
@@ -55,7 +57,12 @@ closed."
                       (header:match "chunked$")))
     true))
 
+
+(fn file? [x]
+  (and (io/type x) true))
+
 {: make-tcp-client
  : <!?
  : >!?
- : chunked-encoding?}
+ : chunked-encoding?
+ : file?}
