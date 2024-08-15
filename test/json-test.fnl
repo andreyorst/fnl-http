@@ -91,5 +91,4 @@
     (skip-test "no utf8 module found"))
   (testing "encode decode Fennel data"
     (assert-eq (require :test.data.valid)
-               (decode (encode (require :test.data.valid)))))
-  )
+               (decode (encode (require :test.data.valid))))))

@@ -86,9 +86,9 @@ Accepts a file handle or a path string which is opened automatically."
                   :peek (fn [f pattern]
                           (assert (= :number (type pattern)) "expected number of bytes to peek")
                           (when (open? f)
-                            (let [res (f:read pattern)]
-                              (f:seek :cur (- pattern))
-                              res)))
+                            (case (f:read pattern)
+                              res (do (f:seek :cur (- pattern))
+                                      res))))
                   :length (fn [f]
                             (when (open? f)
                               (let [current (f:seek :cur)

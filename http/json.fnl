@@ -101,10 +101,13 @@
      (case (rdr:peek 1)
        (where n (n:match "[-0-9.eE+]"))
        (do (rdr:read 1) (loop (.. numbers n)))
-       _ (tonumber numbers)))
+       _ (do (if (and (numbers:match "^%-?0")
+                      (numbers:match "^%-?0[^.]"))
+                 (error (.. "JSON parse error: invalid number " numbers))
+                 (tonumber numbers)))))
    (rdr:read 1)))
 
-(local -escapable
+(local escapable
   {"\"" "\""
    "'"  "\'"
    "\\" "\\"
@@ -112,7 +115,8 @@
    "f"  "\f"
    "n"  "\n"
    "r"  "\r"
-   "t"  "\t"})
+   "t"  "\t"
+   "/"  "/"})
 
 (fn parse-string [rdr]
   {:private true}
@@ -123,18 +127,17 @@
          "\\" (if escaped?
                   (loop (.. chars ch) false)
                   (case (rdr:peek 1)
-                    (where c (. -escapable c))
+                    (where c (. escapable c))
                     (loop chars true)
                     (where "u" _G.utf8 (: (or (rdr:peek 5) "") :match "u%x%x%x%x"))
                     (loop (.. chars (_G.utf8.char (tonumber (: (rdr:read 5) :match "u(%x%x%x%x)") 16))))
-                    c (do (rdr:read 1)
-                          (loop (.. chars c) false))))
+                    c (error (format "JSON parse error: illegal bacslash escape ('%s' (code %d))" c (c:byte)))))
          "\"" (if escaped?
                   (loop (.. chars ch) false)
                   chars)
          nil (error "JSON parse error: unterminated string")
-         (where c (and escaped? (. -escapable c)))
-         (loop (.. chars (. -escapable c)) false)
+         (where c (and escaped? (. escapable c)))
+         (loop (.. chars (. escapable c)) false)
          _ (loop (.. chars ch) false))))
    "" false))
 
@@ -153,7 +156,11 @@
                    (tset obj key value)
                    (skip-space rdr)
                    (case (rdr:peek 1)
-                     "," (do (rdr:read 1) (loop obj))
+                     "," (do (rdr:read 1)
+                             (skip-space rdr)
+                             (when (= (rdr:peek 1) "}")
+                               (error "JSON parse error: expected a value after a comma"))
+                             (loop obj))
                      "}" (do (rdr:read 1) obj)
                      _ (error (.. "JSON parse error: expected ',' or '}' after the value: " (encode value) ", got " _))))
              _ (error (.. "JSON parse error: expected colon after the key: " (encode key) ", got " _))))))
@@ -172,7 +179,11 @@
            (tset arr len val)
            (skip-space rdr)
            (case (rdr:peek 1)
-             "," (do (rdr:read 1) (loop arr))
+             "," (do (rdr:read 1)
+                     (skip-space rdr)
+                     (when (= (rdr:peek 1) "]")
+                       (error "JSON parse error: expected a value after a comma"))
+                     (loop arr))
              "]" (do (rdr:read 1) arr)
              _ (error (.. "JSON parse error: expected ',' or ']' after the value: "
                           (encode val) ", got " _))))))
@@ -184,22 +195,26 @@ and `read` methods or a string.  Parses the contents to a Lua table."
   (let [rdr (if (reader? data) data
                 (string? data) (string-reader data)
                 (file? data) (file-reader data)
-                (error "expected a reader, or a string as input" 2))]
-    ((fn loop []
-       (case (rdr:peek 1)
-         "{" (parse-obj rdr loop)
-         "[" (parse-arr rdr loop)
-         "\"" (parse-string rdr)
-         (where "t" (= "true" (rdr:peek 4))) (do (rdr:read 4) true)
-         (where "f" (= "false" (rdr:peek 5))) (do (rdr:read 5) false)
-         (where "n" (= "null" (rdr:peek 4))) (do (rdr:read 4) nil)
-         (where c (c:match "[ \t\n]")) (loop (skip-space rdr))
-         (where n (n:match "%-") (: (rdr:peek 2) :match "%-[0-9]")) (parse-num rdr)
-         (where n (n:match "[0-9]")) (parse-num rdr)
-         nil (error "JSON parse error: end of stream")
-         c (error (format
-                   "JSON parse error: unexpected token ('%s' (code %d))"
-                   c (c:byte))))))))
+                (error "expected a reader, or a string as input" 2))
+        value ((fn loop []
+                 (case (rdr:peek 1)
+                   "{" (parse-obj rdr loop)
+                   "[" (parse-arr rdr loop)
+                   "\"" (parse-string rdr)
+                   (where "t" (= "true" (rdr:peek 4))) (do (rdr:read 4) true)
+                   (where "f" (= "false" (rdr:peek 5))) (do (rdr:read 5) false)
+                   (where "n" (= "null" (rdr:peek 4))) (do (rdr:read 4) nil)
+                   (where c (c:match "[ \t\n]")) (loop (skip-space rdr))
+                   (where n (n:match "%-") (: (rdr:peek 2) :match "%-[0-9]")) (parse-num rdr)
+                   (where n (n:match "[0-9]")) (parse-num rdr)
+                   nil (error "JSON parse error: end of stream" 2)
+                   c (error (format
+                             "JSON parse error: unexpected token ('%s' (code %d))"
+                             c (c:byte)) 2))))]
+    (skip-space rdr)
+    (case (rdr:read 1)
+      c (error (format "JSON parse error: extra data after the parsed value ('%s' (code %d))" c (c:byte)) 2))
+    value))
 
 (setmetatable
  {: encode : decode}
