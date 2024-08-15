@@ -63,7 +63,7 @@
     (testing "read-lines"
       (with-open [rdr (readers.file-reader file)]
         (assert-eq "foo" (rdr:read :*l))
-        (assert-eq "bar\r" (rdr:read :l))
+        (assert-eq "bar\r" (rdr:read :*l))
         (assert-eq "baz" (rdr:read :*l))))
     (testing "line iterator"
       (with-open [rdr (readers.file-reader file)]
