@@ -174,7 +174,7 @@ interface declarations."
        (setmetatable
         {}
         {:__index ,index
-         :name "reify"
+         :__name "reify"
          :__fennelview
          #(.. "#<" (: (tostring $) :gsub "table:" "reify:")
               ": " ,(table.concat protocols ", ") ">")}))))
