@@ -140,6 +140,8 @@
                     (loop chars true)
                     (where "u" _G.utf8 (: (or (rdr:peek 5) "") :match "u%x%x%x%x"))
                     (loop (.. chars (_G.utf8.char (tonumber (: (rdr:read 5) :match "u(%x%x%x%x)") 16))))
+                    (where "u" (= nil _G.utf8))
+                    (error "JSON parse error: unable to parse Unicode escape sequence - utf8 module is unavailable")
                     c (error (format "JSON parse error: illegal bacslash escape ('%s' (code %d))" c (c:byte)))))
          "\"" (if escaped?
                   (loop (.. chars ch) false)
