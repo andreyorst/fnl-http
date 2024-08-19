@@ -62,31 +62,48 @@ Deep compare values:
           formatted (if (> (string-len (.. "(eq )" s1 s2)) 80)
                         (string.format "(eq %s\n    %s)" s1 s2)
                         (string.format "(eq %s %s)" s1 s2))]
-      `(let [{:eq eq#} (require ,lib-name)
+      `(let [{:eq eq# :wrap-test-error wrap-test-error#} (require ,lib-name)
              tostring# (match (pcall require :fennel)
                          (true fennel#) #(fennel#.view $ {:one-line? true})
                          false tostring)
+             traceback# (or (. (or package.loaded.fennel _G.debug {})
+                               :traceback)
+                            (fn [x#] x#))
              (lok# left#) ,(if (. (get-scope) :vararg)
-                               `(pcall (fn [...] ,expr1) ...)
-                               `(pcall (fn [] ,expr1)))
+                               `(xpcall (fn [...] ,expr1) traceback# ...)
+                               `(xpcall (fn [] ,expr1) traceback#))
              (rok# right#) ,(if (. (get-scope) :vararg)
-                                `(pcall (fn [...] ,expr2) ...)
-                                `(pcall (fn [] ,expr2)))]
+                                `(xpcall (fn [...] ,expr2) traceback# ...)
+                                `(xpcall (fn [] ,expr2) traceback#))
+             description# ,(if (in-scope? state)
+                               `(or (and (. ,state :description)
+                                         (next (. ,state :description))
+                                         (: "testing: %s\n" :format (table.concat (. ,state :description) " ")))
+                                    "")
+                               "")
+             assert-eq# (fn [left# right#]
+                          (assert (eq# left# right#)
+                                  (: "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s" :format
+                                     ,formatted
+                                     (tostring# left#)
+                                     (tostring# right#)
+                                     ,(if msg `(.. " Info: " (tostring# ,msg)) ""))))]
          (if (not lok#)
-             (error (: "in expression:\n%s\n%s\n" :format ,s1 (tostring# left#)))
+             (-> (: "%sin expression:\n%s\n%s\n" :format description# ,s1 left#)
+                 wrap-test-error#
+                 error)
              (not rok#)
-             (error (: "in expression:\n%s\n%s\n" :format ,s2 (tostring# right#)))
-             (do ,(when (in-scope? state)
-                    `(tset ,state :assertions
-                           (+ (. ,state :assertions) 1)))
-                 (assert (eq# left# right#)
-                         (string.format
-                          "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
-                          ,formatted
-                          (tostring# left#)
-                          (tostring# right#)
-                          ,(if msg `(.. " Info: " (tostring# ,msg)) "")))))
-         nil)))
+             (-> (: "%sin expression:\n%s\n%s\n" :format description# ,s2 right#)
+                 wrap-test-error#
+                 error))
+         ,(when (in-scope? state)
+            `(tset ,state :assertions
+               (+ (. ,state :assertions) 1)))
+         (case (xpcall assert-eq# traceback# left# right#)
+           (false msg#)
+           (-> (: "%s%s" :format description# msg#)
+               wrap-test-error#
+               error)))))
 
   (fn assert-ne
     [expr1 expr2 msg]
@@ -96,33 +113,50 @@ Deep compare values:
     (let [s1 (view expr1 {:one-line? true})
           s2 (view expr2 {:one-line? true})
           formatted (if (> (string-len (.. "(not (eq ))" s1 s2)) 80)
-                        (string.format "(not (eq %s\n         %s))" s1 s2)
-                        (string.format "(not (eq %s %s))" s1 s2))]
-      `(let [{:eq eq#} (require ,lib-name)
+                        (: "(not (eq %s\n         %s))" :format s1 s2)
+                        (: "(not (eq %s %s))" :format s1 s2))]
+      `(let [{:eq eq# :wrap-test-error wrap-test-error#} (require ,lib-name)
              tostring# (match (pcall require :fennel)
                          (true fennel#) #(fennel#.view $ {:one-line? true})
                          false tostring)
+             traceback# (or (. (or package.loaded.fennel _G.debug {})
+                               :traceback)
+                            (fn [x#] x#))
              (lok# left#) ,(if (. (get-scope) :vararg)
-                               `(pcall (fn [...] ,expr1) ...)
-                               `(pcall (fn [] ,expr1)))
+                               `(xpcall (fn [...] ,expr1) traceback# ...)
+                               `(xpcall (fn [] ,expr1) traceback#))
              (rok# right#) ,(if (. (get-scope) :vararg)
-                                `(pcall (fn [...] ,expr2) ...)
-                                `(pcall (fn [] ,expr2)))]
+                                `(xpcall (fn [...] ,expr2) traceback# ...)
+                                `(xpcall (fn [] ,expr2) traceback#))
+             description# ,(if (in-scope? state)
+                               `(or (and (. ,state :description)
+                                         (next (. ,state :description))
+                                         (: "testing: %s\n" :format (table.concat (. ,state :description) " ")))
+                                    "")
+                               "")
+             eq# (fn [left# right#]
+                   (assert (not (eq# left# right#))
+                           (: "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s" :format
+                              ,formatted
+                              (tostring# left#)
+                              (tostring# right#)
+                              ,(if msg `(.. " Info: " (tostring# ,msg)) ""))))]
          (if (not lok#)
-             (error (: "in expression:\n%s\n%s\n" :format ,s1 (tostring# left#)))
+             (-> (: "%sin expression:\n%s\n%s\n" :format description# ,s1 left#)
+                 wrap-test-error#
+                 error)
              (not rok#)
-             (error (: "in expression:\n%s\n%s\n" :format ,s2 (tostring# right#)))
-             (do ,(when (in-scope? state)
-                    `(tset ,state :assertions
-                           (+ (. ,state :assertions) 1)))
-                 (assert (not (eq# left# right#))
-                         (string.format
-                          "assertion failed for expression:\n%s\n Left: %s\nRight: %s\n%s"
-                          ,formatted
-                          (tostring# left#)
-                          (tostring# right#)
-                          ,(if msg `(.. " Info: " (tostring# ,msg)) "")))))
-         nil)))
+             (-> (: "%sin expression:\n%s\n%s\n" :format description# ,s2 right#)
+                 wrap-test-error#
+                 error))
+         ,(when (in-scope? state)
+            `(tset ,state :assertions
+               (+ (. ,state :assertions) 1)))
+         (case (xpcall eq# traceback# left# right#)
+           (false msg#)
+           (-> (: "%s%s" :format description# msg#)
+               wrap-test-error#
+               error)))))
 
   (fn assert-is
     [expr msg]
@@ -133,52 +167,79 @@ Deep compare values:
 (assert-is (= 1 2 3))
 ;; => runtime error: assertion failed for (= 1 2 3)
 ```"
-    `(let [tostring# (match (pcall require :fennel)
+    `(let [{:wrap-test-error wrap-test-error#} (require ,lib-name)
+           tostring# (match (pcall require :fennel)
                        (true fennel#) #(fennel#.view $ {:one-line? true})
                        false tostring)
+           traceback# (or (. (or package.loaded.fennel _G.debug {})
+                             :traceback)
+                          (fn [x#] x#))
            (suc# res#) ,(if (. (get-scope) :vararg)
-                            `(pcall (fn [...] ,expr) ...)
-                            `(pcall (fn [] ,expr)))]
-       (if suc#
-           (do ,(when (in-scope? state)
-                  `(tset ,state :assertions
-                         (+ (. ,state :assertions) 1)))
-               (assert res# (string.format
-                             "assertion failed for expression:\n%s\nResult: %s\n%s"
-                             ,(view expr {:one-line? true})
-                             (tostring res#)
-                             ,(if msg `(.. "  Info: " (tostring# ,msg)) "")))
-               nil)
-           (error (string.format
-                   "in expression: %s: %s\n"
-                   ,(view expr {:one-line? true})
-                   res#)))))
+                            `(xpcall (fn [...] ,expr) traceback# ...)
+                            `(xpcall (fn [] ,expr) traceback#))
+           description# ,(if (in-scope? state)
+                             `(or (and (. ,state :description)
+                                       (next (. ,state :description))
+                                       (: "testing: %s\n" :format (table.concat (. ,state :description) " ")))
+                                  "")
+                             "")
+           is# (fn [expr#]
+                 (assert expr#
+                         (: "assertion failed for expression:\n%s\nResult: %s\n%s" :format
+                            ,(view expr {:one-line? true})
+                            (tostring res#)
+                            ,(if msg `(.. "  Info: " (tostring# ,msg)) ""))))]
+       (when (not suc#)
+         (-> (: "%sin expression: %s: %s\n" :format description# ,(view expr {:one-line? true}) res#)
+             wrap-test-error#
+             error))
+       ,(when (in-scope? state)
+          `(tset ,state :assertions
+             (+ (. ,state :assertions) 1)))
+       (case (xpcall is# traceback# res#)
+         (false msg#)
+         (-> (: "%s%s" :format description# msg#)
+             wrap-test-error#
+             error))))
 
   (fn assert-not
     [expr msg]
     "Assert `expr' for not truth. Generates more verbose message unless the
 `msg` is provided.  Works the same as `assert-is'."
-    `(let [tostring# (match (pcall require :fennel)
+    `(let [{:wrap-test-error wrap-test-error#} (require ,lib-name)
+           tostring# (match (pcall require :fennel)
                        (true fennel#) #(fennel#.view $ {:one-line? true})
                        false tostring)
+           traceback# (or (. (or package.loaded.fennel _G.debug {})
+                             :traceback)
+                          (fn [x#] x#))
            (suc# res#) ,(if (. (get-scope) :vararg)
-                            `(pcall (fn [...] ,expr) ...)
-                            `(pcall (fn [] ,expr)))]
-       (if suc#
-           (do ,(when (in-scope? state)
-                  `(tset ,state :assertions
-                         (+ (. ,state :assertions) 1)))
-               (assert (not res#)
-                       (string.format
-                        "assertion failed for expression:\n(not %s)\nResult: %s\n%s"
-                        ,(view expr {:one-line? true})
-                        (tostring res#)
-                        ,(if msg `(.. "  Info: " (tostring# ,msg)) "")))
-               nil)
-           (error (string.format
-                   "in expression: (not %s): %s\n"
-                   ,(view expr {:one-line? true})
-                   res#)))))
+                            `(xpcall (fn [...] ,expr) traceback# ...)
+                            `(xpcall (fn [] ,expr) traceback#))
+           description# ,(if (in-scope? state)
+                             `(or (and (. ,state :description)
+                                       (next (. ,state :description))
+                                       (: "testing: %s\n" :format (table.concat (. ,state :description) " ")))
+                                  "")
+                             "")
+           isnt# (fn [expr#]
+                   (assert (not expr#)
+                           (: "assertion failed for expression:\n%s\nResult: %s\n%s" :format
+                              ,(view expr {:one-line? true})
+                              (tostring res#)
+                              ,(if msg `(.. "  Info: " (tostring# ,msg)) ""))))]
+       (when (not suc#)
+         (-> (: "%sin expression: %s: %s\n" :format description# ,(view expr {:one-line? true}) res#)
+             wrap-test-error#
+             error))
+       ,(when (in-scope? state)
+          `(tset ,state :assertions
+             (+ (. ,state :assertions) 1)))
+       (case (xpcall isnt# traceback# res#)
+         (false msg#)
+         (-> (: "%s%s" :format description# msg#)
+             wrap-test-error#
+             error))))
 
   (fn deftest
     [name ...]
@@ -200,19 +261,49 @@ Deep compare values:
 
   (fn testing
     [description ...]
-    "Simply wraps the test code with a `description`.
+    "Wraps the test code with a `description` such that
+assertions would report the testing context.
 
 # Example
+
+Wrapping a single test:
+
 ``` fennel :skip-test
-(testing \"testing something\"
-  ;; test body
-  )
+(deftest something-test
+  (testing \"testing something\"
+    ;; test body
+  ))
 ```
-"
+
+Wrapping multiple tests with nested messages:
+
+``` fennel :skip-test
+(deftest something-test
+  (testing \"testing\"
+    (testing \"something\"
+      ;; test body
+      )
+    (testing \"something else\"
+      ;; test body
+      )))
+```
+
+When an error occurs, nested `testing` descriptions are accumulated
+into a single string."
     (assert-compile (= :string (type description))
                     "description must be a string"
                     description)
-    `(do ,...))
+    `(do ,(when (in-scope? state)
+            `(if (. ,state :description)
+                 (table.insert (. ,state :description) ,description)
+                 (tset ,state :description [,description])))
+         (let [pack# (fn [...] (doto [...] (tset :n (select :# ...))))
+               (ok# res#) (pcall (fn [] (pack# ((fn [] ,...)))))]
+           ,(when (in-scope? state)
+              `(table.remove (or (. ,state :description) [])))
+           (if ok#
+               (table.unpack res# 1 res#.n)
+               (error res#)))))
 
   (fn use-fixtures [fixture-type ...]
     "Wrap test runs in a `fixture` function to perform setup and
@@ -255,13 +346,13 @@ Firstures are active only when the thests are being run by the
                        fixture#)))))))
 
   (tset macro-loaded lib-name
-        {: deftest
-         : testing
-         : assert-eq
-         : assert-ne
-         : assert-is
-         : assert-not
-         : use-fixtures}))
+    {: deftest
+     : testing
+     : assert-eq
+     : assert-ne
+     : assert-is
+     : assert-not
+     : use-fixtures}))
 
 ;;; Equality
 
@@ -320,8 +411,8 @@ comparison.  Tables as keys are supported."
                   (io.stdout:flush))
    :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
                    (-> "\n\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
-                       (string.format
-                        total-tests
+                       (:
+                        total-tests :format
                         (accumulate [total-time 0 _ time (pairs test-times)]
                           (+ total-time time))
                         assertions
@@ -329,7 +420,7 @@ comparison.  Tables as keys are supported."
                           (case test
                             {: test-count
                              :test-name nil} (+ n test-count)
-                            _ (+ n 1)))
+                             _ (+ n 1)))
                         (length warnings)
                         (length errors))
                        io.write)
@@ -374,8 +465,8 @@ comparison.  Tables as keys are supported."
    :test-report #nil
    :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
                    (-> "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
-                       (string.format
-                        total-tests
+                       (:
+                        total-tests :format
                         (accumulate [total-time 0 _ time (pairs test-times)]
                           (+ total-time time))
                         assertions
@@ -383,7 +474,7 @@ comparison.  Tables as keys are supported."
                           (case test
                             {: test-count
                              :test-name nil} (+ n test-count)
-                            _ (+ n 1)))
+                             _ (+ n 1)))
                         (length warnings)
                         (length errors))
                        io.write)
@@ -486,6 +577,17 @@ comparison.  Tables as keys are supported."
       (set io.wirte io/write)
       (set fd.write fd/write)
       (unpack res 1 res.n))))
+
+(fn wrap-test-error [msg-or-fn]
+  "Wraps error message `msg-or-fn` in a stack-preserving form.
+Error message can be a string or a function that returns the error
+string.  Only for internal use."
+  (let [msg-fn (case (type msg-or-fn)
+                 :function msg-or-fn
+                 _ (fn [] msg-or-fn))]
+    (->> {:__tostring msg-fn
+          :__fennelview msg-fn}
+         (setmetatable {}))))
 
 ;;;; Test loading
 
@@ -602,7 +704,7 @@ comparison.  Tables as keys are supported."
               (reporter.ns-report ns :skip)
               (set state.executed-test-count
                 (math.max 0 (- state.executed-test-count test-count)))
-                (table.insert skipped-tests {: ns :message ?message : test-count}))
+              (table.insert skipped-tests {: ns :message ?message : test-count}))
             (false message)
             (do (table.insert errors {: ns : message})
                 (reporter.ns-report ns false))
@@ -675,4 +777,4 @@ early and mark it as skipped. The optional `reason` argument is a
 message to display in the log if the reporter is configured to do so."
   (error [Skip reason]))
 
-{: eq : run-tests : skip-test}
+{: eq : run-tests : skip-test : wrap-test-error}
