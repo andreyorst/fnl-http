@@ -441,10 +441,12 @@
          (. :body :args)))))
 
 (deftest errornous-response-test
-  (testing "4XX codes"
+  (testing "common 4XX codes"
     (each [_ method (ipairs [:delete :get :patch :post :put])]
       (let [request (. http method)]
-        (for [code 400 499]
+        (each [_ code (ipairs [400 401 402 403 404 405 406 407 408 409
+                               410 411 412 413 414 415 416 417 418 421
+                               422 423 424 425 426 428 429 431 451])]
           (assert-not
            (pcall request (url (.. "/status/" code))))
           (assert-eq
@@ -462,10 +464,10 @@
                      {:async? true :throw-errors? false}
                      #(a.>! resp $) #nil)
             (assert-eq code (. (a.<!! resp) :status)))))))
-  (testing "5XX codes"
+  (testing "common 5XX codes"
     (each [_ method (ipairs [:delete :get :patch :post :put])]
       (let [request (. http method)]
-        (for [code 500 599]
+        (each [_ code (ipairs [500 501 502 503 504 505 506 507 508 510 511])]
           (assert-not
            (pcall request (url (.. "/status/" code))))
           (assert-eq
