@@ -398,6 +398,48 @@ comparison.  Tables as keys are supported."
 
 ;;;; Reporters
 
+(fn default-stats-report [warnings errors skipped-tests assertions total-tests test-times]
+  (-> "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
+      (: :format total-tests
+         (accumulate [total-time 0 _ time (pairs test-times)]
+           (+ total-time time))
+         assertions
+         (accumulate [n 0 _ test (ipairs skipped-tests)]
+           (case test
+             {: test-count
+              :test-name nil} (+ n test-count)
+             _ (+ n 1)))
+         (length warnings)
+         (length errors))
+      io.write)
+  (each [_ message (ipairs warnings)]
+    (io.stderr:write (: "Warning: %s\n" :format message)))
+  (when (and (next warnings) (next skipped-tests))
+    (io.stderr:write "\n"))
+  (each [_ {: ns : test-name : message} (ipairs skipped-tests)]
+    (if test-name
+        (io.stderr:write
+         (: "In '%s' skipped test '%s'%s" :format ns test-name
+            (if message (: ": %s\n" :format message) "\n")))
+        (io.stderr:write
+         (: "In '%s' skipped all tests%s" :format ns
+            (if message (: ": %s\n" :format message) "\n")))))
+  (when (and (next skipped-tests) (next errors))
+    (io.stderr:write "\n"))
+  (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
+    (io.stderr:write
+     (: "Error in '%s'%s%s" :format ns
+        (if test-name
+            (: " in test '%s'" :format test-name)
+            "")
+        (if message (: ":\n%s\n" :format message) "\n")))
+    (when (and stdout (not= "" stdout))
+      (io.stderr:write
+       (: "Test stdout:\n%s" :format stdout)))
+    (when (and stderr (not= "" stderr))
+      (io.stderr:write
+       (: "Test stderr:\n%s" :format stderr)))))
+
 (local dots
   {:ns-start #(do (io.stdout:write "(") (io.stdout:flush))
    :ns-report #(do (io.stdout:write ")") (io.stdout:flush))
@@ -409,46 +451,7 @@ comparison.  Tables as keys are supported."
                      :skip "-"
                      _ "F"))
                   (io.stdout:flush))
-   :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
-                   (-> "\n\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
-                       (:
-                        total-tests :format
-                        (accumulate [total-time 0 _ time (pairs test-times)]
-                          (+ total-time time))
-                        assertions
-                        (accumulate [n 0 _ test (ipairs skipped-tests)]
-                          (case test
-                            {: test-count
-                             :test-name nil} (+ n test-count)
-                             _ (+ n 1)))
-                        (length warnings)
-                        (length errors))
-                       io.write)
-                   (each [_ message (ipairs warnings)]
-                     (io.stderr:write "Warning: " message "\n"))
-                   (each [_ {: ns : test-name : message} (ipairs skipped-tests)]
-                     (if test-name
-                         (io.stderr:write
-                          "In '" ns "' skipped test '" test-name
-                          (if message (.. "': " message "\n") "'\n"))
-                         (io.stderr:write
-                          "In '" ns "' skipped all tests"
-                          (if message (.. ": " message "\n") "\n"))))
-                   (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
-                     (io.stderr:write
-                      "Error in '" ns
-                      (if test-name
-                          (.. "' in test '" test-name "'")
-                          "")
-                      (if message (.. ":\n" message "\n") "\n"))
-                     (when (and stdout (not= "" stdout))
-                       (io.stderr:write
-                        "Test stdout:\n"
-                        stdout))
-                     (when (and stderr (not= "" stderr))
-                       (io.stderr:write
-                        "Test stderr:\n"
-                        stderr))))})
+   :stats-report default-stats-report})
 
 (local namespaces
   {:ns-start (fn [ns]
@@ -463,46 +466,7 @@ comparison.  Tables as keys are supported."
                             "\n"))
    :test-start #nil
    :test-report #nil
-   :stats-report (fn [warnings errors skipped-tests assertions total-tests test-times]
-                   (-> "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n\n"
-                       (:
-                        total-tests :format
-                        (accumulate [total-time 0 _ time (pairs test-times)]
-                          (+ total-time time))
-                        assertions
-                        (accumulate [n 0 _ test (ipairs skipped-tests)]
-                          (case test
-                            {: test-count
-                             :test-name nil} (+ n test-count)
-                             _ (+ n 1)))
-                        (length warnings)
-                        (length errors))
-                       io.write)
-                   (each [_ message (ipairs warnings)]
-                     (io.stderr:write "Warning: " message "\n"))
-                   (each [_ {: ns : test-name : message} (ipairs skipped-tests)]
-                     (if test-name
-                         (io.stderr:write
-                          "In '" ns "' skipped test '" test-name
-                          (if message (.. ": " message "\n") "\n"))
-                         (io.stderr:write
-                          "In '" ns "' skipped all tests"
-                          (if message (.. ": " message "\n") "\n"))))
-                   (each [_ {: ns : test-name : message : stdout : stderr} (ipairs errors)]
-                     (io.stderr:write
-                      "Error in '" (or ns "unknown ns")
-                      (if test-name
-                          (.. "' in test '" test-name "'")
-                          "")
-                      (if message (.. ":\n" message "\n") "\n"))
-                     (when (and stdout (not= "" stdout))
-                       (io.stderr:write
-                        "Test stdout:\n"
-                        stdout))
-                     (when (and stderr (not= "" stderr))
-                       (io.stderr:write
-                        "Test stderr:\n"
-                        stderr))))})
+   :stats-report default-stats-report})
 
 ;;;; Configuration
 
@@ -691,7 +655,7 @@ string.  Only for internal use."
                                     (false message)
                                     (do (set ok? false)
                                         (reporter.test-report
-                                         false ns test-name message)
+                                         false ns test-name (tostring message))
                                         (table.insert errors {: ns : test-name : message
                                                               :stdout (table.concat out "")
                                                               :stderr (table.concat err "")}))
@@ -717,7 +681,7 @@ string.  Only for internal use."
       t1))
 
 (fn run-tests [modules opts]
-  "Run tests in the given `modules`.
+  "Run tests in the given `modules` accordingly to the `opts` table.
 Each module is loaded and inspected for tests defined with the
 `deftest' macro.  Then, according to the configuration file
 `.fennel-test`, the tests are shuffled, ran, and report is constructed
@@ -755,7 +719,7 @@ macro. these fixtures are used accordingly to their specs.
                  :shuffle? true}
                 opts))]
     (io.stdout:write
-     "Test run at " (os.date) ", seed: " config.seed "\n")
+     "Test run at " (os.date) ", seed: " config.seed "\n\n")
     (load-tests modules config tests fixtures state)
     (setup-fixtures :once fixtures)
     (setup-fixtures :each fixtures)

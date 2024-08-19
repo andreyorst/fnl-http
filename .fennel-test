@@ -43,14 +43,14 @@
 (fn ns-start [ns]
   (io.write
    (string.format
-    "\n%sRunning tests in %s\n"
+    "%sRunning tests in %s\n"
     (pad 1 nil)
     (colorize ns :aubergine))))
 
 (fn ns-report [_ ok?]
   (io.write
    (string.format
-    "%s%s\n"
+    "%s%s\n\n"
     (pad 2 2)
     (case ok?
       true (colorize "PASS" :salad)
@@ -115,7 +115,7 @@
   (let [total-time
         (accumulate [total-time 0 _ time (pairs test-times)]
           (+ total-time time))]
-    (io.write (string.format "\nRan %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n"
+    (io.write (string.format "Ran %d tests in %0.4f seconds with %d assertions, %d skipped, %d warnings, %d errors\n"
                              total-tests total-time assertions
                              (accumulate [n 0 _ test (ipairs skipped-tests)]
                                (case test
