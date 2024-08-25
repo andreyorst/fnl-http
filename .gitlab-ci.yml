@@ -1,11 +1,12 @@
 ---
+image: alpine:edge
 
 stages:
   - test
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  fennel: main
+  fennel: 1.5.1
   SKIP_INTEGRATION_TESTS: true
 
 .install_fennel: &fennel |-
@@ -26,7 +27,6 @@ variables:
   - eval $(luarocks --lua-version ${LUA#lua} path)
 
 Lua5.2:
-  image: alpine:edge
   stage: test
   before_script:
     - export LUA=lua5.2
@@ -35,7 +35,6 @@ Lua5.2:
     - fennel --lua $LUA tasks/run-tests
 
 Lua5.3:
-  image: alpine:edge
   stage: test
   before_script:
     - export LUA=lua5.3
@@ -44,7 +43,6 @@ Lua5.3:
     - fennel --lua $LUA tasks/run-tests
 
 Lua5.4:
-  image: alpine:edge
   stage: test
   before_script:
     - export LUA=lua5.4
