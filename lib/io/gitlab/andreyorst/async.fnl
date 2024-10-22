@@ -1708,4 +1708,5 @@ default, unless `buf-or-n` is given."
  {: FixedBuffer
   : SlidingBuffer
   : DroppingBuffer
-  : PromiseBuffer}}
+  : PromiseBuffer}
+ :__VERSION "1.6.35"}
