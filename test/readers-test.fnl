@@ -1,7 +1,7 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local readers
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local (ltn? ltn12)
   (pcall require :ltn12))

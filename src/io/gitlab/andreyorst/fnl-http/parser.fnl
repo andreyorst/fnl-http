@@ -1,19 +1,19 @@
 (local {: make-reader
         : string-reader}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local {: decode-value
         : capitalize-header}
-  (require :http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.headers))
 
 (local {: <!? : chunked-encoding?}
-  (require :http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {: timeout}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: body-reader : chunked-body-reader}
-  (require :http.body))
+  (require :io.gitlab.andreyorst.fnl-http.body))
 
 (local {: format : upper : lower} string)
 

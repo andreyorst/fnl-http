@@ -1,6 +1,6 @@
 (local {: >! : <! : >!! : <!!
         : chan : chan? : main-thread?}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: lower} string)
 
@@ -59,6 +59,7 @@ closed."
 
 
 (fn file? [x]
+  "Test if `x` is a file."
   (and (io/type x) true))
 
 {: make-tcp-client

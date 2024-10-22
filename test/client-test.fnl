@@ -1,13 +1,13 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local {: skip-test}
-  (require :lib.fennel-test))
+  (require :io.gitlab.andreyorst.fennel-test))
 
 (local http
-  (require :http.client))
+  (require :io.gitlab.andreyorst.fnl-http.client))
 
 (local a
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (fn wait-for-server [attempts port]
   (faccumulate [started? false i 1 attempts :until started?]
@@ -21,7 +21,11 @@
 (use-fixtures
     :once
   (fn [t]
-    (with-open [proc (io.popen "fennel test/echo-server.fnl & echo $!")]
+    (with-open [proc (io.popen (.. "fennel"
+                                   " --add-fennel-path './lib/?.fnl'"
+                                   " --add-fennel-path './src/?.fnl'"
+                                   " test/echo-server.fnl"
+                                   " & echo $!"))]
       (let [pid (proc:read :*l)
             attempts 100]
         (if (wait-for-server attempts 8000)

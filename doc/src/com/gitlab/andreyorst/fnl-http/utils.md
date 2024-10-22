@@ -5,6 +5,7 @@
 - `<!?`
 - `>!?`
 - [`chunked-encoding?`](#chunked-encoding)
+- [`file?`](#file)
 - [`make-tcp-client`](#make-tcp-client)
 
 ## `<!?`
@@ -37,6 +38,15 @@ Function signature:
 ```
 
 Test if `transfer-encoding` header is chunked.
+
+## `file?`
+Function signature:
+
+```
+(file? x)
+```
+
+Test if `x` is a file.
 
 ## `make-tcp-client`
 Function signature:

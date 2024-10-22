@@ -1,17 +1,17 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local {: build-http-response
         : build-http-request}
-  (require :http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.builder))
 
 (local {: parse-http-response
         : parse-http-request
         : parse-url}
-  (require :http.parser))
+  (require :io.gitlab.andreyorst.fnl-http.parser))
 
 (local {: string-reader
         : file-reader}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (fn select-keys [tbl keys]
   (collect [_ k (ipairs keys)]

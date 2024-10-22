@@ -1,0 +1,53 @@
+;; -*- mode: fennel; -*- vi:ft=fennel
+
+;;; project variables
+
+(local source-file
+  "src/io/gitlab/andreyorst/fnl-http/init.lua")
+
+(local target
+  ["target" "io" "gitlab" "andreyorst"])
+
+;;; install script
+
+(local fs
+  (case (pcall require :lfs)
+    (true lfs) lfs
+    _ (error "install task requires the luafilesystem dependency")))
+
+(local unpack (or _G.unpack table.unpack))
+(local numargs (select :# (unpack arg)))
+
+(var prefix (os.getenv "PREFIX"))
+
+(when (> numargs 1)
+  (for [i 1 numargs]
+    (case (. arg i)
+      "--prefix" (set prefix (. arg (+ i 1))))))
+
+(when prefix
+  (tset target 1 prefix))
+
+(when (not (fs.attributes source-file))
+  (os.execute "fennel tasks/build"))
+
+(local source
+  (with-open [src (io.open source-file :r)]
+    (src:read :*a)))
+
+(each [_ dir (ipairs target)]
+  (case (fs.mkdir dir)
+    true nil
+    (nil _ 17) nil
+    (_ ?err ?code)
+    (error (string.format "error code %s: %s"
+                          (or ?code "unknwon")
+                          (or ?err "unknown error"))))
+  (case (fs.chdir dir)
+    true nil
+    (_ ?err) (error (.. "error: " (or ?err "unknown error")))))
+
+(with-open [out (io.open "fnl-http.lua" :w)]
+  (case out
+    out (out:write source)
+    nil (error (.. "can't open " source-file " for writing"))))

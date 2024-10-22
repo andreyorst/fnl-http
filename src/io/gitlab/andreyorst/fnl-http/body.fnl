@@ -1,17 +1,17 @@
 (local {: headers->string}
-  (require :http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.builder))
 
 (local {: reader? : file-reader : string-reader : make-reader}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local {: urlencode}
-  (require :http.url))
+  (require :io.gitlab.andreyorst.fnl-http.url))
 
 (local {: chan? : timeout}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: <!? : chunked-encoding?}
-  (require :http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {: format : lower}
   string)
@@ -20,7 +20,7 @@
   io)
 
 (local {: encode}
-  (require :http.json))
+  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (fn get-chunk-data [src]
   "Obtain a single chunk from `src`."

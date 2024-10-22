@@ -13,7 +13,8 @@ Function signature:
 ```
 
 Accepts `data`, which can be either a `Reader` that supports `peek`,
-and `read` methods or a string.  Parses the contents to a Lua table.
+and `read` methods, a string, or a file handle.  Parses the first
+logical JSON value to a Lua value.
 
 ## `encode`
 Function signature:

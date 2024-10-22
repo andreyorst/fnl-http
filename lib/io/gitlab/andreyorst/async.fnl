@@ -16,8 +16,8 @@ You must not remove this notice, or any other, from this software.")
 
 ;;; Helpers
 
-(set package.preload.reduced
-  (or package.preload.reduced
+(tset package.preload "io.gitlab.andreyorst.reduced"
+  (or (. package.preload "io.gitlab.andreyorst.reduced")
       ;; https://gitlab.com/andreyorst/reduced.lua
       #(let [Reduced
              {:__fennelview
@@ -37,7 +37,7 @@ of termination."
          {:is_reduced reduced? : reduced :reduced? reduced?})))
 
 (local {: reduced : reduced?}
-  (require :reduced))
+  (require :io.gitlab.andreyorst.reduced))
 
 (local (gethook sethook)
   (case _G.debug

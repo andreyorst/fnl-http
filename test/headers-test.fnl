@@ -1,7 +1,7 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local {: capitalize-header}
-  (require :http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.headers))
 
 (deftest capitalize-header-test
   (testing "different separators"

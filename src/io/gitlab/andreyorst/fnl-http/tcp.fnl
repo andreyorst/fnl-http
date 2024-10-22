@@ -1,13 +1,13 @@
 (import-macros
     {: go-loop : go}
-  (doto :lib.async require))
+  (doto :io.gitlab.andreyorst.async require))
 
 (local {: chan : <! : >! : offer! : timeout
         : close!}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: >!?}
-  (require :http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {:select s/select
         :connect s/connect
