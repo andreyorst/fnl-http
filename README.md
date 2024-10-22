@@ -3,13 +3,27 @@
 A [clj-http][1]-inspired library for making HTTP/1.1 requests written in Fennel.
 This library utilizes [async.fnl][2] for asynchronous request processing and [luasocket][3] for an actual implementation of sockets.
 
-# Building
+# Installation
 
-To build a self-contained library to use in other projects, run the following command in the root of the repository:
-
-    fennel tasks/build
-
-This command produces a file named `http.lua` at the root directory of the repository, which is ready to be used.
+1. Clone the repo:
+   ```
+   $ git clone https://gitlab.com/andreyorst/fnl-http
+   ```
+2. Invoke `fennel tasks/install --prefix TARGET-DIR` at the root of the repository.
+   The `TARGET-DIR` is a directory where you wish to install the library:
+   ```
+   $ fennel tasks/install --prefix /path/to/your/project/libs
+   ```
+3. Make sure that `TARGET-DIR` from the previous step is in your fennel PATH:
+   ```
+   $ cd /path/to/your/project
+   $ fennel --add-package-path './libs/?.lua --repl
+   ```
+4. Require the library:
+   ```fennel
+   >> (local http (require :io.gitlab.andreyorst.fnl-http))
+   nil
+   ```
 
 # Usage
 
@@ -56,7 +70,7 @@ Several options are available for the `as` key:
 Loading the library:
 
 ```fennel
-(local http (require :http))
+(local http (require :io.gitlab.andreyorst.fnl-http))
 ```
 
 The library provides three main modules:
@@ -72,7 +86,7 @@ If preferred, modules can be imported as separate locals with destructuring:
 
 ```fennel
 (local {: client : readers : json}
-  (require :http))
+  (require :io.gitlab.andreyorst.fnl-http))
 ```
 
 ### Accessing resources synchronously
@@ -324,7 +338,7 @@ This handler doesn't handle request methods other than `GET` and serves all file
 The server can then be ran like this:
 
 ```fennel
-(local {: server} (require :http))
+(local {: server} (require :io.gitlab.andreyorst.fnl-http))
 (local handler (require :handler))
 
 (local server

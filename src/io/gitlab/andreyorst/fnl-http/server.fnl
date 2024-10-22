@@ -1,33 +1,33 @@
 (import-macros {: go : go-loop}
-  (doto :lib.async require))
+  (doto :io.gitlab.andreyorst.async require))
 
 (local socket
   (require :socket))
 
 (local {: build-http-response}
-  (require :http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.builder))
 
 (local {: reader?}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local {: parse-http-request}
-  (require :http.parser))
+  (require :io.gitlab.andreyorst.fnl-http.parser))
 
 (local {: chan : chan? : timeout : <!}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: socket->chan}
-  (require :http.tcp))
+  (require :io.gitlab.andreyorst.fnl-http.tcp))
 
 (local {: decode-value
         : capitalize-header}
-  (require :http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.headers))
 
 (local {: make-tcp-client : <!? : chunked-encoding?}
-  (require :http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {: stream-body : wrap-body}
-  (require :http.body))
+  (require :io.gitlab.andreyorst.fnl-http.body))
 
 (local {: lower}
   string)

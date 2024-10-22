@@ -3,48 +3,48 @@
 
 (import-macros
     {: go}
-  (doto :lib.async require))
+  (doto :io.gitlab.andreyorst.async require))
 
 (local {: >! : <! : >!! : <!! : chan?}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: >!? : <!? : make-tcp-client : chunked-encoding?}
-  (require :http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {: parse-http-response}
-  (require :http.parser))
+  (require :io.gitlab.andreyorst.fnl-http.parser))
 
 (local {: parse-url
         : format-path}
-  (require :http.url))
+  (require :io.gitlab.andreyorst.fnl-http.url))
 
 (local {:chan tcp-chan}
-  (require :http.tcp))
+  (require :io.gitlab.andreyorst.fnl-http.tcp))
 
 (local {: chan}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: reader? : file-reader}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local {: build-http-request}
-  (require :http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.builder))
 
 (local {: stream-body
         : format-chunk
         : wrap-body
         : multipart-content-length
         : stream-multipart}
-  (require :http.body))
+  (require :io.gitlab.andreyorst.fnl-http.body))
 
 (local {: random-uuid}
-  (require :http.uuid))
+  (require :io.gitlab.andreyorst.fnl-http.uuid))
 
 (local {: decode}
-  (require :http.json))
+  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (local {: capitalize-header}
-  (require :http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.headers))
 
 (local {: format
         : lower

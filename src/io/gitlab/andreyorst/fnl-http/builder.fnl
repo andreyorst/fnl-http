@@ -1,7 +1,7 @@
 (local HTTP-VERSION "HTTP/1.1")
 
 (local {: capitalize-header}
-  (require :http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.headers))
 
 (local {: format
         : upper}

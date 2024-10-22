@@ -23,10 +23,10 @@ SOFTWARE.
 ")
 
 (setmetatable
- {:client (require :http.client)
-  :json (require :http.json)
-  :readers (require :http.readers)
-  :server (require :http.server)}
+ {:client (require :io.gitlab.andreyorst.fnl-http.client)
+  :json (require :io.gitlab.andreyorst.fnl-http.json)
+  :readers (require :io.gitlab.andreyorst.fnl-http.readers)
+  :server (require :io.gitlab.andreyorst.fnl-http.server)}
  {:__index (setmetatable
-            (require :http.client)
+            (require :io.gitlab.andreyorst.fnl-http.client)
             {:__index {:__VERSION :dev}})})

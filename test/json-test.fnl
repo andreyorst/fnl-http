@@ -1,16 +1,16 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local {: skip-test}
-  (require :lib.fennel-test))
+  (require :io.gitlab.andreyorst.fennel-test))
 
 (local {: decode : encode}
-  (require :http.json))
+  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (local readers
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local body
-  (require :http.body))
+  (require :io.gitlab.andreyorst.fnl-http.body))
 
 (deftest encode-test
   (testing "numbers and booleans stay the same"

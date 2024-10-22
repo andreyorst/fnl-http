@@ -2,10 +2,10 @@
         : string-reader
         : file-reader
         : make-reader}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local {: file?}
-  (require :http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {: concat} table)
 

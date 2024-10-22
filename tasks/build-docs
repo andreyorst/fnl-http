@@ -1,5 +1,6 @@
 ;; -*- mode: fennel; -*- vi:ft=fennel
 
-(with-open [proc (io.popen "fenneldoc --no-sandbox http/[!init]*.fnl")]
+(with-open [proc (io.popen (.. "FENNEL_PATH='./src/?.fnl;./lib/?.fnl' "
+                               "fenneldoc --no-sandbox src/com/gitlab/andreyorst/fnl-http/[!init]*.fnl"))]
   (each [line (proc:lines)]
     (print line)))

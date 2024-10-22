@@ -1,20 +1,20 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local {: chan : >!! : close! : go : >!
         : chan?}
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (local {: stream-body
         : format-chunk
         : stream-multipart
         : multipart-content-length
         : wrap-body}
-  (require :http.body))
+  (require :io.gitlab.andreyorst.fnl-http.body))
 
 (local {: string-reader
         : file-reader
         : reader?}
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (fn string-writer []
   (var s "")

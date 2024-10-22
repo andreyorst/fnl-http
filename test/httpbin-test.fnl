@@ -1,19 +1,19 @@
-(require-macros (doto :lib.fennel-test require))
+(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
 (local {: skip-test}
-  (require :lib.fennel-test))
+  (require :io.gitlab.andreyorst.fennel-test))
 
 (local http
-  (require :http.client))
+  (require :io.gitlab.andreyorst.fnl-http.client))
 
 (local readers
-  (require :http.readers))
+  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local json
-  (require :http.json))
+  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (local a
-  (require :lib.async))
+  (require :io.gitlab.andreyorst.async))
 
 (fn url [path]
   (.. "http://localhost:8001" (or path "")))
