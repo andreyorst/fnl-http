@@ -209,7 +209,6 @@ Needs to know the `boundary`."
 (fn body-reader [src]
   "Read the body part of the request source `src`, with possible
 buffering via the `peek` method."
-  {:private true}
   (var buffer "")
   (make-reader
    src
@@ -267,7 +266,7 @@ buffering via the `peek` method."
 
 (fn read-chunk-size [src]
   {:private true}
-  ;; TODO: needs to process chunk extensions
+  ;; TODO: do something with chunk extensions
   (case (src:read :*l)
     (where (or "" "\r"))
     (read-chunk-size src)
@@ -281,12 +280,10 @@ buffering via the `peek` method."
   "Reads the body part of the request source `src` in chunks, buffering
 each in full, and requesting the next chunk, once the buffer contains
 less data than was requested."
-  {:private true}
-  ;; TODO: think about rewriting it so the chunk is not required to be
-  ;;       read in full.  The main problem with this approach is the
-  ;;       possible chunk size - if the server sends a chunk large
-  ;;       enough it can fill the memory, even if the user requested a
-  ;;       stream.
+  ;; TODO: Rewrite so the chunk is not required to be read in full.
+  ;;       The main problem with this approach is the possible chunk
+  ;;       size - if the server sends a chunk large enough it can fill
+  ;;       the memory, even if the user requested a stream.
   (var buffer "")
   (var chunk-size nil)
   (var more? true)
@@ -355,6 +352,11 @@ less data than was requested."
   (fn close [src]
     (src:close))
   (make-reader src {: read-bytes : peek : read-line : close}))
+
+(fn multipart-body-reader [src separator]
+  ;; TODO: This requires a reader that can stream multipart parts.
+  ;;       Research how other clients deal with this.
+  )
 
 {: stream-body
  : format-chunk

@@ -140,6 +140,7 @@ its headers, and a body stream."
 
 (fn parse-http-request [src]
   "Parses the HTTP/1.1 request read from `src`."
+  ;; TODO: parse multipart requests
   (let [status (read-request-status-line src)
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
