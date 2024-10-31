@@ -113,56 +113,61 @@
 (fn client-loop [client handler resources]
   {:private true}
   (go-loop []
-    (let [request (parse-http-request client)]
-      (when request
-        (let [request-headers
-              (collect [k v (pairs (or request.headers {}))]
-                (capitalize-header k) (decode-value v))]
-          (case (pcall handler request)
-            (ok? {: status
-                  :reason-phrase ?reason
-                  :headers ?headers
-                  :body ?body})
-            (let [headers (collect [k v (pairs (or ?headers {}))]
-                            (lower k) v)
-                  body (wrap-body ?body headers.content-type)
-                  headers (collect [k v (pairs headers)
-                                    :into {:connection (or request-headers.Connection :keep-alive)
-                                           :content-type (when (or (reader? body)
-                                                                   (chan? body))
-                                                           :application/octet-stream)
-                                           :content-lenght (when (= :string (type body))
-                                                             (length body))
-                                           :transfer-encoding (when (or (and (reader? body)
-                                                                             (not headers.content-length))
-                                                                        (chan? body))
-                                                                :chunked)}]
-                            (lower k) v)]
-              (when (reader? body)
-                (tset resources body true))
-              (tset headers :content-length
-                (when (not (chunked-encoding? headers.transfer-encoding))
-                  headers.content-length))
-              (respond client ok? status ?reason headers body))
-            (where (ok? ?resp)
-                   (or (= :string (type ?resp))
-                       (= :nil (type ?resp))))
-            (respond client ok? nil nil
-                     {:content-length (length (or ?resp ""))
-                      :connection (or request-headers.Connection :keep-alive)}
-                     ?resp)
-            (ok? resp)
-            (let [body (wrap-body resp)
-                  headers {:connection (or request-headers.Connection "keep-alive")
-                           :transfer-encoding (when (or (reader? body) (chan? body)) "chunked")}]
-              (when (reader? body)
-                (tset resources body true))
-              (respond client ok? nil nil headers resp)))
-          (if (= request-headers.Connection "close")
-              (client:close)
-              (recur)))))))
+    (case (parse-http-request client)
+      request
+      (let [request-headers
+            (collect [k v (pairs (or request.headers {}))]
+              (capitalize-header k) (decode-value v))
+            (ok? resp) (pcall handler request)
+            resp (if (and ok? (chan? resp)) (<! resp) resp)]
+        (case (values ok? resp)
+          (true {: status
+                 :reason-phrase ?reason
+                 :headers ?headers
+                 :body ?body})
+          (let [headers (collect [k v (pairs (or ?headers {}))]
+                          (lower k) v)
+                body (wrap-body ?body headers.content-type)
+                headers (collect [k v (pairs headers)
+                                  :into {:connection (or request-headers.Connection "keep-alive")
+                                         :content-type (when (or (reader? body)
+                                                                 (chan? body))
+                                                         "application/octet-stream")
+                                         :content-length (if (= :string (type body))
+                                                             (length body)
+                                                             (= nil body)
+                                                             0)
+                                         :transfer-encoding (when (or (and (reader? body)
+                                                                           (not headers.content-length))
+                                                                      (chan? body))
+                                                              "chunked")}]
+                          (lower k) v)]
+            (when (reader? body)
+              (tset resources body true))
+            (tset headers :content-length
+              (when (not (chunked-encoding? headers.transfer-encoding))
+                headers.content-length))
+            (respond client ok? status ?reason headers body))
+          (false ?resp)
+          (let [body (tostring (or ?resp ""))]
+            (respond client ok? 500 "Internal server error"
+                     {:content-type "text/plain"
+                      :content-length (length body)}
+                     body))
+          (_ resp)
+          (do (set request-headers.Connection "close")
+              (respond client ok? 500 nil {:content-length 0 :connection "close"})
+              (io.stderr:write
+               "Server error: malformed handler response. Expected a table with status, headers, and body keys, got: "
+               (case (type resp)
+                 "table" ((. (or _G.package.loaded.fennel {:view #(tostring $)}) :view) resp {:one-line true})
+                 Type Type)
+               "\n")))
+        (if (= request-headers.Connection "close")
+            (client:close)
+            (recur))))))
 
-(fn start-server [handler conn]
+(fn start [handler conn]
   "Starts the server running the `handler` for each request.  Accepts
 optional `conn` table, containing `host` and `port` for the server.
 
@@ -192,10 +197,12 @@ when exhausted."
                      (let [resources {}]
                        (case-try (server:accept)
                          client (client:settimeout 0)
-                         _ (socket->chan client)
+                         _ (socket->chan
+                            client nil
+                            #(do (io.stderr:write $...) (io.stderr:write "\n")))
                          chan (make-tcp-client chan resources)
                          client (client-loop client handler resources)
-                         (catch e (print e))))
+                         (catch e (io.stderr:write e "\n"))))
                      (<! (timeout 10))
                      (recur)))]
       (fn close [_] (set running? false) (and (server:close) true))
@@ -213,4 +220,4 @@ when exhausted."
         :__name "tcp-server"
         :__fennelview #(.. "#<" (: (tostring $) :gsub "table" "tcp-server") ">")}))))
 
-{: start-server}
+{: start}

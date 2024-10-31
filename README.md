@@ -297,63 +297,106 @@ This function accepts the object to read from, and a table of methods:
 All methods are optional, and nonexistent methods will return `nil` by default.
 Provide a method that throws an error, if you want your Reader to prohibit some methods.
 
-### Server
+### HTTP Server
 
-This library contains a proof-of-concept HTTP/1.1 server.
-It's a simple asynchronous server, that accepts a handler function doing all of the heavy-lifting of routing, and provides a simple API for the response format.
+This library contains a simple HTTP/1.1 server.
+The module provides a single function that accepts an asynchronous handler doing all of the heavy-lifting of routing, and provides a simple data-oriented API for the response format.
+The handler runs in the implicit asynchronous context, thus blocking code should be avoided.
+If `async.fnl` functions are used inside the handler, all code must use parking operations on channels.
 
-Here's an example handler implementation:
-
-```fennel
-(fn handler [{: path : headers &as request}]
-  (case path
-    "/" (let [url (.. "http://" headers.Host "/index.html")
-              body (.. "<!DOCTYPE HTML>"
-                       "<title>Redirecting...</title><h1>Redirecting...</h1>"
-                       "<p>You should be redirected automatically to target URL: "
-                       "<a href=\"" url "\">" url "</a>.  If not click the link.</p>")]
-          {:status 302
-           :headers {:connection "close"
-                     :location "/index.html"
-                     :content-length (length body)}
-           :body body})
-    _ (case (io.open (.. "." path))
-        file {:status 200
-              :headers {:connection (or headers.Connection :keep-alive)
-                        :transfer-encoding :chunked
-                        :content-type (case (path:match "%.(.-)$")
-                                        :html :text/html
-                                        :ico :image/x-icon
-                                        _ :application/octet-stream)}
-              :body file}
-        _ (let [body "404: not found"]
-            {:status 404
-             :headers {:connection (or headers.Connection "keep-alive")
-                       :content-length (length body)
-                       :content-type "text/plain"}
-             :body body}))))
-```
-
-This handler doesn't handle request methods other than `GET` and serves all files in the server's working directory.
 The server can then be ran like this:
 
 ```fennel
-(local {: server} (require :io.gitlab.andreyorst.fnl-http))
-(local handler (require :handler))
-
-(local server
-  (server.start-server handler {:port 12345}))
-
-(server:wait)
+(server.start handler-fn connection)
 ```
 
-The `(server:wait)` call blocks the main thread.
-If the application has some kind of main loop, the server would run by itself and no call to the `wait` method would be needed.
+The returned object is a server with the following methods:
+
+- `stop` - stops the server.
+- `close` - same as `stop`.
+- `wait` - blocks the main thread, waiting for server to finish.
+
+Additionally, the object provides the following fields:
+
+- `server` - underlying luasocket TCP server object.
+- `host` - server's host
+- `port` - server's port
+
+By default, the server is automatically running in the background via the `async.fnl` event loop.
+If the application has some kind of main loop, the call to the `wait` is not required.
+Otherwise, if the sole purpose of the application is to serve requests, the `wait` method can be used to force the event loop to run.
+
+The response is either a table, with the following format:
+
+```fennel
+{:status 200
+ :headers {}         ; optional
+ :reason-phrase "OK" ; optional
+ :body "pong"        ; optional
+ }
+```
+
+The body key value can be a string, channel, reader or a file handle.
 
 The server is experimental and not properly tested.
+
+#### Server Performance
+
+Using the following server implementation:
+
+```fennel
+(local async (require :io.gitlab.andreyorst.async))
+(local server (require :io.gitlab.andreyorst.fnl-http.server))
+
+(fn handler [{: headers &as request}]
+  (go
+    (async.<! (async.timeout 50))
+    {:status 200
+     :headers {:connection (or headers.Connection "keep-alive")
+               :content-length 11
+               :content-type "text/plain"}
+     :body "hello world"}))
+
+(local s (server.start handler {:port 3000}))
+(s:wait)
+```
+
+Testing with the [wrk][6] tool with the following command `wrk -t12 -c400 -d30s http://localhost:3000` yields about 2k requests per second:
+
+```
+Running 30s test @ http://localhost:3000
+  12 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   146.42ms   94.13ms   2.00s    98.54%
+    Req/Sec   205.07     90.83   343.00     62.36%
+  69835 requests in 30.09s, 8.00MB read
+  Socket errors: connect 0, read 0, write 0, timeout 151
+Requests/sec:   2321.21
+Transfer/sec:    272.37KB
+```
+
+Testing with [ab][7] with the following command `ab -k -t 30 -c 12 http://localhost:3000/` yields vastly different results:
+
+```
+Concurrency Level:      12
+Time taken for tests:   30.043 seconds
+Complete requests:      2985
+Failed requests:        0
+Keep-Alive requests:    2985
+Total transferred:      358200 bytes
+HTML transferred:       32835 bytes
+Requests per second:    99.36 [#/sec] (mean)
+Time per request:       120.774 [ms] (mean)
+Time per request:       10.064 [ms] (mean, across all concurrent requests)
+Transfer rate:          11.64 [Kbytes/sec] received
+```
+
+Such benchmarks are largely synthetic and may not represent the actual performance.
 
 [1]: https://github.com/dakrone/clj-http
 [2]: https://gitlab.com/andreyorst/async.fnl
 [3]: https://w3.impa.br/~diego/software/luasocket/home.html
 [4]: https://gitlab.com/andreyorst/async.fnl/-/blob/main/doc/src/async.md
 [5]: https://www.rfc-editor.org/rfc/rfc5987
+[6]: https://github.com/wg/wrk
+[7]: https://httpd.apache.org/docs/2.4/programs/ab.html

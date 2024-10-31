@@ -2,13 +2,13 @@
 
 **Table of contents**
 
-- [`start-server`](#start-server)
+- [`start`](#start)
 
-## `start-server`
+## `start`
 Function signature:
 
 ```
-(start-server handler conn)
+(start handler conn)
 ```
 
 Starts the server running the `handler` for each request.  Accepts
