@@ -152,11 +152,10 @@ its headers, and a body stream."
       (doto status
         (tset :headers headers)
         (tset :content
-            (when (not= (upper (or method "")) :HEAD)
+            (when (not= (upper method) :HEAD)
               (if parsed-headers.Content-Length
                   (stream:read parsed-headers.Content-Length)
-                  (or (= :close (lower (or parsed-headers.Connection "")))
-                      (chunked-encoding? parsed-headers.Transfer-Encoding))
+                  (chunked-encoding? parsed-headers.Transfer-Encoding)
                   (stream:read :*a))))))))
 
 ;;; URL
