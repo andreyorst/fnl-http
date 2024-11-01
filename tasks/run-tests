@@ -21,7 +21,8 @@
    :test.url-test
    :test.body-test
    :test.client-test
-   :test.httpbin-test])
+   :test.httpbin-test
+   :test.server-test])
 
 (-> tests
     select-tests

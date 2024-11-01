@@ -57,6 +57,14 @@ closed."
                       (header:match "chunked$")))
     true))
 
+(fn multipart-request? [content-type]
+  "Test if `content-type` header is multipart."
+  (case (lower (or content-type ""))
+    (where header (header:match "multipart/"))
+    true))
+
+(fn multipart-separator [content-type]
+  (content-type:match "boundary=([^ \t\n\r]+)"))
 
 (fn file? [x]
   "Test if `x` is a file."
@@ -66,4 +74,6 @@ closed."
  : <!?
  : >!?
  : chunked-encoding?
+ : multipart-request?
+ : multipart-separator
  : file?}

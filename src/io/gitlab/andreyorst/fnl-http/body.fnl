@@ -13,11 +13,21 @@
 (local {: <!? : chunked-encoding?}
   (require :io.gitlab.andreyorst.fnl-http.utils))
 
+(local {: decode-value
+        : capitalize-header}
+  (require :io.gitlab.andreyorst.fnl-http.headers))
+
+(local {: decode}
+  (require :io.gitlab.andreyorst.fnl-http.json))
+
 (local {: format : lower}
   string)
 
 (local {:type io/type}
   io)
+
+(local {: min}
+  math)
 
 (local {: encode}
   (require :io.gitlab.andreyorst.fnl-http.json))
@@ -353,10 +363,55 @@ less data than was requested."
     (src:close))
   (make-reader src {: read-bytes : peek : read-line : close}))
 
-(fn multipart-body-reader [src separator]
-  ;; TODO: This requires a reader that can stream multipart parts.
-  ;;       Research how other clients deal with this.
-  )
+(fn sized-body-reader [reader size]
+  (var left size)
+  (let [lines (reader:lines)]
+    (make-reader nil {:read-bytes (fn [_ bytes]
+                                    (when (> left 0)
+                                      (case bytes
+                                        (where bytes (= :number (type bytes)))
+                                        (let [data (reader:read (min bytes left))]
+                                          (set left (- left (length data)))
+                                          data)
+                                        (where (or :a :*a))
+                                        (let [data (reader:read left)]
+                                          (set left 0)
+                                          data)
+                                        _ (let [data (reader:read bytes)]
+                                            (set left (- left (length data)))
+                                            data))))
+                      :peek (fn [_ bytes]
+                              (when (> left 0)
+                                (reader:peek (min bytes left))))
+                      :read-line (fn [_]
+                                   (when (> left 0)
+                                     (case (lines reader)
+                                       line (do (set left (- left (length line)))
+                                                line))))
+                      :close reader.close})))
+
+(fn multipart-body-reader [src separator read-headers]
+  (var exhausted nil)
+  (fn next [_ _]
+    (when (not exhausted)
+      (var found nil)
+      (while (not found)
+        (let [line (or (src:read :*l) "")]
+          (set found (line:find (.. "--" separator) 0 true))
+          (set exhausted (line:find (.. "--" separator "--") 0 true))))
+      (when (and (not exhausted) found)
+        (let [headers (read-headers src)
+              parsed-headers (collect [k v (pairs headers)]
+                               (capitalize-header k) (decode-value v))
+              disposition (or parsed-headers.Content-Disposition "")
+              (attachment-type attachment-params) (disposition:match "([^;]+); *(.*)")]
+          (collect [k v (attachment-params:gmatch "([^= ]+)= *([^;]+)")
+                    :into {:headers headers
+                           :type attachment-type
+                           :content (-> src
+                                        body-reader
+                                        (sized-body-reader parsed-headers.Content-Length))}]
+            k (case (pcall decode v) (true v) v _ v)))))))
 
 {: stream-body
  : format-chunk
@@ -364,4 +419,6 @@ less data than was requested."
  : multipart-content-length
  : wrap-body
  : body-reader
- : chunked-body-reader}
+ : chunked-body-reader
+ : multipart-body-reader
+ : sized-body-reader}

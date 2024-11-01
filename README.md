@@ -340,6 +340,53 @@ The body key value can be a string, channel, reader or a file handle.
 
 The server is experimental and not properly tested.
 
+#### Working with requests
+
+Each incoming request is passed to the `handler` function as a table:
+
+```fennel
+{:headers {:Host "localhost:3000"}
+ :http-version "HTTP/1.1"
+ :method "GET"
+ :path "/"}
+```
+
+For methods that provide payload this table will contain either the `content` key or `parts` key.
+
+The `content` key is always a Reader.
+It should always be consumed by the handler, even if the contents are not used by the underlying code.
+
+The `parts` key appears when the request content-type was specified as `multipart/*`, and is always an iterator function.
+Each time the `parts` function is called the next part is returned.
+
+A part is represented as the following table:
+
+```fennel
+{:content #<Reader: 0x558d30ffe4b0>
+ :filename "qux"
+ :headers {:Content-Disposition "form-data; name=\"baz\"; filename=\"qux\""
+           :Content-Length "3"
+           :Content-Transfer-Encoding "8bit"
+           :Content-Type "text/plain; charset=UTF-8"}
+ :name "baz"
+ :type "form-data"}
+```
+
+The `content` key is a Reader.
+It must be processed before accessing the next part.
+If it was not used before accessing the next part, it will be exhausted once the next part is fetched.
+Thus all parts can't be obtained in advance without loosing data.
+
+Here's an example of working with multipart requests:
+
+```fennel
+(fn handler [request]
+  (case request
+    {: parts}
+    (each [part parts]
+      (process-part part))))
+```
+
 #### Server Performance
 
 Using the following server implementation:

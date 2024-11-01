@@ -6,13 +6,19 @@
         : capitalize-header}
   (require :io.gitlab.andreyorst.fnl-http.headers))
 
-(local {: <!? : chunked-encoding?}
+(local {: <!?
+        : chunked-encoding?
+        : multipart-request?
+        : multipart-separator}
   (require :io.gitlab.andreyorst.fnl-http.utils))
 
 (local {: timeout}
   (require :io.gitlab.andreyorst.async))
 
-(local {: body-reader : chunked-body-reader}
+(local {: body-reader
+        : chunked-body-reader
+        : multipart-body-reader
+        : sized-body-reader}
   (require :io.gitlab.andreyorst.fnl-http.body))
 
 (local {: format : upper : lower} string)
@@ -138,26 +144,29 @@ its headers, and a body stream."
   (case (src:read :*l)
     line (parse-request-status-line line)))
 
+(fn encoding-type [headers method]
+  (if (= (upper (or method "")) :HEAD) nil
+      (multipart-request? headers.Content-Type) :multipart
+      (chunked-encoding? headers.Transfer-Encoding) :chunked
+      headers.Content-Length :stream))
+
 (fn parse-http-request [src]
   "Parses the HTTP/1.1 request read from `src`."
-  ;; TODO: parse multipart requests
   (let [status (read-request-status-line src)
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
                          (capitalize-header k) (decode-value v))
-        stream (if (chunked-encoding? parsed-headers.Transfer-Encoding)
-                   (chunked-body-reader src)
-                   (body-reader src))]
-    (case status
-      {: method}
-      (doto status
-        (tset :headers headers)
-        (tset :content
-            (when (not= (upper method) :HEAD)
-              (if parsed-headers.Content-Length
-                  (stream:read parsed-headers.Content-Length)
-                  (chunked-encoding? parsed-headers.Transfer-Encoding)
-                  (stream:read :*a))))))))
+        content (case (encoding-type parsed-headers status.method)
+                  :multipart {:parts (multipart-body-reader
+                                      src
+                                      (multipart-separator parsed-headers.Content-Type)
+                                      read-headers)}
+                  :stream {:content (body-reader src)}
+                  :chunked {:content (chunked-body-reader src)}
+                  _ {})]
+    (when status.method
+      (doto (collect [k v (pairs status) :into content] k v)
+        (tset :headers headers)))))
 
 ;;; URL
 

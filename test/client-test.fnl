@@ -22,9 +22,9 @@
     :once
   (fn [t]
     (with-open [proc (io.popen (.. "fennel"
-                                   " --add-fennel-path './lib/?.fnl'"
-                                   " --add-fennel-path './src/?.fnl'"
-                                   " test/echo-server.fnl"
+                                   " --add-fennel-path ./lib/?.fnl"
+                                   " --add-fennel-path ./src/?.fnl"
+                                   " test/data/echo-server.fnl"
                                    " & echo $!"))]
       (let [pid (proc:read :*l)
             attempts 100]
