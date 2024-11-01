@@ -17,7 +17,7 @@
 
 (local {: body-reader
         : chunked-body-reader
-        : multipart-body-reader
+        : multipart-body-iterator
         : sized-body-reader}
   (require :io.gitlab.andreyorst.fnl-http.body))
 
@@ -46,6 +46,12 @@ append or override existing headers."
                (header value)
                (doto headers (tset header value)))))))
 
+(fn parse-http-version [line]
+  "Parse HTTP version from `line`."
+  {:private true}
+  (let [(name major minor) (line:match "([^/]+)/(%d).(%d)")]
+    {: name :major (tonumber major) :minor (tonumber minor)}))
+
 ;;; HTTP Response
 
 (fn parse-response-status-line [status]
@@ -58,11 +64,11 @@ append or override existing headers."
          (loop reader fields
                (case field
                  :protocol-version
-                 (let [(name major minor) (part:match "([^/]+)/(%d).(%d)")]
-                   (doto res
-                     (tset field {: name :major (tonumber major) :minor (tonumber minor)})))
-                 _ (doto res
-                     (tset field (decode-value part))))))
+                 (doto res
+                   (tset field (parse-http-version part)))
+                 _
+                 (doto res
+                   (tset field (decode-value part))))))
        _
        (let [reason (-> "%s/%s.%s +%s +"
                         (format res.protocol-version.name
@@ -145,19 +151,38 @@ its headers, and a body stream."
     line (parse-request-status-line line)))
 
 (fn encoding-type [headers method]
+  "Determine request body encoding type via `headers` or `method` used."
+  {:private true}
   (if (= (upper (or method "")) :HEAD) nil
       (multipart-request? headers.Content-Type) :multipart
       (chunked-encoding? headers.Transfer-Encoding) :chunked
       headers.Content-Length :stream))
 
 (fn parse-http-request [src]
-  "Parses the HTTP/1.1 request read from `src`."
+  "Parses the HTTP/1.1 request read from `src`.
+
+If the request contained a body, it is returned as a `Reader` under
+the `content` key.  Chunked encoding is supported by using a special
+`chunked-body-reader`.
+
+If the request had Content Type set to `multipart/*`, the `parts` key
+is used, and contains an iterator function, that will iterate over
+each part in the request.  Each part is a table with its respective
+headers, anc a `content` key, containing a `Reader` object.
+
+Each part's content must be processed or copied before moving to the
+next part, as moving to the next part consumes the body data from
+`src`.
+
+Returns a table with request `status`, `method`, `http-version`,
+`headers` keys, including `content` or `parts` keys if payload was
+provided, as described above."
   (let [status (read-request-status-line src)
         headers (read-headers src)
         parsed-headers (collect [k v (pairs headers)]
                          (capitalize-header k) (decode-value v))
         content (case (encoding-type parsed-headers status.method)
-                  :multipart {:parts (multipart-body-reader
+                  :multipart {:parts (multipart-body-iterator
                                       src
                                       (multipart-separator parsed-headers.Content-Type)
                                       read-headers)}
@@ -166,7 +191,10 @@ its headers, and a body stream."
                   _ {})]
     (when status.method
       (doto (collect [k v (pairs status) :into content] k v)
-        (tset :headers headers)))))
+        (tset :headers headers)
+        (tset :length parsed-headers.Content-Length)
+        (tset :protocol-version (parse-http-version status.http-version))
+        (tset :http-version nil)))))
 
 ;;; URL
 
@@ -182,6 +210,7 @@ its headers, and a body stream."
 
 (fn parse-url [url]
   "Parses a `url` string as URL.
+
 Returns a table with `scheme`, `host`, `port`, `userinfo`, `path`,
 `query`, and `fragment` fields from the URL.  If the `scheme` part of
 the `url` is missing, the default `http` scheme is used.  If the

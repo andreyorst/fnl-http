@@ -94,9 +94,7 @@ the `content-length` field to be present. If the `transfer-encoding`
 field specifies a chunked encoding, the body is streamed in chunks."
   (when body
     (if (and (= :string (type transfer-encoding))
-             (chunked-encoding? transfer-encoding)
-             (or (transfer-encoding:match "chunked[, ]")
-                 (transfer-encoding:match "chunked$")))
+             (chunked-encoding? transfer-encoding))
         (stream-chunks dst body)
         (and content-length (reader? body))
         (stream-reader dst body content-length)
@@ -156,47 +154,46 @@ Default headers include `content-disposition`, `content-length`,
 `content-type`, and `content-transfer-encoding`. Provide `headers` for
 additional or to change the default ones."
   {:private true}
-  (let [content (wrap-body content mime-type)]
-    (format
-     "--%s\r\n%s\r\n"
-     boundary
-     (headers->string
-      (collect [k v (pairs (or headers {}))
-                :into {:content-disposition (format "form-data; name=%q%s%s" name
-                                                    (if filename
-                                                        (format "; filename=%q" filename)
-                                                        "")
-                                                    (if filename*
-                                                        (format "; filename*=%s" (urlencode filename*))
-                                                        ""))
-                       :content-length (if (= :string (type content))
-                                           (length content)
-                                           (or content-length (content:length)))
-                       :content-type (or mime-type (guess-content-type content))
-                       :content-transfer-encoding (guess-transfer-encoding content)}]
-        k v)))))
+  (let [content (wrap-body content mime-type)
+        headers (collect [k v (pairs (or headers {}))
+                          :into {:content-disposition (format "form-data; name=%q%s%s" name
+                                                              (if filename
+                                                                  (format "; filename=%q" filename)
+                                                                  "")
+                                                              (if filename*
+                                                                  (format "; filename*=%s" (urlencode filename*))
+                                                                  ""))
+                                 :content-length (if (= :string (type content))
+                                                     (length content)
+                                                     content-length)
+                                 :content-type (or mime-type (guess-content-type content))
+                                 :content-transfer-encoding (guess-transfer-encoding content)}]
+                  k v)]
+
+    (->> (doto headers
+           (tset :transfer-encoding (when (= nil headers.content-length) "chunked")))
+         headers->string
+         (format "--%s\r\n%s\r\n" boundary))))
 
 (fn multipart-content-length [multipart boundary]
   "Calculate the total length of `multipart` body.
 Needs to know the `boundary`."
-  (+ (accumulate [total 0
+  (case (accumulate [total 0
                   _ {:length content-length
                      : name
                      : content
                      &as part}
-                  (ipairs multipart)]
+                  (ipairs multipart)
+                  :until (= total nil)]
        (let [content (wrap-body content multipart.mime-type)]
-         (+ total
-            (length (format-multipart-part part boundary))
-            (if (= :string (type content)) (+ (length content) 2)
-                (reader? content)
-                (+ 2 (or content-length
-                         (content:length)
-                         (error (format "can't determine length for multipart content %q" name) 2)))
-                (not= nil content-length)
-                (+ content-length 2)
-                (error (format "missing length field on non-string multipart content %q" name) 2)))))
-     (length (format "--%s--\r\n" boundary))))
+         (when (or (= :string (type content))
+                   content-length)
+           (+ total
+              (length (format-multipart-part part boundary))
+              (if (= :string (type content)) (+ (length content) 2)
+                  (not= nil content-length)
+                  (+ content-length 2))))))
+    parts-len (+ parts-len (length (format "--%s--\r\n" boundary)))))
 
 (fn stream-multipart [dst multipart boundary]
   "Write `multipart` entries to `dst` separated with the `boundary`."
@@ -212,7 +209,8 @@ Needs to know the `boundary`."
            (.. (format-multipart-part part boundary))
            (dst:write))
       (when (not= :string (type content))
-        (stream-body dst content {:content-length (or content-length (content:length))})))
+        (stream-body dst content {:content-length content-length
+                                  :transfer-encoding (when (= nil content-length) "chunked")})))
     (dst:write "\r\n"))
   (dst:write (format "--%s--\r\n" boundary)))
 
@@ -390,7 +388,7 @@ less data than was requested."
                                                 line))))
                       :close reader.close})))
 
-(fn multipart-body-reader [src separator read-headers]
+(fn multipart-body-iterator [src separator read-headers]
   (var exhausted nil)
   (fn next [_ _]
     (when (not exhausted)
@@ -407,10 +405,15 @@ less data than was requested."
               (attachment-type attachment-params) (disposition:match "([^;]+); *(.*)")]
           (collect [k v (attachment-params:gmatch "([^= ]+)= *([^;]+)")
                     :into {:headers headers
+                           :length parsed-headers.Content-Length
                            :type attachment-type
-                           :content (-> src
-                                        body-reader
-                                        (sized-body-reader parsed-headers.Content-Length))}]
+                           :content (if parsed-headers.Content-Length
+                                        (-> src
+                                            body-reader
+                                            (sized-body-reader parsed-headers.Content-Length))
+                                        (chunked-encoding? parsed-headers.Transfer-Encoding)
+                                        (chunked-body-reader src)
+                                        (body-reader src))}]
             k (case (pcall decode v) (true v) v _ v)))))))
 
 {: stream-body
@@ -420,5 +423,5 @@ less data than was requested."
  : wrap-body
  : body-reader
  : chunked-body-reader
- : multipart-body-reader
+ : multipart-body-iterator
  : sized-body-reader}

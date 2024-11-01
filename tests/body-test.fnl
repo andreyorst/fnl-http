@@ -26,10 +26,10 @@
   (testing "wrapping strings does nothing"
     (assert-eq :string (type (wrap-body "foo"))))
   (testing "wrapping files returns a file reader"
-    (with-open [f (io.open "test/data/valid.json" :r)]
+    (with-open [f (io.open "tests/data/valid.json" :r)]
       (assert-is (reader? (wrap-body f)))))
   (testing "wrapping closed files throws an error"
-    (->> (with-open [f (io.open "test/data/valid.json" :r)] f)
+    (->> (with-open [f (io.open "tests/data/valid.json" :r)] f)
          (pcall wrap-body)
          assert-not))
   (testing "wrapping channels returns the same channel"
@@ -47,16 +47,16 @@
 
 (deftest format-chunk-test
   (testing "formatting chunk from file"
-    (with-open [data (io.open "test/data/valid.json" :r)
-                valid (io.open "test/data/chunked-body" :r)]
+    (with-open [data (io.open "tests/data/valid.json" :r)
+                valid (io.open "tests/data/chunked-body" :r)]
       (let [r (file-reader data)
             (last? chunk) (format-chunk r)]
         (assert-not last?)
         (assert-eq (valid:read 1031) chunk))))
   (testing "formatting chunk from channel"
-    (with-open [valid (io.open "test/data/chunked-body" :r)]
+    (with-open [valid (io.open "tests/data/chunked-body" :r)]
       (let [ch (chan)
-            _ (go #(with-open [body (io.open "test/data/valid.json" :r)]
+            _ (go #(with-open [body (io.open "tests/data/valid.json" :r)]
                      (each [line (body:lines)]
                        (>! ch (.. line "\n")))
                      (close! ch)))
@@ -70,24 +70,24 @@
       (stream-body sw (string-reader "foobar") {:content-length 6})
       (assert-eq "foobar" (sw:string))))
   (testing "streaming-body from file reader"
-    (with-open [r (file-reader "test/data/valid.json")
-                valid (io.open "test/data/valid.json" :r)]
+    (with-open [r (file-reader "tests/data/valid.json")
+                valid (io.open "tests/data/valid.json" :r)]
       (let [len (r:length)
             sw (string-writer)]
         (stream-body sw r {:content-length len})
         (assert-eq (valid:read :*a) (sw:string)))))
   (testing "chunked encoding from file"
-    (with-open [r (file-reader "test/data/valid.json")
-                valid (io.open "test/data/chunked-body" :r)]
+    (with-open [r (file-reader "tests/data/valid.json")
+                valid (io.open "tests/data/chunked-body" :r)]
       (let [sw (string-writer)]
         (stream-body sw r {:transfer-encoding "chunked"})
         (assert-eq (valid:read :*a) (sw:string)))))
   (testing "chunked encoding from channel"
-    (with-open [data (io.open "test/data/valid.json" :r)
-                valid (io.open "test/data/chunked-channel-body" :r)]
+    (with-open [data (io.open "tests/data/valid.json" :r)
+                valid (io.open "tests/data/chunked-channel-body" :r)]
       (let [sw (string-writer)
             ch (chan)]
-        (go #(with-open [body (io.open "test/data/valid.json" :r)]
+        (go #(with-open [body (io.open "tests/data/valid.json" :r)]
                (each [line (body:lines)]
                  (>! ch (.. line "\n")))
                (close! ch)))
@@ -109,36 +109,36 @@
       "foobar")))
   (testing "multipart with file data"
     (assert-eq
-     1605
+     nil
      (multipart-content-length
       [{:name "foo"
-        :content (io.open "test/data/valid.json")}]
+        :content (io.open "tests/data/valid.json")}]
       "foobar"))
     (assert-eq
-     2354
+     nil
      (multipart-content-length
       [{:name "foo"
-        :content (io.open "test/data/valid.fnl")}
+        :content (io.open "tests/data/valid.fnl")}
        {:name "bar" :filename "valid.fnl"
-        :content (io.open "test/data/valid.fnl")}]
+        :content (io.open "tests/data/valid.fnl")}]
       "foobar"))
     (assert-eq
-     2360
+     nil
      (multipart-content-length
       [{:name "foo"
-        :content (io.open "test/data/valid.fnl")}
+        :content (io.open "tests/data/valid.fnl")}
        {:name "bar" :filename* "valid file.fnl"
-        :content (io.open "test/data/valid.fnl")}]
+        :content (io.open "tests/data/valid.fnl")}]
       "foobar"))
     (assert-eq
-     2387
+     nil
      (multipart-content-length
       [{:name "foo"
-        :content (io.open "test/data/valid.fnl")}
+        :content (io.open "tests/data/valid.fnl")}
        {:name "bar"
         :filename "valid file.fnl"
         :filename* "valid file.fnl"
-        :content (io.open "test/data/valid.fnl")}]
+        :content (io.open "tests/data/valid.fnl")}]
       "foobar")))
   (testing "multipart with channel data"
     (let [make-chan #(doto (chan 3)
@@ -164,32 +164,34 @@
           "foobar")))))
   (testing "multipart with mixed data"
     (assert-eq
-     1759
+     nil
      (multipart-content-length
       [{:name "foo"
-        :content (io.open "test/data/valid.json")}
+        :content (io.open "tests/data/valid.json")}
        {:name "bar" :content "bar"}]
       "foobar"))))
 
 (deftest multipart-stream-test
   (testing "streaming multipart from file and raw data"
-    (with-open [valid (io.open "test/data/multipart" :r)]
+    (with-open [valid (io.open "tests/data/multipart" :r)]
       (let [sw (string-writer)
             data (valid:read :*a)]
         (stream-multipart
          sw
          [{:name "foo"
-           :content (io.open "test/data/valid.json")}
+           :content (io.open "tests/data/valid.json")
+           :length (with-open [f (io.open "tests/data/valid.json")]
+                     (f:seek :end))}
           {:name "bar" :content "bar"}]
          "foobar")
-        (assert-eq (length data) (length (sw:string)))
-        (assert-eq data (sw:string)))))
+        (assert-eq data (sw:string))
+        (assert-eq (length data) (length (sw:string))))))
   (testing "streaming multipart from channel and raw data"
-    (with-open [valid (io.open "test/data/multipart" :r)]
+    (with-open [valid (io.open "tests/data/multipart" :r)]
       (let [sw (string-writer)
             data (valid:read :*a)
             ch (chan)]
-        (go #(with-open [body (io.open "test/data/valid.json" :r)]
+        (go #(with-open [body (io.open "tests/data/valid.json" :r)]
                (each [line (body:lines)]
                  (>! ch (.. line "\n")))
                (close! ch)))
@@ -197,7 +199,7 @@
          sw
          [{:name "foo"
            :content ch
-           :length (with-open [body (io.open "test/data/valid.json" :r)] (body:seek :end))}
+           :length (with-open [body (io.open "tests/data/valid.json" :r)] (body:seek :end))}
           {:name "bar" :content "bar"}]
          "foobar")
         (assert-eq (length data) (length (sw:string)))

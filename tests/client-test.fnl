@@ -24,7 +24,7 @@
     (with-open [proc (io.popen (.. "fennel"
                                    " --add-fennel-path ./lib/?.fnl"
                                    " --add-fennel-path ./src/?.fnl"
-                                   " test/data/echo-server.fnl"
+                                   " tests/data/echo-server.fnl"
                                    " & echo $!"))]
       (let [pid (proc:read :*l)
             attempts 100]
@@ -43,8 +43,8 @@
 
 (deftest chunked-post-test
   (testing "posting chunked data"
-    (let [resp (http.post "localhost:8000" {:body (io.open "test/data/valid.json")})]
-      (with-open [valid (io.open "test/data/chunked-body")]
+    (let [resp (http.post "localhost:8000" {:body (io.open "tests/data/valid.json")})]
+      (with-open [valid (io.open "tests/data/chunked-body")]
         (assert-eq
          (.. "POST / HTTP/1.1\r\n"
              "Host: localhost:8000\r\n"
@@ -57,15 +57,24 @@
   (testing "posting multipart data"
     (let [resp (http.post "localhost:8000"
                           {:multipart [{:name "foo"
-                                        :content (io.open "test/data/valid.json")}
+                                        :content (io.open "tests/data/valid.json")
+                                        :length (with-open [f (io.open "tests/data/valid.json")] (f:seek :end))}
                                        {:name "bar" :content "bar"}]
                            :headers {:content-type "multipart/form-data; boundary=foobar"}})]
-      (with-open [valid (io.open "test/data/multipart")]
+      (with-open [valid (io.open "tests/data/multipart")]
         (assert-eq (.. "POST / HTTP/1.1\r\nContent-Length: 1759\r\n"
                        "Content-Type: multipart/form-data; boundary=foobar\r\n"
                        "Host: localhost:8000\r\n\r\n"
                        (valid:read :*a))
-                   resp.body)))))
+                   resp.body))))
+  (testing "posting chunked multipart data"
+    (let [resp (http.post "localhost:8000"
+                          {:multipart [{:name "foo"
+                                        :content (io.open "tests/data/valid.json")}
+                                       {:name "bar" :content "bar"}]
+                           :headers {:content-type "multipart/form-data; boundary=foobar"}})]
+      (with-open [valid (io.open "tests/data/chunked-multipart")]
+        (assert-eq (valid:read :*a) resp.body)))))
 
 (deftest query-parameters-test
   (testing "query params appear in the target path"

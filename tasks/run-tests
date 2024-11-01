@@ -14,15 +14,15 @@
     _ default-tests))
 
 (local tests
-  [:test.json-test
-   :test.readers-test
-   :test.http-parser-test
-   :test.headers-test
-   :test.url-test
-   :test.body-test
-   :test.client-test
-   :test.httpbin-test
-   :test.server-test])
+  [:tests.json-test
+   :tests.readers-test
+   :tests.http-parser-test
+   :tests.headers-test
+   :tests.url-test
+   :tests.body-test
+   :tests.client-test
+   :tests.httpbin-test
+   :tests.server-test])
 
 (-> tests
     select-tests

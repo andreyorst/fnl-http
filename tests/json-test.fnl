@@ -42,25 +42,25 @@
   (when (not _G.utf8)
     (skip-test "no utf8 module found"))
   (testing "parsing from file"
-    (assert-eq (require :test.data.valid)
-               (decode (io.open "test/data/valid.json"))))
+    (assert-eq (require :tests.data.valid)
+               (decode (io.open "tests/data/valid.json"))))
   (testing "parsing from file reader"
-    (assert-eq (require :test.data.valid)
-               (decode (readers.file-reader "test/data/valid.json"))))
+    (assert-eq (require :tests.data.valid)
+               (decode (readers.file-reader "tests/data/valid.json"))))
   (testing "parsing from string reader"
-    (assert-eq (require :test.data.valid)
-               (decode (: (readers.file-reader "test/data/valid.json") :read :*a)))))
+    (assert-eq (require :tests.data.valid)
+               (decode (: (readers.file-reader "tests/data/valid.json") :read :*a)))))
 
 (deftest parse-body-test
   (when (not _G.utf8)
     (skip-test "no utf8 module found"))
   (testing "parsing from body reader"
-    (with-open [valid (io.open "test/data/valid.json")]
-      (assert-eq (require :test.data.valid)
+    (with-open [valid (io.open "tests/data/valid.json")]
+      (assert-eq (require :tests.data.valid)
                  (decode (body.body-reader valid)))))
   (testing "parsing from chunked body reader"
-    (with-open [chunked (io.open "test/data/chunked-body")]
-      (assert-eq (require :test.data.valid)
+    (with-open [chunked (io.open "tests/data/chunked-body")]
+      (assert-eq (require :tests.data.valid)
                  (decode (body.chunked-body-reader chunked))))))
 
 (deftest roundtrip-test
@@ -83,12 +83,12 @@
     (assert-eq [] (decode (encode []))))
   (testing "parsing from file reader"
     (when _G.utf8
-      (assert-eq (require :test.data.valid)
-                 (decode (encode (require :test.data.valid)))))))
+      (assert-eq (require :tests.data.valid)
+                 (decode (encode (require :tests.data.valid)))))))
 
 (deftest file-roundtrip-test
   (when (not _G.utf8)
     (skip-test "no utf8 module found"))
   (testing "encode decode Fennel data"
-    (assert-eq (require :test.data.valid)
-               (decode (encode (require :test.data.valid))))))
+    (assert-eq (require :tests.data.valid)
+               (decode (encode (require :tests.data.valid))))))

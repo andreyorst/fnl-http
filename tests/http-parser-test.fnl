@@ -58,6 +58,6 @@
           parsed (parse-http-response (string-reader resp) {:as :raw})]
       (assert-eq "hello there" parsed.body)))
   (testing "chunked body"
-    (with-open [resp (io.open "test/data/chunked" :r)]
+    (with-open [resp (io.open "tests/data/chunked" :r)]
       (let [parsed (parse-http-response (string-reader (resp:read :*a)) {:as :raw})]
         (assert-eq "Hello there\nGeneral Kenobi" parsed.body)))))
