@@ -396,13 +396,12 @@ Using the following server implementation:
 (local server (require :io.gitlab.andreyorst.fnl-http.server))
 
 (fn handler [{: headers &as request}]
-  (go
-    (async.<! (async.timeout 50))
-    {:status 200
-     :headers {:connection (or headers.Connection "keep-alive")
-               :content-length 11
-               :content-type "text/plain"}
-     :body "hello world"}))
+  (async.<! (async.timeout 50))
+  {:status 200
+   :headers {:connection (or headers.Connection "keep-alive")
+             :content-length 11
+             :content-type "text/plain"}
+   :body "hello world"})
 
 (local s (server.start handler {:port 3000}))
 (s:wait)

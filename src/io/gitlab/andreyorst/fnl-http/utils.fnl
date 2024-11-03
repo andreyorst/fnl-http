@@ -64,6 +64,7 @@ closed."
     true))
 
 (fn multipart-separator [content-type]
+  "Extract multipart separator from `content-type` header."
   (content-type:match "boundary=([^ \t\n\r]+)"))
 
 (fn file? [x]

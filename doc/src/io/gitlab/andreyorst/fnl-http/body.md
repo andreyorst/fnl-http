@@ -5,7 +5,9 @@
 - [`body-reader`](#body-reader)
 - [`chunked-body-reader`](#chunked-body-reader)
 - [`format-chunk`](#format-chunk)
+- [`multipart-body-iterator`](#multipart-body-iterator)
 - [`multipart-content-length`](#multipart-content-length)
+- [`sized-body-reader`](#sized-body-reader)
 - [`stream-body`](#stream-body)
 - [`stream-multipart`](#stream-multipart)
 - [`wrap-body`](#wrap-body)
@@ -40,6 +42,23 @@ Function signature:
 
 Formats a part of the `src` as a chunk with a calculated size.
 
+## `multipart-body-iterator`
+Function signature:
+
+```
+(multipart-body-iterator src separator read-headers)
+```
+
+Accepts `src`, part `separator` and a `read-headers` function,
+building an iterator over multipart request parts.  Each part's
+headers are parsed with `read-headers` function.  Returns an iterator,
+that in turn returns parts as tables with `headers` table, `type` of
+the attachment, `name` and/or `filename` fields, and a `content`
+field.  The `content` field is always a `Reader`, and must be
+processed before advancing the iterator.  Otherwise, the reader will
+be exhausted by the iterator, as it advances to the next part
+`separator`.  Once the final separator is met, iterator returns `nil`.
+
 ## `multipart-content-length`
 Function signature:
 
@@ -49,6 +68,16 @@ Function signature:
 
 Calculate the total length of `multipart` body.
 Needs to know the `boundary`.
+
+## `sized-body-reader`
+Function signature:
+
+```
+(sized-body-reader reader bytes)
+```
+
+Wraps existing `reader` limiting amount of data that will be read to
+`bytes`.
 
 ## `stream-body`
 Function signature:

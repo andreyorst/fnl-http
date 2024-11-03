@@ -15,6 +15,26 @@ Function signature:
 
 Parses the HTTP/1.1 request read from `src`.
 
+If the request contained a body, it is returned as a `Reader` under
+the `content` key.  Chunked encoding is supported by using a special
+`chunked-body-reader`.
+
+If the request had Content Type set to `multipart/*`, the `parts` key
+is used, and contains an iterator function, that will iterate over
+each part in the request.  Each part is a table with its respective
+headers, anc a `content` key, containing a `Reader` object.
+
+Each part's content must be processed or copied before moving to the
+next part, as moving to the next part consumes the body data from
+`src`.  Note, that when the part doesn't specify any content length or
+chunked encoding ther content Reader is not limited to part's contents
+and can read into the next part. If that's the case, parts have to be
+dumped line by line and analyzed manually.
+
+Returns a table with request `status`, `method`, `http-version`,
+`headers` keys, including `content` or `parts` keys if payload was
+provided, as described above.
+
 ## `parse-http-response`
 Function signature:
 
@@ -47,6 +67,7 @@ Function signature:
 ```
 
 Parses a `url` string as URL.
+
 Returns a table with `scheme`, `host`, `port`, `userinfo`, `path`,
 `query`, and `fragment` fields from the URL.  If the `scheme` part of
 the `url` is missing, the default `http` scheme is used.  If the

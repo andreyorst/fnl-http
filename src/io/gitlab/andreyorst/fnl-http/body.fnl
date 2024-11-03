@@ -26,7 +26,7 @@
 (local {:type io/type}
   io)
 
-(local {: min}
+(local {: min : floor}
   math)
 
 (local {: encode}
@@ -361,8 +361,14 @@ less data than was requested."
     (src:close))
   (make-reader src {: read-bytes : peek : read-line : close}))
 
-(fn sized-body-reader [reader size]
-  (var left size)
+(fn sized-body-reader [reader bytes]
+  "Wraps existing `reader` limiting amount of data that will be read to
+`bytes`."
+  (assert (reader? reader) "expected a reader as the first argument")
+  (assert (and (= :number (type bytes))
+               (= bytes (floor bytes)))
+          "expected an integer as the second argument")
+  (var left bytes)
   (let [lines (reader:lines)]
     (make-reader nil {:read-bytes (fn [_ bytes]
                                     (when (> left 0)
@@ -389,6 +395,15 @@ less data than was requested."
                       :close reader.close})))
 
 (fn multipart-body-iterator [src separator read-headers]
+  "Accepts `src`, part `separator` and a `read-headers` function,
+building an iterator over multipart request parts.  Each part's
+headers are parsed with `read-headers` function.  Returns an iterator,
+that in turn returns parts as tables with `headers` table, `type` of
+the attachment, `name` and/or `filename` fields, and a `content`
+field.  The `content` field is always a `Reader`, and must be
+processed before advancing the iterator.  Otherwise, the reader will
+be exhausted by the iterator, as it advances to the next part
+`separator`.  Once the final separator is met, iterator returns `nil`."
   (var exhausted nil)
   (fn next [_ _]
     (when (not exhausted)
