@@ -172,7 +172,10 @@ headers, anc a `content` key, containing a `Reader` object.
 
 Each part's content must be processed or copied before moving to the
 next part, as moving to the next part consumes the body data from
-`src`.
+`src`.  Note, that when the part doesn't specify any content length or
+chunked encoding ther content Reader is not limited to part's contents
+and can read into the next part. If that's the case, parts have to be
+dumped line by line and analyzed manually.
 
 Returns a table with request `status`, `method`, `http-version`,
 `headers` keys, including `content` or `parts` keys if payload was

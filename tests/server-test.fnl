@@ -80,6 +80,8 @@
          (. :body)))))
 
 (deftest multipart-post-test
+  (when (not _G.utf8)
+    (skip-test "no utf8 module found"))
   (testing "POST multipart chunked"
     (let [{: body} (http.post
                     (url)

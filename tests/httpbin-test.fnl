@@ -36,7 +36,7 @@
   (fn [t]
     (when (os.getenv :SKIP_INTEGRATION_TESTS)
       (skip-test "skipping integration tests"))
-    (with-open [proc (io.popen (.. "podman run  -p 8001:80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
+    (with-open [proc (io.popen (.. "podman run -p 8001:80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
       (let [pid (proc:read :*l)
             attempts 10]
         (if (wait-for-server attempts)
