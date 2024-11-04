@@ -239,12 +239,17 @@ Additional fields can be added to each part:
 
 ## Extra modules
 
-After loading the main client module, extra public modules are available:
+The main client module provides two more modules for convenience:
 
 ```fennel
 (local json http.json) ;; JSON parser and encoder
 (local readers http.readers) ;; Reader module for creating readers
 ```
+
+Refer to each projects documentation for each module:
+
+- [json.fnl](https://gitlab.com/andreyorst/json.fnl/-/blob/main/doc/src/json.md)
+- [reader.fnl](https://gitlab.com/andreyorst/reader.fnl/-/blob/main/doc/src/reader.md)
 
 ### HTTP Server
 
