@@ -73,11 +73,12 @@ Loading the library:
 (local http (require :io.gitlab.andreyorst.fnl-http))
 ```
 
-The library provides three main modules:
+The library provides four main modules:
 
 - `http.client`, containing all of the HTTP methods and a generic `request` function,
-- `http.readers`, containing [readers](#readers)
-- `http.json`, containing a [json parser and encoder](#json-support)
+- `http.readers`, containing [readers](#extra-modules)
+- `http.json`, containing a [json parser and encoder](#extra-modules)
+- `http.server`, containing a [server implementation](#http-server)
 
 All other modules are preloaded and for internal use only.
 
