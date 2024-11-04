@@ -145,19 +145,18 @@ special hueristics, but given a proxy object it can break.
 For example, let's create a zero-indexed array:
 
 ```fennel :skip-test
-(local Array {})
+(local Array [])
 
 (fn zero-indexed-array [...]
   (let [vals [...]]
     (setmetatable
-     []
+     Array
      {:__index (fn [_ i]
                  (. vals (+ i 1)))
       :__newindex (fn [i val]
                     (tset vals (- i 1) val))
       :__len #(length vals)
-      :__pairs (fn [_] #(next vals $2))
-      :__type Array})))
+      :__pairs (fn [_] #(next vals $2))})))
 ```
 
 Omitting the rest of metatable machinery, we now have a custom object
@@ -173,9 +172,7 @@ A custom encoder can be provided to fix that:
 
 ```fennel :skip-test
 (fn array? [x]
-  (case (getmetatable x)
-    {:__type Array} Array
-    _ false))
+  (and (= x Array) Array))
 
 (fn encode-array [arr encode]
   (.. \"[\"
@@ -200,7 +197,9 @@ objects."
   (let [type* (object? object)]
     (assert (= nil (. encoders type*))
             (string.format "encoder for %s is already registered" (tostring type*)))
-    (assert (= :table (type type*)))
+    (assert (or (= :table (type type*))
+                (= :function (type type*)))
+            "the `object?` function must return a table singleton or a function")
     (tset encoders type* object-encoder)
     (table.insert custom-encoders 1 object?)))
 
