@@ -17,7 +17,7 @@ This library utilizes [async.fnl][2] for asynchronous request processing and [lu
 3. Make sure that `TARGET-DIR` from the previous step is in your fennel PATH:
    ```
    $ cd /path/to/your/project
-   $ fennel --add-package-path './libs/?.lua --repl
+   $ fennel --add-package-path libs/?.lua --add-fennel-path libs/?.fnl --repl
    ```
 4. Require the library:
    ```fennel
