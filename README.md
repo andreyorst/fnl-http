@@ -258,16 +258,24 @@ You can either use `json.encode` or just call the `json` module as a function:
 ```fennel
 (json.encode {:foo "bar" :baz [1 2 3]})
 ;; "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"
+(json {:foo "bar" :baz [1 2 3]})
+;; "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"
 ```
 
-The `decode` function, decodes a given string, or a Reader object:
+The `decode` function, decodes a given string, file, or a Reader object:
 
 ```fennel
 (json.decode "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}")
 ;; {:baz [1 2 3] :foo "bar"}
 (json.decode (readers.string-reader "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"))
 ;; {:baz [1 2 3] :foo "bar"}
+(json.decode (io.open "path/to/file.json"))
+;; {:baz [1 2 3] :foo "bar"}
 ```
+
+Custom encoders can be registered via `json.register-encoder`.
+Refer to the [documentation](https://gitlab.com/andreyorst/fnl-http/-/blob/main/doc/src/io/gitlab/andreyorst/fnl-http/json.md#register-encoder) for more information.
+Custom decoders are not supported, given that JSON has no support for custom object types.
 
 ### Readers
 

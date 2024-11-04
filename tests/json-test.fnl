@@ -3,7 +3,7 @@
 (local {: skip-test}
   (require :io.gitlab.andreyorst.fennel-test))
 
-(local {: decode : encode}
+(local {: decode : encode : register-encoder : unregister-encoder}
   (require :io.gitlab.andreyorst.fnl-http.json))
 
 (local readers
@@ -92,3 +92,13 @@
   (testing "encode decode Fennel data"
     (assert-eq (require :tests.data.valid)
                (decode (encode (require :tests.data.valid))))))
+
+(deftest custom-encoders-test
+  (assert-not (pcall encode #nil))
+  (let [Fn {}
+        fn? #(and (= :function (type $)) Fn)]
+    (register-encoder #nil fn? tostring)
+    (assert-is (encode #nil))
+    (assert-is (: (encode #nil) :find "function:"))
+    (assert-is (unregister-encoder #nil fn?))
+    (assert-not (pcall encode #nil))))
