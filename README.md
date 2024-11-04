@@ -308,11 +308,11 @@ Provide a method that throws an error, if you want your Reader to prohibit some 
 ### HTTP Server
 
 This library contains a simple HTTP/1.1 server.
-The module provides a single function that accepts an asynchronous handler doing all of the heavy-lifting of routing, and provides a simple data-oriented API for the response format.
+The module provides a single function that accepts an asynchronous handler doing all of the heavy lifting of routing and provides a simple data-oriented API for the response format.
 The handler runs in the implicit asynchronous context, thus blocking code should be avoided.
 If `async.fnl` functions are used inside the handler, all code must use parking operations on channels.
 
-The server can then be ran like this:
+The server can then be started like this:
 
 ```fennel
 (server.start handler-fn connection)
@@ -322,7 +322,7 @@ The returned object is a server with the following methods:
 
 - `stop` - stops the server.
 - `close` - same as `stop`.
-- `wait` - blocks the main thread, waiting for server to finish.
+- `wait` - blocks the main thread, waiting for the server to finish.
 
 Additionally, the object provides the following fields:
 
@@ -344,7 +344,7 @@ The response is either a table, with the following format:
  }
 ```
 
-The body key value can be a string, channel, reader or a file handle.
+The body key value can be a string, channel, reader, or file handle.
 
 The server is experimental and not properly tested.
 
@@ -359,12 +359,12 @@ Each incoming request is passed to the `handler` function as a table:
  :path "/"}
 ```
 
-For methods that provide payload this table will contain either the `content` key or `parts` key.
+For methods that provide payload, this table will contain either the `content` key or the `parts` key.
 
 The `content` key is always a Reader.
 It should always be consumed by the handler, even if the contents are not used by the underlying code.
 
-The `parts` key appears when the request content-type was specified as `multipart/*`, and is always an iterator function.
+The `parts` key appears when the request content type is specified as `multipart/*`, and is always an iterator function.
 Each time the `parts` function is called the next part is returned.
 
 A part is represented as the following table:
@@ -382,8 +382,8 @@ A part is represented as the following table:
 
 The `content` key is a Reader.
 It must be processed before accessing the next part.
-If it was not used before accessing the next part, it will be exhausted once the next part is fetched.
-Thus all parts can't be obtained in advance without loosing data.
+If it is not used before accessing the next part, it will be exhausted once the next part is fetched.
+Thus all parts can't be obtained in advance without losing data.
 
 Here's an example of working with multipart requests:
 
