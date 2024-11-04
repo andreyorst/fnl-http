@@ -8,10 +8,10 @@
   (require :io.gitlab.andreyorst.fnl-http.client))
 
 (local readers
-  (require :io.gitlab.andreyorst.fnl-http.readers))
+  (require :io.gitlab.andreyorst.reader))
 
 (local json
-  (require :io.gitlab.andreyorst.fnl-http.json))
+  (require :io.gitlab.andreyorst.json))
 
 (local a
   (require :io.gitlab.andreyorst.async))

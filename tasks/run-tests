@@ -15,7 +15,6 @@
 
 (local tests
   [:tests.json-test
-   :tests.readers-test
    :tests.http-parser-test
    :tests.headers-test
    :tests.url-test

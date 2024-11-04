@@ -24,8 +24,8 @@ SOFTWARE.
 
 (setmetatable
  {:client (require :io.gitlab.andreyorst.fnl-http.client)
-  :json (require :io.gitlab.andreyorst.fnl-http.json)
-  :readers (require :io.gitlab.andreyorst.fnl-http.readers)
+  :json (require :io.gitlab.andreyorst.json)
+  :readers (require :io.gitlab.andreyorst.reader)
   :server (require :io.gitlab.andreyorst.fnl-http.server)}
  {:__index (setmetatable
             (require :io.gitlab.andreyorst.fnl-http.client)

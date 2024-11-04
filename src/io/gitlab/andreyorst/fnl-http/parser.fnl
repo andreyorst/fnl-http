@@ -1,6 +1,6 @@
 (local {: make-reader
         : string-reader}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
+  (require :io.gitlab.andreyorst.reader))
 
 (local {: decode-value
         : capitalize-header}

@@ -219,4 +219,5 @@ used."
  : file-reader
  : string-reader
  : reader?
+ :__VERSION "0.1.1"
  :ltn12-reader (and ltn? ltn12-reader)}

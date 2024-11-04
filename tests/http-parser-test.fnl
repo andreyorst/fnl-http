@@ -11,7 +11,7 @@
 
 (local {: string-reader
         : file-reader}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
+  (require :io.gitlab.andreyorst.reader))
 
 (fn select-keys [tbl keys]
   (collect [_ k (ipairs keys)]

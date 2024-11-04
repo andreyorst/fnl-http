@@ -14,7 +14,7 @@
 (local {: string-reader
         : file-reader
         : reader?}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
+  (require :io.gitlab.andreyorst.reader))
 
 (fn string-writer []
   (var s "")

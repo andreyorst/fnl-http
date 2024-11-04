@@ -1,14 +1,14 @@
 (import-macros {: go : go-loop}
   (doto :io.gitlab.andreyorst.async require))
 
+(local {: reader?}
+  (require :io.gitlab.andreyorst.reader))
+
 (local socket
   (require :socket))
 
 (local {: build-http-response}
   (require :io.gitlab.andreyorst.fnl-http.builder))
-
-(local {: reader?}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
 
 (local {: parse-http-request}
   (require :io.gitlab.andreyorst.fnl-http.parser))

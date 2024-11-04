@@ -2,14 +2,13 @@
         : string-reader
         : file-reader
         : make-reader}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
-
-(local {: file?}
-  (require :io.gitlab.andreyorst.fnl-http.utils))
+  (require :io.gitlab.andreyorst.reader))
 
 (local {: concat} table)
 
 (local {: gsub : format} string)
+
+(local {:type file?} io)
 
 ;; Lua -> JSON Encoder
 
@@ -373,4 +372,5 @@ logical JSON value to a Lua value."
 
 (setmetatable
  {: encode : decode : register-encoder : unregister-encoder}
- {:__call (fn [_ value] (encode value))})
+ {:__call (fn [_ value] (encode value))
+  :__VERSION "0.1.1"})

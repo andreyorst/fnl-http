@@ -8,6 +8,12 @@
 (local {: >! : <! : >!! : <!! : chan?}
   (require :io.gitlab.andreyorst.async))
 
+(local {: reader? : file-reader}
+  (require :io.gitlab.andreyorst.reader))
+
+(local {: decode}
+  (require :io.gitlab.andreyorst.json))
+
 (local {: >!? : <!? : make-tcp-client : chunked-encoding?}
   (require :io.gitlab.andreyorst.fnl-http.utils))
 
@@ -24,9 +30,6 @@
 (local {: chan}
   (require :io.gitlab.andreyorst.async))
 
-(local {: reader? : file-reader}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
-
 (local {: build-http-request}
   (require :io.gitlab.andreyorst.fnl-http.builder))
 
@@ -39,9 +42,6 @@
 
 (local {: random-uuid}
   (require :io.gitlab.andreyorst.fnl-http.uuid))
-
-(local {: decode}
-  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (local {: capitalize-header}
   (require :io.gitlab.andreyorst.fnl-http.headers))

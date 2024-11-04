@@ -1,5 +1,5 @@
 (local server (require :io.gitlab.andreyorst.fnl-http.server))
-(local json (require :io.gitlab.andreyorst.fnl-http.json))
+(local json (require :io.gitlab.andreyorst.json))
 
 (fn handler [req]
   (case req

@@ -1,8 +1,11 @@
-(local {: headers->string}
-  (require :io.gitlab.andreyorst.fnl-http.builder))
+(local {: decode : encode}
+  (require :io.gitlab.andreyorst.json))
 
 (local {: reader? : file-reader : string-reader : make-reader}
-  (require :io.gitlab.andreyorst.fnl-http.readers))
+  (require :io.gitlab.andreyorst.reader))
+
+(local {: headers->string}
+  (require :io.gitlab.andreyorst.fnl-http.builder))
 
 (local {: urlencode}
   (require :io.gitlab.andreyorst.fnl-http.url))
@@ -17,8 +20,6 @@
         : capitalize-header}
   (require :io.gitlab.andreyorst.fnl-http.headers))
 
-(local {: decode}
-  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (local {: format : lower}
   string)
@@ -28,9 +29,6 @@
 
 (local {: min : floor}
   math)
-
-(local {: encode}
-  (require :io.gitlab.andreyorst.fnl-http.json))
 
 (fn get-chunk-data [src]
   "Obtain a single chunk from `src`."

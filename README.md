@@ -242,68 +242,9 @@ Additional fields can be added to each part:
 After loading the main client module, extra public modules are available:
 
 ```fennel
-(local json http.json) ;; json parser and encoder
+(local json http.json) ;; JSON parser and encoder
 (local readers http.readers) ;; Reader module for creating readers
 ```
-
-### JSON support
-
-The `json` module contains two functions: `encode` and `decode`.
-
-The `encode` function, produces a JSON string, given any Lua value, including tables.
-**Note**, cyclic tables are not supported.
-
-You can either use `json.encode` or just call the `json` module as a function:
-
-```fennel
-(json.encode {:foo "bar" :baz [1 2 3]})
-;; "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"
-(json {:foo "bar" :baz [1 2 3]})
-;; "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"
-```
-
-The `decode` function, decodes a given string, file, or a Reader object:
-
-```fennel
-(json.decode "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}")
-;; {:baz [1 2 3] :foo "bar"}
-(json.decode (readers.string-reader "{\"baz\": [1, 2, 3], \"foo\": \"bar\"}"))
-;; {:baz [1 2 3] :foo "bar"}
-(json.decode (io.open "path/to/file.json"))
-;; {:baz [1 2 3] :foo "bar"}
-```
-
-Custom encoders can be registered via `json.register-encoder`.
-Refer to the [documentation](https://gitlab.com/andreyorst/fnl-http/-/blob/main/doc/src/io/gitlab/andreyorst/fnl-http/json.md#register-encoder) for more information.
-Custom decoders are not supported, given that JSON has no support for custom object types.
-
-### Readers
-
-A Reader is a stateful object, which has a few specific methods:
-
-- `read` - reads an amount of bytes (or a pattern) from the Reader, advancing it.
-- `peek` - peeks at a specified amount of bytes without advancing the Reader.
-- `lines` - returns a function, that returns lines, similar to `(: (io.open "file") :lines)`
-- `close` - closes the Reader, such that all methods no longer return any values.
-
-Readers help process large request bodies and allow stream-like workflow.
-
-There are a few predefined readers:
-
-- `file-reader` - wraps a file handle, or a path string, and returns a Reader.
-- `string-reader` - wraps a string, returning a Reader.
-- `ltn12-reader` - wraps an LTN12 source, returning a Reader <sup><i>yo dawg we put a reader on your reader, so you could read while you read</i></sup>.
-
-Custom Reader objects can be created with the `make-reader` function.
-This function accepts the object to read from, and a table of methods:
-
-- `read-bytes` - should read a specified amount of bytes, and advance the object in some way.
-- `read-line` - should return a single line, and advance the object.
-- `peek` - should read a specified amount of bytes, without advancing a reader.
-- `close` - should close the object, such that other functions will no longer use it, and return `nil` on any call.
-
-All methods are optional, and nonexistent methods will return `nil` by default.
-Provide a method that throws an error, if you want your Reader to prohibit some methods.
 
 ### HTTP Server
 
