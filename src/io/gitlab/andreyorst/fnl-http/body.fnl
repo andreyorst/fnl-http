@@ -392,6 +392,7 @@ less data than was requested."
                                                 line))))
                       :close reader.close})))
 
+;; FIXME: right now, closing the content reader would close the request
 (fn multipart-body-iterator [src separator read-headers]
   "Accepts `src`, part `separator` and a `read-headers` function,
 building an iterator over multipart request parts.  Each part's
@@ -420,6 +421,8 @@ be exhausted by the iterator, as it advances to the next part
                     :into {:headers headers
                            :length parsed-headers.Content-Length
                            :type attachment-type
+                           ;; TODO: reimplement the reader in terms of a buffer to avoid
+                           ;;       problems with incorrect or missing content-length header
                            :content (if parsed-headers.Content-Length
                                         (-> src
                                             body-reader
