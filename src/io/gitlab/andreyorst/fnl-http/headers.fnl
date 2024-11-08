@@ -33,4 +33,12 @@ If coersion fails, returns the value as is."
         "false" false
         _ value)))
 
-{: decode-value : capitalize-header}
+(fn get-boundary [headers]
+  {:private true}
+  (accumulate [boundary nil
+               header value (pairs headers)
+               :until boundary]
+    (when (= "content-type" (lower header))
+      (value:match "boundary=([^;]+)"))))
+
+{: decode-value : capitalize-header : get-boundary}

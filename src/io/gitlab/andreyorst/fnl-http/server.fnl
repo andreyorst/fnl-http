@@ -20,14 +20,24 @@
   (require :io.gitlab.andreyorst.fnl-http.tcp))
 
 (local {: decode-value
-        : capitalize-header}
+        : capitalize-header
+        : get-boundary}
   (require :io.gitlab.andreyorst.fnl-http.headers))
 
-(local {: make-tcp-client : <!? : chunked-encoding?}
+(local {: <!?
+        : make-tcp-client
+        : chunked-encoding?
+        : multipart?}
   (require :io.gitlab.andreyorst.fnl-http.utils))
 
-(local {: stream-body : wrap-body}
+(local {: stream-body
+        : wrap-body
+        : multipart-content-length
+        : stream-multipart}
   (require :io.gitlab.andreyorst.fnl-http.body))
+
+(local {: random-uuid}
+  (require :io.gitlab.andreyorst.fnl-http.uuid))
 
 (local {: lower}
   string)
@@ -124,20 +134,26 @@
           (true {: status
                  :reason-phrase ?reason
                  :headers ?headers
-                 :body ?body})
+                 :body ?body
+                 :multipart ?multipart
+                 :mime-subtype ?mime})
           (let [headers (collect [k v (pairs (or ?headers {}))]
                           (lower k) v)
                 body (wrap-body ?body headers.content-type)
                 headers (collect [k v (pairs headers)
                                   :into {:connection (or request-headers.Connection "keep-alive")
-                                         :content-type (when (or (reader? body)
-                                                                 (chan? body))
-                                                         "application/octet-stream")
+                                         :content-type (if ?multipart
+                                                           (.. "multipart/" (or ?mime "form-data")
+                                                               "; boundary=------------" (random-uuid))
+                                                           (or (reader? body)
+                                                               (chan? body))
+                                                           "application/octet-stream")
                                          :content-length (if (= :string (type body))
                                                              (length body)
-                                                             (= nil body)
+                                                             (and (= nil body) (= nil ?multipart))
                                                              0)
                                          :transfer-encoding (when (or (and (reader? body)
+                                                                           (not (multipart? headers.content-type))
                                                                            (not headers.content-length))
                                                                       (chan? body))
                                                               "chunked")}]
@@ -145,9 +161,13 @@
             (when (reader? body)
               (tset resources body true))
             (tset headers :content-length
-              (when (not (chunked-encoding? headers.transfer-encoding))
-                headers.content-length))
-            (respond client ok? status ?reason headers body))
+              (if (not (chunked-encoding? headers.transfer-encoding))
+                  headers.content-length
+                  ?multipart
+                  (multipart-content-length ?multipart (get-boundary headers))))
+            (respond client ok? status ?reason headers body)
+            (when ?multipart
+              (stream-multipart client ?multipart (get-boundary headers))))
           (false ?resp)
           (let [body (tostring (or ?resp ""))]
             (respond client ok? 500 "Internal server error"

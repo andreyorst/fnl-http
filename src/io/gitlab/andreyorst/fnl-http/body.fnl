@@ -234,7 +234,7 @@ buffering via the `peek` method."
                       (where (or :*l :l))
                       (let [read-more? (not (buffer:find "\n"))]
                         (when buffer-content
-                          (set buffer (buffer:sub (+ (length buffer-content) 2))))
+                          (set buffer (buffer:sub (length buffer-content))))
                         (if read-more?
                             (if buffer-content
                                 (.. buffer-content (or (src:read pattern) ""))
@@ -392,7 +392,6 @@ less data than was requested."
                                                 line))))
                       :close reader.close})))
 
-;; FIXME: right now, closing the content reader would close the request
 (fn multipart-body-iterator [src separator read-headers]
   "Accepts `src`, part `separator` and a `read-headers` function,
 building an iterator over multipart request parts.  Each part's
@@ -404,33 +403,49 @@ processed before advancing the iterator.  Otherwise, the reader will
 be exhausted by the iterator, as it advances to the next part
 `separator`.  Once the final separator is met, iterator returns `nil`."
   (var exhausted nil)
-  (fn next [_ _]
-    (when (not exhausted)
-      (var found nil)
-      (while (not found)
-        (let [line (or (src:read :*l) "")]
-          (set found (line:find (.. "--" separator) 0 true))
-          (set exhausted (line:find (.. "--" separator "--") 0 true))))
-      (when (and (not exhausted) found)
-        (let [headers (read-headers src)
-              parsed-headers (collect [k v (pairs headers)]
-                               (capitalize-header k) (decode-value v))
-              disposition (or parsed-headers.Content-Disposition "")
-              (attachment-type attachment-params) (disposition:match "([^;]+); *(.*)")]
-          (collect [k v (attachment-params:gmatch "([^= ]+)= *([^;]+)")
-                    :into {:headers headers
-                           :length parsed-headers.Content-Length
-                           :type attachment-type
-                           ;; TODO: reimplement the reader in terms of a buffer to avoid
-                           ;;       problems with incorrect or missing content-length header
-                           :content (if parsed-headers.Content-Length
-                                        (-> src
-                                            body-reader
-                                            (sized-body-reader parsed-headers.Content-Length))
-                                        (chunked-encoding? parsed-headers.Transfer-Encoding)
-                                        (chunked-body-reader src)
-                                        (body-reader src))}]
-            k (case (pcall decode v) (true v) v _ v)))))))
+  (let [separator (.. "--" separator)]
+    (fn next [_ _]
+      (when (not exhausted)
+        (var found nil)
+        (while (not found)
+          (let [line (or (src:read :*l) "")]
+            (case (line:find separator 0 true)
+              (_ end)
+              (do (set found true)
+                  (set exhausted (line:find "--" end true))))))
+        (when (and (not exhausted) found)
+          (let [headers (read-headers src)
+                parsed-headers (collect [k v (pairs headers)]
+                                 (capitalize-header k) (decode-value v))
+                disposition (or parsed-headers.Content-Disposition "")
+                (attachment-type attachment-params) (disposition:match "([^;]+); *(.*)")]
+            (collect [k v (attachment-params:gmatch "([^= ]+)= *([^;]+)")
+                      :into {:headers headers
+                             :length parsed-headers.Content-Length
+                             :type attachment-type
+                             :content (do
+                                        (var closed? false)
+                                        (make-reader
+                                         (if (chunked-encoding? parsed-headers.Transfer-Encoding)
+                                             (chunked-body-reader src)
+                                             parsed-headers.Content-Length
+                                             (-> src
+                                                 body-reader
+                                                 (sized-body-reader parsed-headers.Content-Length))
+                                             ;; TODO: maybe implement a reader in terms of a buffer
+                                             ;;       to read the data only relying on part separators
+                                             (body-reader src))
+                                         {:read-bytes (fn [rdr pattern]
+                                                        (when (not closed?)
+                                                          (rdr:read pattern)))
+                                          :read-line (fn [rdr _]
+                                                       (when (not closed?)
+                                                         (rdr:read :*l)))
+                                          :peek (fn [rdr bytes]
+                                                  (when (not closed?)
+                                                    (rdr:read bytes)))
+                                          :close (fn [_] (set closed? true))}))}]
+              k (case (pcall decode v) (true v) v _ v))))))))
 
 {: stream-body
  : format-chunk

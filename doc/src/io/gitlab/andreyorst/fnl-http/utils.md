@@ -7,7 +7,7 @@
 - [`chunked-encoding?`](#chunked-encoding)
 - [`file?`](#file)
 - [`make-tcp-client`](#make-tcp-client)
-- [`multipart-request?`](#multipart-request)
+- [`multipart?`](#multipart-request)
 - [`multipart-separator`](#multipart-separator)
 
 ## `<!?`
@@ -62,11 +62,11 @@ methods to act like Luasocket client. `resources` is a hash-set of
 values mapped to `true` needed to be closed before the client is
 closed.
 
-## `multipart-request?`
+## `multipart?`
 Function signature:
 
 ```
-(multipart-request? content-type)
+(multipart? content-type)
 ```
 
 Test if `content-type` header is multipart.

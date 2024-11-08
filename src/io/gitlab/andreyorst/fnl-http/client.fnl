@@ -43,7 +43,7 @@
 (local {: random-uuid}
   (require :io.gitlab.andreyorst.fnl-http.uuid))
 
-(local {: capitalize-header}
+(local {: capitalize-header : get-boundary}
   (require :io.gitlab.andreyorst.fnl-http.headers))
 
 (local {: format
@@ -57,14 +57,6 @@
 (local client {})
 
 ;;; Helper functions
-
-(fn get-boundary [headers]
-  {:private true}
-  (accumulate [boundary nil
-               header value (pairs headers)
-               :until boundary]
-    (when (= "content-type" (lower header))
-      (value:match "boundary=([^;]+)"))))
 
 (fn prepare-headers [{: body : headers : multipart : mime-subtype :url {: host : port}}]
   "Consttruct headers with some default ones inferred from `body`,

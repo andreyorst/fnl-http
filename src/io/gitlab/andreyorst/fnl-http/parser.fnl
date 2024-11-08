@@ -8,7 +8,7 @@
 
 (local {: <!?
         : chunked-encoding?
-        : multipart-request?
+        : multipart?
         : multipart-separator}
   (require :io.gitlab.andreyorst.fnl-http.utils))
 
@@ -36,10 +36,9 @@
 The optional parameter `?headers` is used for tail recursion, and
 should not be provided by the caller, unless the intention is to
 append or override existing headers."
-  {:private true}
   (let [headers (or ?headers {})]
     (case (src:read :*l)
-      (where (or "\r" "")) headers
+      (where (or "\r" "" "\r\n" "\n")) headers
       ?line (read-headers
              src
              (case (parse-header (or ?line ""))
@@ -88,6 +87,24 @@ append or override existing headers."
     line (parse-response-status-line line)
     _ (error "status line was not received from server")))
 
+(fn read-multipart-response [src separator]
+  "Read multipart body from `src` until the last `separator` is met.
+We have to read byte by byte because luasocket's `receive` method
+doesn't include line feed or carriage return characters in the
+returned string when using the `*l` pattern."
+  {:private true}
+  (let [end (.. "--" separator "--")]
+    ((fn loop [data line]
+       (let [byte (src:read 1)
+             line (doto line (table.insert byte))]
+         (case (when (= byte "\n")
+                 (table.concat line))
+           line (if (line:find end nil true)
+                    (table.concat (doto data (table.insert line)))
+                    (loop (doto data (table.insert line)) []))
+           nil (loop data line))))
+     [] [])))
+
 (fn parse-http-response [src {: as : start : time : method}]
   "Parse the beginning of the HTTP response.
 Accepts `src` that is a source, that can be read with the `read`
@@ -123,7 +140,9 @@ its headers, and a body stream."
       (tset :body
           (when (not= (upper (or method "")) :HEAD)
             (case as
-              :raw (stream:read (or parsed-headers.Content-Length :*a))
+              :raw (if (multipart? parsed-headers.Content-Type)
+                       (read-multipart-response src (multipart-separator parsed-headers.Content-Type))
+                       (stream:read (or parsed-headers.Content-Length :*a)))
               (where (or :json :stream)) stream
               _ (error (format "unsupported coersion method '%s'" as))))))))
 
@@ -154,7 +173,7 @@ its headers, and a body stream."
   "Determine request body encoding type via `headers` or `method` used."
   {:private true}
   (if (= (upper (or method "")) :HEAD) nil
-      (multipart-request? headers.Content-Type) :multipart
+      (multipart? headers.Content-Type) :multipart
       (chunked-encoding? headers.Transfer-Encoding) :chunked
       headers.Content-Length :stream))
 
@@ -235,4 +254,5 @@ the `scheme` part: `80` for the `http` and `443` for `https`."
 
 {: parse-http-response
  : parse-http-request
- : parse-url}
+ : parse-url
+ : read-headers}

@@ -7,6 +7,12 @@
 (local http
   (require :io.gitlab.andreyorst.fnl-http.client))
 
+(local body
+  (require :io.gitlab.andreyorst.fnl-http.body))
+
+(local parser
+  (require :io.gitlab.andreyorst.fnl-http.parser))
+
 (local readers
   (require :io.gitlab.andreyorst.reader))
 
@@ -102,65 +108,7 @@
                  :length 4
                  :name "daun"
                  :type "form-data"}
-                {:content "[
-    \"JSON Test Pattern pass1\",
-    {\"object with 1 member\":[\"array with 1 element\"]},
-    {},
-    [],
-    -42,
-    true,
-    false,
-    null,
-    {
-        \"integer\": 1234567890,
-        \"real\": -9876.543210,
-        \"e\": 0.123456789e-12,
-        \"E\": 1.234567890E+34,
-        \"\":  23456789012E66,
-        \"zero\": 0,
-        \"one\": 1,
-        \"space\": \" \",
-        \"quote\": \"\\\"\",
-        \"backslash\": \"\\\\\",
-        \"controls\": \"\\b\\f\\n\\r\\t\",
-        \"slash\": \"/ & /\",
-        \"alpha\": \"abcdefghijklmnopqrstuvwyz\",
-        \"ALPHA\": \"ABCDEFGHIJKLMNOPQRSTUVWYZ\",
-        \"digit\": \"0123456789\",
-        \"0123456789\": \"digit\",
-        \"special\": \"`1~!@#$%^&*()_+-={':[,]}|;.</>?\",
-        \"hex\": \"\\u0123\\u4567\\u89AB\\uCDEF\\uabcd\\uef4A\",
-        \"true\": true,
-        \"false\": false,
-        \"null\": null,
-        \"array\":[  ],
-        \"object\":{  },
-        \"address\": \"50 St. James Street\",
-        \"url\": \"http://www.JSON.org/\",
-        \"comment\": \"// /* <!-- --\",
-        \"# -- --> */\": \" \",
-        \" s p a c e d \" :[1,2 , 3
-
-,
-
-4 , 5\t   ,  \t\t        6           ,7        ],\"compact\":[1,2,3,4,5,6,7],
-        \"jsontext\": \"{\\\"object with 1 member\\\":[\\\"array with 1 element\\\"]}\",
-        \"quotes\": \"&#34; \\u0022 %22 0x22 034 &#x22;\",
-        \"/\\\\\\\"\\uCAFE\\uBABE\\uAB98\\uFCDE\\ubcda\\uef4A\\b\\f\\n\\r\\t`1~!@#$%^&*()_+-=[]{}|;:',./<>?\"
-: \"A key can be any string\"
-    },
-    0.5 ,98.6
-,
-99.44
-,
-
-1066,
-1e1,
-0.1e1,
-1e-1,
-1e00,2e+00,2e-00
-,\"rosebud\"]
-"
+                {:content (with-open [f (io.open "tests/data/valid.json")] (f:read :*a))
                  :filename "valid.json"
                  :headers {:Content-Disposition "form-data; name=\"valid\"; filename=\"valid.json\""
                            :Content-Transfer-Encoding "binary"
@@ -174,3 +122,63 @@
       (assert-eq
        (require :tests.data.valid)
        (json.decode (. body :parts 2 :content))))))
+
+(deftest multipart-get-test
+  (testing "GET multipart"
+    (assert-eq
+     {:headers {:Connection "keep-alive"
+                :Content-Length "1759"
+                :Content-Type "multipart/form-data; boundary=foobar"}
+      :length 1759
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "OK"
+      :status 200
+      :trace-redirects {}
+      :body (with-open [f (io.open "tests/data/multipart")]
+              (f:read :*a))}
+     (doto (http.get (url "/multipart") {:as :raw :throw-errors? false})
+       (tset :http-client nil)
+       (tset :request-time nil))))
+  (testing "GET chunked multipart"
+    (assert-eq
+     {:headers {:Connection "keep-alive"
+                :Content-Type "multipart/form-data; boundary=foobar"}
+      :protocol-version {:major 1 :minor 1 :name "HTTP"}
+      :reason-phrase "OK"
+      :status 200
+      :trace-redirects {}
+      :body (with-open [f (io.open "tests/data/chunked-multipart")]
+              (let [data (f:read :*a)]
+                (data:sub 94 (length data))))}
+     (doto (http.get (url "/chunked-multipart") {:as :raw :throw-errors? false})
+       (tset :http-client nil)
+       (tset :request-time nil)))))
+
+(deftest multipart-iterator-test
+  (testing "iterating over parts"
+    (let [parts (body.multipart-body-iterator (readers.file-reader "tests/data/chunked-multipart") "foobar" parser.read-headers)]
+      (each [{: name : content : headers} parts]
+        (case name
+          "foo" (do (assert-eq {:Content-Disposition "form-data; name=\"foo\"\r"
+                                :Content-Transfer-Encoding "binary\r"
+                                :Content-Type "application/octet-stream\r"
+                                :Transfer-Encoding "chunked\r"}
+                               headers)
+                    (assert-eq
+                     (with-open [f (io.open "tests/data/valid.json")]
+                       (f:read :*a))
+                     (content:read :*a)))
+          "bar" (assert-eq "bar" (content:read :*a))))))
+  (testing "closing part reader while iterating"
+    (let [parts (body.multipart-body-iterator (readers.file-reader "tests/data/chunked-multipart") "foobar" parser.read-headers)]
+      (each [{: name : content : headers} parts]
+        (case name
+          "foo" (do (content:close)
+                    (assert-eq nil (content:read :*a)))
+          "bar" (assert-eq "bar" (content:read :*a))))))
+  (testing "skipping part while iterating"
+    (let [parts (body.multipart-body-iterator (readers.file-reader "tests/data/chunked-multipart") "foobar" parser.read-headers)]
+      (each [{: name : content : headers} parts]
+        (case name
+          "foo" nil
+          "bar" (assert-eq "bar" (content:read :*a)))))))

@@ -54,10 +54,10 @@ closed."
   "Test if `transfer-encoding` header is chunked."
   (case (lower (or transfer-encoding ""))
     (where header (or (header:match "chunked[, ]")
-                      (header:match "chunked$")))
+                      (header:match "chunked\r?$")))
     true))
 
-(fn multipart-request? [content-type]
+(fn multipart? [content-type]
   "Test if `content-type` header is multipart."
   (case (lower (or content-type ""))
     (where header (header:match "multipart/"))
@@ -75,6 +75,6 @@ closed."
  : <!?
  : >!?
  : chunked-encoding?
- : multipart-request?
+ : multipart?
  : multipart-separator
  : file?}
