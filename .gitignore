@@ -6,3 +6,4 @@
 /luacov.*
 /src/**/*.lua
 /target
+/.deps
