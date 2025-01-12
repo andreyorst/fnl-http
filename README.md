@@ -3,27 +3,14 @@
 A [clj-http][1]-inspired library for making HTTP/1.1 requests written in Fennel.
 This library utilizes [async.fnl][2] for asynchronous request processing and [luasocket][3] for an actual implementation of sockets.
 
-# Installation
+# Installation via [deps.fnl](https://gitlab.com/andreyorst/deps.fnl)
 
-1. Clone the repo:
-   ```
-   $ git clone https://gitlab.com/andreyorst/fnl-http
-   ```
-2. Invoke `fennel tasks/install --prefix TARGET-DIR` at the root of the repository.
-   The `TARGET-DIR` is a directory where you wish to install the library:
-   ```
-   $ fennel tasks/install --prefix /path/to/your/project/libs
-   ```
-3. Make sure that `TARGET-DIR` from the previous step is in your fennel PATH:
-   ```
-   $ cd /path/to/your/project
-   $ fennel --add-package-path libs/?.lua --add-fennel-path libs/?.fnl --repl
-   ```
-4. Require the library:
-   ```fennel
-   >> (local http (require :io.gitlab.andreyorst.fnl-http))
-   nil
-   ```
+Add the following to `deps.fnl` file:
+
+```fennel
+["https://gitlab.com/andreyorst/fnl-http"
+ {:type :git :sha "6037441d6c1ab3f87f600a73ac518965952a5a16"}]
+```
 
 # Usage
 
