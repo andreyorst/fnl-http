@@ -1,0 +1,10 @@
+;; -*- mode: fennel; -*- vi:ft=fennel
+
+(fn rev-count []
+  (with-open [f (io.popen "git -C . rev-list HEAD --count")]
+    (f:read)))
+
+(local (major minor patch)
+  (values "0" "1" (rev-count)))
+
+(print (string.format "%s.%s.%s" major minor patch))

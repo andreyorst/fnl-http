@@ -367,15 +367,15 @@
                             :as :stream})
             done (a.chan)]
         (for [i 1 4]
-          (a.go #(do (for [i 1 10]
-                       (resp.body:read 1000))
-                     (a.>! done i))))
+          (a.go* #(do (for [i 1 10]
+                        (resp.body:read 1000))
+                      (a.>! done i))))
         (for [i 1 4]
           (->> #(let [tout (a.timeout 1000)]
                   (match (a.alts! [done tout])
                     [_ tout] Timeout
                     [val _] val))
-               a.go
+               a.go*
                a.<!!
                (assert-ne Timeout)))))
     (testing "Read a chunked stream of bytes in multiple threads."
@@ -385,15 +385,15 @@
             done (a.chan)
             Timeout (setmetatable {} {:__fennelview #:Timeout})]
         (for [i 1 4]
-          (a.go #(do (for [i 1 10]
-                       (resp.body:read 1000))
-                     (a.>! done i))))
+          (a.go* #(do (for [i 1 10]
+                        (resp.body:read 1000))
+                      (a.>! done i))))
         (for [i 1 4]
           (->> #(let [tout (a.timeout 1000)]
                   (match (a.alts! [done tout])
                     [_ tout] Timeout
                     [val _] val))
-               a.go
+               a.go*
                a.<!!
                (assert-ne Timeout)))))))
 

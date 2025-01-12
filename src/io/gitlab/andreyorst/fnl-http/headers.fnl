@@ -34,6 +34,8 @@ If coersion fails, returns the value as is."
         _ value)))
 
 (fn get-boundary [headers]
+  "Get boundary `fragment` from the `content-type` header.
+Accepts the `headers` table."
   {:private true}
   (accumulate [boundary nil
                header value (pairs headers)

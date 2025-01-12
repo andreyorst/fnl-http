@@ -7,8 +7,8 @@
 - [`chunked-encoding?`](#chunked-encoding)
 - [`file?`](#file)
 - [`make-tcp-client`](#make-tcp-client)
-- [`multipart?`](#multipart-request)
 - [`multipart-separator`](#multipart-separator)
+- [`multipart?`](#multipart)
 
 ## `<!?`
 Function signature:
@@ -62,15 +62,6 @@ methods to act like Luasocket client. `resources` is a hash-set of
 values mapped to `true` needed to be closed before the client is
 closed.
 
-## `multipart?`
-Function signature:
-
-```
-(multipart? content-type)
-```
-
-Test if `content-type` header is multipart.
-
 ## `multipart-separator`
 Function signature:
 
@@ -79,6 +70,15 @@ Function signature:
 ```
 
 Extract multipart separator from `content-type` header.
+
+## `multipart?`
+Function signature:
+
+```
+(multipart? content-type)
+```
+
+Test if `content-type` header is multipart.
 
 
 <!-- Generated with Fenneldoc v1.0.1

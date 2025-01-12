@@ -37,9 +37,7 @@
 (use-fixtures
     :once
   (fn [t]
-    (with-open [proc (io.popen (.. "fennel"
-                                   " --add-fennel-path lib/?.fnl"
-                                   " --add-fennel-path src/?.fnl"
+    (with-open [proc (io.popen (.. "deps"
                                    " tests/data/server.fnl"
                                    " & echo $!"))]
       (let [pid (proc:read :*l)

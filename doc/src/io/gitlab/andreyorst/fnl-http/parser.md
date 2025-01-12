@@ -5,6 +5,7 @@
 - [`parse-http-request`](#parse-http-request)
 - [`parse-http-response`](#parse-http-response)
 - [`parse-url`](#parse-url)
+- [`read-headers`](#read-headers)
 
 ## `parse-http-request`
 Function signature:
@@ -73,6 +74,18 @@ Returns a table with `scheme`, `host`, `port`, `userinfo`, `path`,
 the `url` is missing, the default `http` scheme is used.  If the
 `port` part of the `url` is missing, the default port is used based on
 the `scheme` part: `80` for the `http` and `443` for `https`.
+
+## `read-headers`
+Function signature:
+
+```
+(read-headers src ?headers)
+```
+
+Read and parse HTTP headers from `src`.
+The optional parameter `?headers` is used for tail recursion, and
+should not be provided by the caller, unless the intention is to
+append or override existing headers.
 
 
 <!-- Generated with Fenneldoc v1.0.1

@@ -32,7 +32,7 @@
     (header value) (values header value)))
 
 (fn read-headers [src ?headers]
-  "Read and parse HTTP headers.
+  "Read and parse HTTP headers from `src`.
 The optional parameter `?headers` is used for tail recursion, and
 should not be provided by the caller, unless the intention is to
 append or override existing headers."
