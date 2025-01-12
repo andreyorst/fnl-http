@@ -29,4 +29,4 @@ SOFTWARE.
   :server (require :io.gitlab.andreyorst.fnl-http.server)}
  {:__index (setmetatable
             (require :io.gitlab.andreyorst.fnl-http.client)
-            {:__index {:__VERSION "0.1.121-dev"}})})
+            {:__index {:__VERSION "0.1.123"}})})
