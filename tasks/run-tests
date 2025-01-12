@@ -1,10 +1,5 @@
 ;; -*- mode: fennel; -*- vi:ft=fennel
 
-(local fennel
-  (require :fennel))
-
-(set fennel.path (.. "./src/?.fnl;./lib/?.fnl;" fennel.path))
-
 (local {: run-tests}
   (require :io.gitlab.andreyorst.fennel-test))
 
@@ -14,14 +9,14 @@
     _ default-tests))
 
 (local tests
-  [:tests.json-test
-   :tests.http-parser-test
-   :tests.headers-test
-   :tests.url-test
-   :tests.body-test
-   :tests.client-test
-   :tests.httpbin-test
-   :tests.server-test])
+  [:json-test
+   :http-parser-test
+   :headers-test
+   :url-test
+   :body-test
+   :client-test
+   :httpbin-test
+   :server-test])
 
 (-> tests
     select-tests
