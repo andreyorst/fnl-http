@@ -9,7 +9,7 @@ Add the following to `deps.fnl` file:
 
 ```fennel
 ["https://gitlab.com/andreyorst/fnl-http"
- {:type :git :sha "6037441d6c1ab3f87f600a73ac518965952a5a16"}]
+ {:type :git :sha "ec094da2a8e407143ca09bc4ae64cdbdaa4c3098"}]
 ```
 
 # Usage
