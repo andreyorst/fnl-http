@@ -1,6 +1,6 @@
 (require-macros (doto :io.gitlab.andreyorst.fennel-test require))
 
-(local {: chan : >!! : close! : go : >!
+(local {: chan : >!! : close! : go* : >!
         : chan?}
   (require :io.gitlab.andreyorst.async))
 
@@ -56,10 +56,10 @@
   (testing "formatting chunk from channel"
     (with-open [valid (io.open "tests/data/chunked-body" :r)]
       (let [ch (chan)
-            _ (go #(with-open [body (io.open "tests/data/valid.json" :r)]
-                     (each [line (body:lines)]
-                       (>! ch (.. line "\n")))
-                     (close! ch)))
+            _ (go* #(with-open [body (io.open "tests/data/valid.json" :r)]
+                      (each [line (body:lines)]
+                        (>! ch (.. line "\n")))
+                      (close! ch)))
             (last? chunk) (format-chunk ch)]
         (assert-not last?)
         (assert-eq "2\r\n[\n\r\n" chunk)))))
@@ -87,10 +87,10 @@
                 valid (io.open "tests/data/chunked-channel-body" :r)]
       (let [sw (string-writer)
             ch (chan)]
-        (go #(with-open [body (io.open "tests/data/valid.json" :r)]
-               (each [line (body:lines)]
-                 (>! ch (.. line "\n")))
-               (close! ch)))
+        (go* #(with-open [body (io.open "tests/data/valid.json" :r)]
+                (each [line (body:lines)]
+                  (>! ch (.. line "\n")))
+                (close! ch)))
         (stream-body sw ch {:transfer-encoding "chunked"})
         (assert-eq (valid:read :*a) (sw:string))))))
 
@@ -191,10 +191,10 @@
       (let [sw (string-writer)
             data (valid:read :*a)
             ch (chan)]
-        (go #(with-open [body (io.open "tests/data/valid.json" :r)]
-               (each [line (body:lines)]
-                 (>! ch (.. line "\n")))
-               (close! ch)))
+        (go* #(with-open [body (io.open "tests/data/valid.json" :r)]
+                (each [line (body:lines)]
+                  (>! ch (.. line "\n")))
+                (close! ch)))
         (stream-multipart
          sw
          [{:name "foo"

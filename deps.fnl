@@ -1,6 +1,6 @@
 {:deps
  [["https://gitlab.com/andreyorst/async.fnl"
-   {:type "git" :sha "a83b13b397fdfab3ebf7f17a16d21a7ec2674ceb"}]
+   {:type :git :sha "98e8680b46a777f9ddcff9e761b782ec6bf077f5"}]
   ["https://gitlab.com/andreyorst/json.fnl"
    {:type "git" :sha "bfb8d7d03c26619768eefaa47782a3e95dbe5156"}]
   ["https://gitlab.com/andreyorst/reader.fnl"
