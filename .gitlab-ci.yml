@@ -34,7 +34,6 @@ variables:
     git make gcc
   - *fennel
   - *deps
-  - eval $(luarocks --lua-version ${LUA#lua} path)
 
 Lua5.2:
   stage: test
@@ -42,7 +41,7 @@ Lua5.2:
     - export LUA=lua5.2
     - *prepare
   script:
-    - deps --lua $LUA --merge dev-deps.fnl --luarocks-lua-version ${LUA#lua} tasks/run-tests
+    - deps --lua $LUA --merge dev-deps.fnl tasks/run-tests
 
 Lua5.3:
   stage: test
@@ -50,7 +49,7 @@ Lua5.3:
     - export LUA=lua5.3
     - *prepare
   script:
-    - deps --lua $LUA --merge dev-deps.fnl --luarocks-lua-version ${LUA#lua} tasks/run-tests
+    - deps --lua $LUA --merge dev-deps.fnl tasks/run-tests
 
 Lua5.4:
   stage: test
@@ -58,4 +57,4 @@ Lua5.4:
     - export LUA=lua5.4
     - *prepare
   script:
-    - deps --lua $LUA --merge dev-deps.fnl --luarocks-lua-version ${LUA#lua} tasks/run-tests
+    - deps --lua $LUA --merge dev-deps.fnl tasks/run-tests
