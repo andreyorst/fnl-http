@@ -24,8 +24,8 @@
                {:headers {:connection "close"}})
         (a.<!! (a.timeout 100)))))
 
-(fn kill [pid]
-  (with-open [_ (io.popen (.. "kill -9 " pid " >/dev/null 2>&1"))]))
+(fn kill [name]
+  (with-open [_ (io.popen (.. "podman stop -i " name))]))
 
 (fn select-keys [tbl keys]
   (collect [_ k (ipairs keys)]
@@ -36,14 +36,14 @@
   (fn [t]
     (when (os.getenv :SKIP_INTEGRATION_TESTS)
       (skip-test "skipping integration tests"))
-    (with-open [proc (io.popen (.. "podman run -p 8001:80 kennethreitz/httpbin >/dev/null 2>&1 & echo $!"))]
-      (let [pid (proc:read :*l)
-            attempts 10]
-        (if (wait-for-server attempts)
-            (do (t)
-                (kill pid))
-            (do (kill pid)
-                (skip-test (.. "coudln't connect to httpbin server after " attempts " attempts") false)))))))
+    (let [name (.. "httpbin" (math.random 100000000))]
+      (with-open [_ (io.popen (.. "podman run --rm --name " name " -p 8001:80 kennethreitz/httpbin >/dev/null 2>&1 &"))]
+        (let [attempts 10]
+          (if (wait-for-server attempts)
+              (do (t)
+                  (kill name))
+              (do (kill name)
+                  (skip-test (.. "coudln't connect to httpbin server after " attempts " attempts") false))))))))
 
 (fn cleanup-response [resp]
   (if (= :table (type resp))
