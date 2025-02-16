@@ -14,9 +14,9 @@
     (skip-test "no utf8 module found"))
   (testing "parsing from body reader"
     (with-open [valid (io.open "tests/data/valid.json")]
-      (assert-eq (require :tests.data.valid)
+      (assert-eq (require :data.valid)
                  (decode (body.body-reader valid)))))
   (testing "parsing from chunked body reader"
     (with-open [chunked (io.open "tests/data/chunked-body")]
-      (assert-eq (require :tests.data.valid)
+      (assert-eq (require :data.valid)
                  (decode (body.chunked-body-reader chunked))))))

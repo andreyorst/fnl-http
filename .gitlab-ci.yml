@@ -7,6 +7,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   fennel: 1.5.1
+  deps: 0.2.2
 
 .install_fennel: &fennel |-
   cd "$HOME"
@@ -18,7 +19,7 @@ variables:
 
 .install_deps: &deps |-
   cd "$HOME"
-  git clone -q --depth=1 --branch="main" \
+  git clone -q --depth=1 --branch="$deps" \
         https://gitlab.com/andreyorst/deps.fnl
   cd deps.fnl || exit -1
   chmod 755 deps
@@ -41,7 +42,7 @@ Lua5.2:
     - export LUA=lua5.2
     - *prepare
   script:
-    - deps --lua $LUA --merge dev-deps.fnl tasks/run-tests
+    - deps --lua $LUA --profiles dev tasks/run-tests
 
 Lua5.3:
   stage: test
@@ -49,7 +50,7 @@ Lua5.3:
     - export LUA=lua5.3
     - *prepare
   script:
-    - deps --lua $LUA --merge dev-deps.fnl tasks/run-tests
+    - deps --lua $LUA --profiles dev tasks/run-tests
 
 Lua5.4:
   stage: test
@@ -57,4 +58,4 @@ Lua5.4:
     - export LUA=lua5.4
     - *prepare
   script:
-    - deps --lua $LUA --merge dev-deps.fnl tasks/run-tests
+    - deps --lua $LUA --profiles dev tasks/run-tests

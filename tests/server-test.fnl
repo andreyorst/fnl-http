@@ -118,7 +118,7 @@
         :protocol-version {:major 1 :minor 1 :name "HTTP"}}
        body)
       (assert-eq
-       (require :tests.data.valid)
+       (require :data.valid)
        (json.decode (. body :parts 2 :content))))))
 
 (deftest multipart-get-test
