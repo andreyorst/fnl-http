@@ -8,8 +8,8 @@ This library utilizes [async.fnl][2] for asynchronous request processing and [lu
 Add the following to `deps.fnl` file:
 
 ```fennel
-{:deps {"https://gitlab.com/andreyorst/fnl-http"
-        {:type :git :sha "1db56eb1736ad5366f6811aacf1ffa450f94c08f"}}}
+{:deps {:io.gitlab.andreyorst/fnl-http
+        {:type :git :sha "ac7f350f96834cdafb96bb8c19bb6c573ad343d8"}}}
 ```
 
 ## Usage
