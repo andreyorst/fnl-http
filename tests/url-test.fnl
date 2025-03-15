@@ -1,9 +1,9 @@
-(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
+(require-macros :io.gitlab.andreyorst.fennel-test)
 
 (local {: parse-url
         : format-path
         : urlencode}
-  (require :io.gitlab.andreyorst.fnl-http.url))
+  (require :io.gitlab.andreyorst.fnl-http.impl.url))
 
 (deftest url-parse-test
   (testing "url parsing"

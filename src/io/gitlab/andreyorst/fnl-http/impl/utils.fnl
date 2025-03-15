@@ -1,5 +1,5 @@
 (local {: >! : <! : >!! : <!!
-        : chan : chan? : main-thread?}
+        : chan : main-thread?}
   (require :io.gitlab.andreyorst.async))
 
 (local {: lower} string)
@@ -32,7 +32,7 @@ closed."
             (let [ch (chan)]
               (socket-channel:set-chunk-size pattern ch)
               (<!? ch)))
-    :receive (fn [_ pattern prefix]
+    :receive (fn [_ _pattern prefix]
                (let [ch (chan)]
                  (.. (or prefix "") (<!? ch))))
     :send (fn [_ data ...]

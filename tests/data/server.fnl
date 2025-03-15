@@ -1,5 +1,4 @@
 (local server (require :io.gitlab.andreyorst.fnl-http.server))
-(local reader (require :io.gitlab.andreyorst.reader))
 (local json (require :io.gitlab.andreyorst.json))
 
 (fn handler [req]

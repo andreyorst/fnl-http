@@ -1,4 +1,4 @@
-(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
+(require-macros :io.gitlab.andreyorst.fennel-test)
 
 (local {: skip-test}
   (require :io.gitlab.andreyorst.fennel-test))
@@ -19,7 +19,7 @@
   (.. "http://localhost:8001" (or path "")))
 
 (fn wait-for-server [attempts]
-  (faccumulate [started? false i 1 attempts :until started?]
+  (faccumulate [started? false _ 1 attempts :until started?]
     (or (pcall http.head (url)
                {:headers {:connection "close"}})
         (a.<!! (a.timeout 100)))))
@@ -356,7 +356,7 @@
        (let [body (-> (url (.. "/stream/" n))
                       (http.get {:as :stream})
                       (. :body))]
-         (fcollect [i 1 n]
+         (fcollect [_ 1 n]
            (select-keys (json.decode body) [:id :url])))))))
 
 (deftest asynchronous-body-read-test
@@ -367,10 +367,10 @@
                             :as :stream})
             done (a.chan)]
         (for [i 1 4]
-          (a.go* #(do (for [i 1 10]
+          (a.go* #(do (for [_ 1 10]
                         (resp.body:read 1000))
                       (a.>! done i))))
-        (for [i 1 4]
+        (for [_ 1 4]
           (->> #(let [tout (a.timeout 1000)]
                   (match (a.alts! [done tout])
                     [_ tout] Timeout
@@ -385,10 +385,10 @@
             done (a.chan)
             Timeout (setmetatable {} {:__fennelview #:Timeout})]
         (for [i 1 4]
-          (a.go* #(do (for [i 1 10]
+          (a.go* #(do (for [_ 1 10]
                         (resp.body:read 1000))
                       (a.>! done i))))
-        (for [i 1 4]
+        (for [_ 1 4]
           (->> #(let [tout (a.timeout 1000)]
                   (match (a.alts! [done tout])
                     [_ tout] Timeout

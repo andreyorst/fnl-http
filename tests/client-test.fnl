@@ -1,4 +1,4 @@
-(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
+(require-macros :io.gitlab.andreyorst.fennel-test)
 
 (local {: skip-test}
   (require :io.gitlab.andreyorst.fennel-test))
@@ -10,7 +10,7 @@
   (require :io.gitlab.andreyorst.async))
 
 (fn wait-for-server [attempts port]
-  (faccumulate [started? false i 1 attempts :until started?]
+  (faccumulate [started? false _ 1 attempts :until started?]
     (or (pcall http.head (.. "localhost:" port)
                {:headers {:connection "close"}})
         (a.<!! (a.timeout 100)))))

@@ -5,20 +5,20 @@
   (require :io.gitlab.andreyorst.reader))
 
 (local {: headers->string}
-  (require :io.gitlab.andreyorst.fnl-http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.impl.builder))
 
 (local {: urlencode}
-  (require :io.gitlab.andreyorst.fnl-http.url))
+  (require :io.gitlab.andreyorst.fnl-http.impl.url))
 
 (local {: chan? : timeout}
   (require :io.gitlab.andreyorst.async))
 
 (local {: <!? : chunked-encoding?}
-  (require :io.gitlab.andreyorst.fnl-http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.impl.utils))
 
 (local {: decode-value
         : capitalize-header}
-  (require :io.gitlab.andreyorst.fnl-http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.impl.headers))
 
 
 (local {: format : lower}
@@ -178,7 +178,6 @@ additional or to change the default ones."
 Needs to know the `boundary`."
   (case (accumulate [total 0
                   _ {:length content-length
-                     : name
                      : content
                      &as part}
                   (ipairs multipart)
@@ -195,9 +194,8 @@ Needs to know the `boundary`."
 
 (fn stream-multipart [dst multipart boundary]
   "Write `multipart` entries to `dst` separated with the `boundary`."
-  (each [_ {: name : filename
+  (each [_ {: name
             : content :length content-length
-            : mime-type
             &as part}
          (ipairs multipart)]
     (assert (not= nil content) "Multipart content cannot be nil")
@@ -404,7 +402,7 @@ be exhausted by the iterator, as it advances to the next part
 `separator`.  Once the final separator is met, iterator returns `nil`."
   (var exhausted nil)
   (let [separator (.. "--" separator)]
-    (fn next [_ _]
+    (fn _next [_ _]
       (when (not exhausted)
         (var found nil)
         (while (not found)

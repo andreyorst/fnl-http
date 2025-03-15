@@ -1,27 +1,18 @@
-(local {: make-reader
-        : string-reader}
-  (require :io.gitlab.andreyorst.reader))
-
 (local {: decode-value
         : capitalize-header}
-  (require :io.gitlab.andreyorst.fnl-http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.impl.headers))
 
-(local {: <!?
-        : chunked-encoding?
+(local {: chunked-encoding?
         : multipart?
         : multipart-separator}
-  (require :io.gitlab.andreyorst.fnl-http.utils))
-
-(local {: timeout}
-  (require :io.gitlab.andreyorst.async))
+  (require :io.gitlab.andreyorst.fnl-http.impl.utils))
 
 (local {: body-reader
         : chunked-body-reader
-        : multipart-body-iterator
-        : sized-body-reader}
-  (require :io.gitlab.andreyorst.fnl-http.body))
+        : multipart-body-iterator}
+  (require :io.gitlab.andreyorst.fnl-http.impl.body))
 
-(local {: format : upper : lower} string)
+(local {: format : upper} string)
 
 (local {: ceil} math)
 

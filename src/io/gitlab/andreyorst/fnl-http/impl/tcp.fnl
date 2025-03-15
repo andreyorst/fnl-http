@@ -1,13 +1,12 @@
 (import-macros
     {: go-loop : go}
-  (doto :io.gitlab.andreyorst.async require))
+  :io.gitlab.andreyorst.async)
 
-(local {: chan : <! : >! : offer! : timeout
-        : close!}
+(local {: chan : <! : >! : timeout : close!}
   (require :io.gitlab.andreyorst.async))
 
 (local {: >!?}
-  (require :io.gitlab.andreyorst.fnl-http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.impl.utils))
 
 (local {:select s/select
         :connect s/connect
@@ -15,7 +14,7 @@
   (require :socket))
 
 (fn chunk-setter [ch]
-  (fn set-chunk-size [_ pattern-or-size out]
+  (fn _set-chunk-size [_ pattern-or-size out]
     "Sets the chunk-size property of a socket channel in order to
 dynamically adjust during reads."
     {:private true}

@@ -55,7 +55,7 @@ characters. The default pattern is `\"[^%w._~-]\"`."
     (accumulate [query (collect [k v (pairs (or ?query-a {}))] k v)
                  k v (pairs (or ?query-b {}))]
       (case (. query k)
-        [val &as t]
+        [_ &as t]
         (->> (doto query
                (tset k (if (sequential? v)
                            (icollect [_ val (ipairs v) :into t]
@@ -74,7 +74,7 @@ characters. The default pattern is `\"[^%w._~-]\"`."
       (let [(k v) (key-value:match "([^=]+)=?(.*)")]
         (doto res
           (tset k (case (. res k)
-                    [val &as t] (doto t (insert v))
+                    [_ &as t] (doto t (insert v))
                     val [val v]
                     nil v)))))))
 
@@ -131,7 +131,7 @@ guarantee the same order of query parameters."
     (setmetatable {: scheme : host : port : userinfo : path : query : fragment}
                   {:__tostring url->string})))
 
-(fn format-path [{: path : query : fragment} query-params]
+(fn format-path [{: path : query} query-params]
   "Formats the PATH component of a HTTP `Path` header.
 Accepts the `path`, `query`, and `fragment` parts from the parsed URL, and optional  `query-params` table."
   (.. (or path "/")

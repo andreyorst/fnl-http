@@ -2,13 +2,7 @@
   (require :socket))
 
 (local {: build-http-response}
-  (require :io.gitlab.andreyorst.fnl-http.builder))
-
-(local {: parse-http-request}
-  (require :io.gitlab.andreyorst.fnl-http.parser))
-
-(local {: post}
-  (require :io.gitlab.andreyorst.fnl-http.client))
+  (require :io.gitlab.andreyorst.fnl-http.impl.builder))
 
 (with-open [server (socket.bind "localhost" 8000)]
   (while true

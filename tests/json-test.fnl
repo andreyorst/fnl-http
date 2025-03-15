@@ -1,13 +1,13 @@
-(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
+(require-macros :io.gitlab.andreyorst.fennel-test)
 
 (local {: skip-test}
   (require :io.gitlab.andreyorst.fennel-test))
 
-(local {: decode : encode : register-encoder : unregister-encoder}
+(local {: decode}
   (require :io.gitlab.andreyorst.json))
 
 (local body
-  (require :io.gitlab.andreyorst.fnl-http.body))
+  (require :io.gitlab.andreyorst.fnl-http.impl.body))
 
 (deftest parse-body-test
   (when (not _G.utf8)

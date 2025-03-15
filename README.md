@@ -3,7 +3,7 @@
 A [clj-http][1]-inspired library for making HTTP/1.1 requests written in Fennel.
 This library utilizes [async.fnl][2] for asynchronous request processing and [luasocket][3] for an actual implementation of sockets.
 
-# Installation via [deps.fnl](https://gitlab.com/andreyorst/deps.fnl)
+## Installation via [deps.fnl](https://gitlab.com/andreyorst/deps.fnl)
 
 Add the following to `deps.fnl` file:
 
@@ -12,7 +12,7 @@ Add the following to `deps.fnl` file:
         {:type :git :sha "1db56eb1736ad5366f6811aacf1ffa450f94c08f"}}}
 ```
 
-# Usage
+## Usage
 
 The `http.client` module provides the following functions:
 
@@ -52,7 +52,7 @@ Several options are available for the `as` key:
 - `json` - the body will be parsed as JSON into a Lua table.
   Note, that `null` values are omitted from the resulting table.
 
-## Examples
+### Examples
 
 Loading the library:
 
@@ -77,7 +77,7 @@ If preferred, modules can be imported as separate locals with destructuring:
   (require :io.gitlab.andreyorst.fnl-http))
 ```
 
-### Accessing resources synchronously
+#### Accessing resources synchronously
 
 The default scheme for requests is `http://` if not provided explicitly.
 If the path part is missing, it defaults to `/`.
@@ -138,7 +138,7 @@ In the response table, the `body` key will contain a `#<Reader: 0x55c220e65920>`
 
 Beware, that before closing the `http-client`, you must consume the body of the response.
 
-### Accessing resources asynchronously
+#### Accessing resources asynchronously
 
 By supplying an options table with the `async?` key set to `true`, the request will be processed asynchronously:
 
@@ -192,7 +192,7 @@ For example, multiple requests can be issued, selecting the fastest:
 
 Refer to the [documentation][4] for more on how to use the `async.fnl` library.
 
-### `multipart/form-data`
+#### `multipart/form-data`
 
 You can send multipart requests with the `multipart` field in the `opts` table:
 
@@ -225,7 +225,7 @@ Additional fields can be added to each part:
 - `mime-type` - optional mime type for the given part.
   By default, the mime type is guessed based on the `content` field.
 
-## Extra modules
+### Extra modules
 
 The main client module provides two more modules for convenience:
 
@@ -239,7 +239,7 @@ Refer to each projects documentation for each module:
 - [json.fnl](https://gitlab.com/andreyorst/json.fnl/-/blob/main/doc/src/json.md)
 - [reader.fnl](https://gitlab.com/andreyorst/reader.fnl/-/blob/main/doc/src/reader.md)
 
-### HTTP Server
+#### HTTP Server
 
 This library contains a simple HTTP/1.1 server.
 The module provides a single function that accepts an asynchronous handler doing all of the heavy lifting of routing and provides a simple data-oriented API for the response format.
@@ -282,7 +282,7 @@ The body key value can be a string, channel, reader, or file handle.
 
 The server is experimental and not properly tested.
 
-#### Working with requests
+##### Working with requests
 
 Each incoming request is passed to the `handler` function as a table:
 
@@ -329,7 +329,7 @@ Here's an example of working with multipart requests:
       (process-part part))))
 ```
 
-#### Server Performance
+##### Server Performance
 
 Using the following server implementation:
 

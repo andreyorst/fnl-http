@@ -3,51 +3,46 @@
 
 (import-macros
     {: go}
-  (doto :io.gitlab.andreyorst.async require))
+  :io.gitlab.andreyorst.async)
 
-(local {: >! : <! : >!! : <!! : chan?}
+(local {: chan?}
   (require :io.gitlab.andreyorst.async))
 
-(local {: reader? : file-reader}
+(local {: reader?}
   (require :io.gitlab.andreyorst.reader))
 
 (local {: decode}
   (require :io.gitlab.andreyorst.json))
 
-(local {: >!? : <!? : make-tcp-client : chunked-encoding?}
-  (require :io.gitlab.andreyorst.fnl-http.utils))
+(local {: make-tcp-client : chunked-encoding?}
+  (require :io.gitlab.andreyorst.fnl-http.impl.utils))
 
 (local {: parse-http-response}
-  (require :io.gitlab.andreyorst.fnl-http.parser))
+  (require :io.gitlab.andreyorst.fnl-http.impl.parser))
 
 (local {: parse-url
         : format-path}
-  (require :io.gitlab.andreyorst.fnl-http.url))
+  (require :io.gitlab.andreyorst.fnl-http.impl.url))
 
 (local {:chan tcp-chan}
-  (require :io.gitlab.andreyorst.fnl-http.tcp))
-
-(local {: chan}
-  (require :io.gitlab.andreyorst.async))
+  (require :io.gitlab.andreyorst.fnl-http.impl.tcp))
 
 (local {: build-http-request}
-  (require :io.gitlab.andreyorst.fnl-http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.impl.builder))
 
 (local {: stream-body
-        : format-chunk
         : wrap-body
         : multipart-content-length
         : stream-multipart}
-  (require :io.gitlab.andreyorst.fnl-http.body))
+  (require :io.gitlab.andreyorst.fnl-http.impl.body))
 
 (local {: random-uuid}
-  (require :io.gitlab.andreyorst.fnl-http.uuid))
+  (require :io.gitlab.andreyorst.uuid))
 
-(local {: capitalize-header : get-boundary}
-  (require :io.gitlab.andreyorst.fnl-http.headers))
+(local {: get-boundary}
+  (require :io.gitlab.andreyorst.fnl-http.impl.headers))
 
-(local {: format
-        : lower
+(local {: lower
         : upper}
   string)
 
@@ -235,7 +230,7 @@ function to issue a new request."
 
 (fn follow-redirects [{: status : headers &as response}
                       {: method  : throw-errors?
-                       : max-redirects : force-redirects?
+                       : max-redirects : follow-redirects?
                        &as opts}
                       request-fn]
   "Decides whether to follow a redirect `response`.
@@ -245,7 +240,7 @@ request to a new location, unless `max-redirects` is not `0`. If
 case of receiving `307` or `308` statuses.  Accepts the `request-fn`
 to issue a new request."
   {:private true}
-  (if (or (not opts.follow-redirects?)
+  (if (or (not follow-redirects?)
           (not (redirect? status)))
       (respond response opts)
       (case headers.Location
@@ -253,7 +248,7 @@ to issue a new request."
         (respond response opts)
         location
         (if (<= max-redirects 0)
-            (if opts.throw-errors?
+            (if throw-errors?
                 (raise "too many redirects" opts)
                 (respond response opts))
             (or (= 301 status)

@@ -1,4 +1,4 @@
-(require-macros (doto :io.gitlab.andreyorst.fennel-test require))
+(require-macros :io.gitlab.andreyorst.fennel-test)
 
 (local {: chan : >!! : close! : go* : >!
         : chan?}
@@ -9,7 +9,7 @@
         : stream-multipart
         : multipart-content-length
         : wrap-body}
-  (require :io.gitlab.andreyorst.fnl-http.body))
+  (require :io.gitlab.andreyorst.fnl-http.impl.body))
 
 (local {: string-reader
         : file-reader

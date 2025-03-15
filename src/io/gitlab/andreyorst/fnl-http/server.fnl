@@ -1,5 +1,5 @@
 (import-macros {: go : go-loop}
-  (doto :io.gitlab.andreyorst.async require))
+  :io.gitlab.andreyorst.async)
 
 (local {: reader?}
   (require :io.gitlab.andreyorst.reader))
@@ -8,36 +8,36 @@
   (require :socket))
 
 (local {: build-http-response}
-  (require :io.gitlab.andreyorst.fnl-http.builder))
+  (require :io.gitlab.andreyorst.fnl-http.impl.builder))
 
 (local {: parse-http-request}
-  (require :io.gitlab.andreyorst.fnl-http.parser))
+  (require :io.gitlab.andreyorst.fnl-http.impl.parser))
 
-(local {: chan : chan? : timeout : <!}
+(local {: chan? : timeout : <!}
   (require :io.gitlab.andreyorst.async))
 
 (local {: socket->chan}
-  (require :io.gitlab.andreyorst.fnl-http.tcp))
+  (require :io.gitlab.andreyorst.fnl-http.impl.tcp))
 
 (local {: decode-value
         : capitalize-header
         : get-boundary}
-  (require :io.gitlab.andreyorst.fnl-http.headers))
+  (require :io.gitlab.andreyorst.fnl-http.impl.headers))
 
 (local {: <!?
         : make-tcp-client
         : chunked-encoding?
         : multipart?}
-  (require :io.gitlab.andreyorst.fnl-http.utils))
+  (require :io.gitlab.andreyorst.fnl-http.impl.utils))
 
 (local {: stream-body
         : wrap-body
         : multipart-content-length
         : stream-multipart}
-  (require :io.gitlab.andreyorst.fnl-http.body))
+  (require :io.gitlab.andreyorst.fnl-http.impl.body))
 
 (local {: random-uuid}
-  (require :io.gitlab.andreyorst.fnl-http.uuid))
+  (require :io.gitlab.andreyorst.uuid))
 
 (local {: lower}
   string)
@@ -160,7 +160,7 @@
                           (lower k) v)]
             (when (reader? body)
               (tset resources body true))
-            (tset headers :content-length
+            (set headers.content-length
               (if (not (chunked-encoding? headers.transfer-encoding))
                   headers.content-length
                   ?multipart

@@ -1,5 +1,4 @@
-(require-macros
- (doto :io.gitlab.andreyorst.fennel-test require))
+(require-macros :io.gitlab.andreyorst.fennel-test)
 
 (local {: skip-test}
   (require :io.gitlab.andreyorst.fennel-test))
@@ -8,10 +7,10 @@
   (require :io.gitlab.andreyorst.fnl-http.client))
 
 (local body
-  (require :io.gitlab.andreyorst.fnl-http.body))
+  (require :io.gitlab.andreyorst.fnl-http.impl.body))
 
 (local parser
-  (require :io.gitlab.andreyorst.fnl-http.parser))
+  (require :io.gitlab.andreyorst.fnl-http.impl.parser))
 
 (local readers
   (require :io.gitlab.andreyorst.reader))
@@ -26,7 +25,7 @@
   (.. "http://localhost:8002" (or path "")))
 
 (fn wait-for-server [attempts]
-  (faccumulate [started? false i 1 attempts :until started?]
+  (faccumulate [started? false _ 1 attempts :until started?]
     (or (pcall http.head (url)
                {:headers {:connection "close"}})
         (a.<!! (a.timeout 100)))))
@@ -169,14 +168,14 @@
           "bar" (assert-eq "bar" (content:read :*a))))))
   (testing "closing part reader while iterating"
     (let [parts (body.multipart-body-iterator (readers.file-reader "tests/data/chunked-multipart") "foobar" parser.read-headers)]
-      (each [{: name : content : headers} parts]
+      (each [{: name : content} parts]
         (case name
           "foo" (do (content:close)
                     (assert-eq nil (content:read :*a)))
           "bar" (assert-eq "bar" (content:read :*a))))))
   (testing "skipping part while iterating"
     (let [parts (body.multipart-body-iterator (readers.file-reader "tests/data/chunked-multipart") "foobar" parser.read-headers)]
-      (each [{: name : content : headers} parts]
+      (each [{: name : content} parts]
         (case name
           "foo" nil
           "bar" (assert-eq "bar" (content:read :*a)))))))
